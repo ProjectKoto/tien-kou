@@ -1,0 +1,30 @@
+import * as turso from "@libsql/client"
+import { HT, KD, SqlArgValue, SqlDbHandler } from './serveDef.mts'
+
+export const TursoSqlDbHandler = HT<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">): Promise<SqlDbHandler> => {
+
+  let tursoc: turso.Client | undefined = undefined
+
+  let tursocReadyResolver: ((value: turso.Client) => void)
+  const tursocReadyPromise = new Promise<turso.Client>(r => { tursocReadyResolver = r })
+
+  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
+    tursoc = turso.createClient({
+      url: ctx0.e.TURSO_DATABASE_URL!,
+      authToken: ctx0.e.TURSO_AUTH_TOKEN!,
+    })
+    if (tursocReadyResolver) {
+      tursocReadyResolver(tursoc)
+    }
+  })
+
+  return {
+    sql: async ({ sql, args }: { sql: string, args: SqlArgValue[] }) => {
+      return (await (await tursocReadyPromise).execute({
+        sql,
+        args,
+      })).rows
+    },
+  }
+})
+

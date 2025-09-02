@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tien-kou",
+  "main": "src/serve/cfWorkerRuntimeServe.mts",
+  "compatibility_date": "2025-08-16",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./static/",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "65f75cd9f94649d7a668de64926d7227"
+    }
+  ],
+  "alias": {
+  }
+}

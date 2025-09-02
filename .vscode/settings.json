@@ -1,0 +1,12 @@
+{
+	"files.associations": {
+		"wrangler.json": "jsonc"
+	},
+	"editor.tabSize": 2,
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/bower_components": true,
+		"**/*.code-search": true,
+		"thirdparty/**": true,
+	}
+}

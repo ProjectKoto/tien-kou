@@ -1,0 +1,18 @@
+# For wrangler local dev
+
+TURSO_DATABASE_URL = "libsql://xxx.turso.io"
+TURSO_AUTH_TOKEN = "xxx"
+HTTP_PROXY = "http://127.0.0.1:8118"
+HTTPS_PROXY = "http://127.0.0.1:8118"
+DEBUG = "proxy-agent,knex:query"
+
+TELEGRAM_API_ID = "11111"
+TELEGRAM_API_HASH = "xxxxxx"
+# socks
+TELEGRAM_PROXY_PORT = "1080"
+# SHOULD_HOARD_DROP_REMOTE_META_META = "1"
+# SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW = "1"
+
+TELEGRAM_HOARD_DEST_ROOT_PATH = "/path/to/tg_hoard_dest"
+TELEGRAM_PUB_HOARD_DEST_ROOT_PATH = "/path/to/tg_pub_hoard_dest"
+
