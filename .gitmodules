@@ -1,12 +1,12 @@
 [submodule "markdowndb"]
 	path = thirdparty/markdowndb
-	url = https://github.com/datopian/markdowndb
+	url = git@github.com:ProjectKoto/markdowndb.git
 [submodule "thirdparty/libsql_isomorphic-ts"]
 	path = thirdparty/libsql_isomorphic-ts
-	url = https://github.com/libsql/isomorphic-ts
+	url = git@github.com:ProjectKoto/isomorphic-ts.git
 [submodule "thirdparty/cloudflare_workers-sdk"]
 	path = thirdparty/cloudflare_workers-sdk
-	url = https://github.com/cloudflare/workers-sdk
+	url = git@github.com:ProjectKoto/workers-sdk.git
 [submodule "thirdparty/telegram"]
 	path = thirdparty/telegram
-	url = https://github.com/gram-js/gramjs
+	url = git@github.com:ProjectKoto/gramjs.git
