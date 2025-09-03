@@ -826,6 +826,83 @@ const main = async () => {
       )
     })
 
+    const getGjSessionPeerInfo = async (peerLike: telegram.Api.TypePeer) => {
+      // (id, hash, username, phone, name, date)
+      const result = await storeSession.getEntityRowsById(telegram.utils.getPeerId(peerLike), true)
+      if (result && Array.isArray(result) && result.length >= 6) {
+        result[1] = null
+        result[3] = null
+        result[5] = null
+      }
+      return result
+    }
+
+    const resolveMessagePeerInplace = async (theMessage: telegram.Api.Message) => {
+      if (theMessage.fromId && typeof theMessage.fromId === "object") {
+        try {
+          (theMessage.fromId as AnyObj).gjSessionPeerInfo = await getGjSessionPeerInfo(theMessage.fromId)
+          theMessage.originalArgs.fromId.gjSessionPeerInfo = (theMessage.fromId as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fromId.originalArgs.gjSessionPeerInfo = (theMessage.fromId as AnyObj).gjSessionPeerInfo
+        } catch (e) {
+          le("resolveMessagePeerInplace: resolve fromId err", e)
+        }
+      }
+      if (theMessage.peerId && typeof theMessage.peerId === "object") {
+        try {
+          (theMessage.peerId as AnyObj).gjSessionPeerInfo = await getGjSessionPeerInfo(theMessage.peerId)
+          theMessage.originalArgs.peerId.gjSessionPeerInfo = (theMessage.peerId as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.peerId.originalArgs.gjSessionPeerInfo = (theMessage.peerId as AnyObj).gjSessionPeerInfo
+        } catch (e) {
+          le("resolveMessagePeerInplace: resolve peerId err", e)
+        }
+      }
+      if (theMessage.fwdFrom && typeof theMessage.fwdFrom === "object" && theMessage.fwdFrom.fromId && typeof theMessage.fwdFrom.fromId === "object") {
+        try {
+          (theMessage.fwdFrom.fromId as AnyObj).gjSessionPeerInfo = await getGjSessionPeerInfo(theMessage.fwdFrom.fromId)
+          theMessage.originalArgs.fwdFrom.fromId.gjSessionPeerInfo = (theMessage.fwdFrom.fromId as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fwdFrom.originalArgs.fromId.gjSessionPeerInfo = (theMessage.fwdFrom.fromId as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fwdFrom.originalArgs.fromId.originalArgs.gjSessionPeerInfo = (theMessage.fwdFrom.fromId as AnyObj).gjSessionPeerInfo
+        } catch (e) {
+          le("resolveMessagePeerInplace: resolve fwdFrom.fromId err", e)
+        }
+      }
+      if (theMessage.fwdFrom && typeof theMessage.fwdFrom === "object" && theMessage.fwdFrom.savedFromPeer && typeof theMessage.fwdFrom.savedFromPeer === "object") {
+        try {
+          (theMessage.fwdFrom.savedFromPeer as AnyObj).gjSessionPeerInfo = await getGjSessionPeerInfo(theMessage.fwdFrom.savedFromPeer)
+          theMessage.originalArgs.fwdFrom.savedFromPeer.gjSessionPeerInfo = (theMessage.fwdFrom.savedFromPeer as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fwdFrom.originalArgs.savedFromPeer.gjSessionPeerInfo = (theMessage.fwdFrom.savedFromPeer as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fwdFrom.originalArgs.savedFromPeer.originalArgs.gjSessionPeerInfo = (theMessage.fwdFrom.savedFromPeer as AnyObj).gjSessionPeerInfo
+        } catch (e) {
+          le("resolveMessagePeerInplace: resolve fwdFrom.savedFromPeer err", e)
+        }
+      }
+      if (theMessage.fwdFrom && typeof theMessage.fwdFrom === "object" && theMessage.fwdFrom.savedFromId && typeof theMessage.fwdFrom.savedFromId === "object") {
+        try {
+          (theMessage.fwdFrom.savedFromId as AnyObj).gjSessionPeerInfo = await getGjSessionPeerInfo(theMessage.fwdFrom.savedFromId)
+          theMessage.originalArgs.fwdFrom.savedFromId.gjSessionPeerInfo = (theMessage.fwdFrom.savedFromId as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fwdFrom.originalArgs.savedFromId.gjSessionPeerInfo = (theMessage.fwdFrom.savedFromId as AnyObj).gjSessionPeerInfo
+          theMessage.originalArgs.fwdFrom.originalArgs.savedFromId.originalArgs.gjSessionPeerInfo = (theMessage.fwdFrom.savedFromId as AnyObj).gjSessionPeerInfo
+        } catch (e) {
+          le("resolveMessagePeerInplace: resolve fwdFrom.savedFromId err", e)
+        }
+      }
+
+      await (async (theMessage0) => {
+        const theMessage = theMessage0 as AnyObj
+
+        if (theMessage.savedPeerId && typeof theMessage.savedPeerId === "object") {
+          try {
+            (theMessage.savedPeerId as AnyObj).gjSessionPeerInfo = await getGjSessionPeerInfo(theMessage.savedPeerId)
+            theMessage.originalArgs.savedPeerId.gjSessionPeerInfo = (theMessage.savedPeerId as AnyObj).gjSessionPeerInfo
+            theMessage.originalArgs.savedPeerId.originalArgs.gjSessionPeerInfo = (theMessage.savedPeerId as AnyObj).gjSessionPeerInfo
+          } catch (e) {
+            le("resolveMessagePeerInplace: resolve savedPeerId err", e)
+          }
+        }
+      })(theMessage)
+      
+    }
+
     const resolveRepliedMessage = async (theMessage: telegram.Api.Message) => {
       await new Promise(r => setTimeout(r, 1500))
       let repliedMessage = await theMessage?.getReplyMessage()
@@ -834,9 +911,11 @@ const main = async () => {
         // will cause FLOOD_WAIT. CAUTION!!!
         // await client.getEntity(...)
 
-        const inputPeer = await client.getInputEntity(new telegram.Api.Channel({
-          id: (theMessage?.replyTo?.replyToPeerId as telegram.Api.PeerChannel).channelId
-        } as telegram.Api.Channel))
+        const inputPeer = await client.getInputEntity(theMessage?.replyTo?.replyToPeerId as telegram.Api.TypePeer)
+        // const inputPeer = await client.getInputEntity(new telegram.Api.Channel({
+        //   // TODO: when current user havn't joined this peer (channel), this FETCHES THE WRONG MESSAGE
+        //   id: (theMessage?.replyTo?.replyToPeerId as telegram.Api.PeerChannel).channelId
+        // } as telegram.Api.Channel))
 
         if (theMessage?.replyTo?.replyToMsgId) {
           repliedMessage = (await client.getMessages(inputPeer, {
@@ -845,12 +924,15 @@ const main = async () => {
         }
       }
 
-      return repliedMessage || {}
+      repliedMessage = repliedMessage || {} as telegram.Api.Message
+      await resolveMessagePeerInplace(repliedMessage)
+      return repliedMessage
     }
 
     const mediaDownQ = new AsyncQueue(1, 1000)
     const appendFileQ = new AsyncQueue(1, 0)
 
+    // TODO: check if message handler has queue logic, ensure it sequential and has time interval
     async function msgEvent(event: tgEvents.NewMessageEvent) {
       if ((event?.message?.peerId as telegram.Api.PeerUser)?.userId?.toString() !== meIdStr) {
         return
@@ -869,6 +951,7 @@ const main = async () => {
       const m: (typeof m0) & { client?: AnyObj, extRepliedMessage?: AnyObj } = m0
       m.client = undefined
       m._client = undefined
+      await resolveMessagePeerInplace(m as telegram.Api.Message)
 
       const message = event?.message
       let repliedMessage: telegram.Api.Message | AnyObj | undefined = undefined
@@ -883,6 +966,8 @@ const main = async () => {
         m.extRepliedMessage!._eventBuilders = undefined
         m.extRepliedMessage!.client = undefined
         m.extRepliedMessage!._client = undefined
+        // to make gramjs toJSON() happy
+        m.originalArgs.extRepliedMessage = m.extRepliedMessage
         if (repliedMessage?.replyTo?.replyToMsgId) {
           await new Promise(r => setTimeout(r, 1500))
           repliedMessageLv2 = await resolveRepliedMessage(repliedMessage as telegram.Api.Message)
@@ -890,8 +975,9 @@ const main = async () => {
             ...repliedMessageLv2
           }
           m.extRepliedMessage!.extRepliedMessage = mm
-          mm._eventBuilders = undefined
-          mm.client = undefined
+          m.extRepliedMessage!.originalArgs.extRepliedMessage = mm
+          ;(mm as AnyObj)._eventBuilders = undefined
+          ;(mm as AnyObj).client = undefined
           mm._client = undefined
 
           if (repliedMessageLv2?.replyTo?.replyToMsgId) {
@@ -900,8 +986,9 @@ const main = async () => {
               ...repliedMessageLv3
             }
             m.extRepliedMessage!.extRepliedMessage.extRepliedMessage = mmm
-            mmm._eventBuilders = undefined
-            mmm.client = undefined
+            m.extRepliedMessage!.extRepliedMessage.originalArgs.extRepliedMessage = mmm
+            ;(mmm as AnyObj)._eventBuilders = undefined
+            ;(mmm as AnyObj).client = undefined
             mmm._client = undefined
           }
         }
