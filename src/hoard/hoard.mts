@@ -20,16 +20,28 @@ import '../nodeEnv.mts'
 import { FileInfo } from "mddb/dist/src/lib/process"
 import { allKnownAssetExtNames, AnyObj, datePath, dedicatedAssetExtNames, genTimestampString, isInExtensionList, jsonPrettyPrint, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
 import { ensureParentDirExists, ensurePathDirExists, nodeResolvePath, pathExists } from "../lib/nodeCommon.mts"
+import { TkContext } from "../serve/serveDef.mts"
+import { applyTkEnvToProcessEnv, tkEnvFromDevVarsFile } from "../nodeEnv.mts"
 
 const main = async () => {
+  const tkEnv = await tkEnvFromDevVarsFile()
+
+  // applyTkEnvToProcessEnv(tkEnv)
+
+  const tkCtx: TkContext = {
+    tkEnv,
+    get e() {
+      return this.tkEnv
+    },
+  }
       
   let tursoc: turso.Client | undefined = undefined
 
   const dbPath = "markdown.db"
 
   tursoc = turso.createClient({
-    url: process.env.TURSO_DATABASE_URL!,
-    authToken: process.env.TURSO_AUTH_TOKEN,
+    url: tkEnv.TURSO_DATABASE_URL!,
+    authToken: tkEnv.TURSO_AUTH_TOKEN,
   })
 
   const origClient = await new MarkdownDB({
@@ -113,6 +125,29 @@ const main = async () => {
     await doRefreshMetaMetaInfo()
 
     if (tursoc !== undefined) {
+      let tursoBatchWrapper
+      if (tkEnv.HOARD_DB_BATCH_DEBUG_MODE === "1") {
+        tursoBatchWrapper = async (sqlExecutor: turso.Transaction | turso.Client | undefined, sqls: SqlLike[]) => {
+          if (sqlExecutor === undefined) {
+            sqlExecutor = tursoc
+          }
+          for (const sql of sqls) {
+            l("the sql", sql)
+            if (sql === "sleep") {
+              l("do sleep")
+              await new Promise(r => setTimeout(r, 410))
+              continue
+            }
+            await (sqlExecutor as turso.Client).batch([sql], "write")
+          } 
+        }
+      } else {
+        tursoBatchWrapper = async (sqlExecutor: turso.Transaction | turso.Client | undefined, sqls: SqlLike[]) => {
+          sqls = sqls.filter(x => x !== "sleep")
+          await (sqlExecutor as turso.Client).batch(sqls, "write")
+        }
+      }
+      
       {
         try {
           await pRetry(
@@ -135,28 +170,49 @@ const main = async () => {
       l("newBufferIndexStr", newBufferIndexStr)
 
       syncToTursoLastTime = Date.now()
-      const reimportSqlList: SqlLike[] = []
-      if (process.env.SHOULD_HOARD_DROP_REMOTE_META_META === "1") {
-        reimportSqlList.push(`DROP TABLE IF EXISTS tk_meta_meta_info;`)
+      const reimportSqlDdlList: SqlLike[] = []
+      const reimportSqlDataList: SqlLike[] = []
+      if (tkEnv.SHOULD_HOARD_DROP_REMOTE_META_META === "1") {
+        reimportSqlDdlList.push(`DROP TABLE IF EXISTS tk_meta_meta_info;`)
       }
       const tables = await mddb.db.raw(`SELECT * FROM sqlite_master WHERE type='table';`) as { tbl_name: string, sql: string }[]
       tables.sort((a, b) => (tableCreateForceOrder[a.tbl_name] || 0) - (tableCreateForceOrder[b.tbl_name] || 0))
       for (const t of tables) {
         if (t.tbl_name === 'tk_meta_meta_info') {
-          reimportSqlList.push(
+          reimportSqlDdlList.push(
             t.sql.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'),
           )
           continue
         }
-        reimportSqlList.push(`DROP TABLE IF EXISTS ${t.tbl_name}_${newBufferIndexStr};`)
-        reimportSqlList.push(
-          // t.sql.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'),
+        reimportSqlDdlList.push(`DROP TABLE IF EXISTS ${t.tbl_name}_${newBufferIndexStr};`)
+        reimportSqlDdlList.push(
           t.sql
             .replace(/^(CREATE TABLE `?)([^` ]+)(`?)/i, "$1$2_" + newBufferIndexStr + "$3")
             .replace(/(\sreferences\s+`?[^` ]+)(`?)/ig, "$1_" + newBufferIndexStr + "$2")  
           ,
           `DELETE FROM ${t.tbl_name}_${newBufferIndexStr};`,
         )
+        reimportSqlDdlList.push(
+          (tkEnv.SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW === "1") ? `DROP TABLE IF EXISTS files` : `DROP VIEW IF EXISTS files`,
+          `CREATE VIEW IF NOT EXISTS files AS
+              SELECT * FROM files_0 WHERE
+                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
+            UNION
+              SELECT * FROM files_1 WHERE
+                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
+          `,
+        )
+        reimportSqlDdlList.push(
+          `DROP VIEW IF EXISTS tk_meta_kv`,
+          `CREATE VIEW IF NOT EXISTS tk_meta_kv AS
+              SELECT * FROM tk_meta_kv_0 WHERE
+                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
+            UNION
+              SELECT * FROM tk_meta_kv_1 WHERE
+                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
+          `,
+        )
+
         const currTableAllData = (await mddb.db.raw(`SELECT * FROM ${t.tbl_name};`)) as AnyObj[]
         if (currTableAllData.length > 0) {
           const batchSize = 3
@@ -164,7 +220,7 @@ const main = async () => {
             const currBatchI = i
             const currBatch = currTableAllData.slice(currBatchI, currBatchI + batchSize)
 
-            reimportSqlList
+            reimportSqlDataList
               .push({
                 get sql() {
                   l(`${t.tbl_name}_${newBufferIndexStr} table: [${currBatchI}/${currTableAllData.length}]`)
@@ -173,55 +229,58 @@ const main = async () => {
                 },
                 args: currBatch.flatMap(oneRow => Object.values(oneRow)),
               })
+
+
+            if (t.tbl_name === "files") {
+              reimportSqlDataList.push("sleep")
+            }
+            
           }
         }
       }
+
       const metaMetaTableAllData = (await mddb.db.raw(`SELECT * FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1;`)) as AnyObj[]
       metaMetaTableAllData[0]["curr_buffer_index"] = newBufferIndex
-      reimportSqlList
+      reimportSqlDataList
         .push({
           sql: `INSERT OR REPLACE INTO tk_meta_meta_info VALUES ` + metaMetaTableAllData.map(oneRow => ('( ' + Object.values(oneRow).map((_) => '?').join(', ') + ' )')).join(', ') + ';',
           args: metaMetaTableAllData.flatMap(oneRow => Object.values(oneRow)),
         })
       
       for (const indexSql of indexSqlList) {
-        reimportSqlList.push(indexSql.replace(/(\s+[Oo][Nn]\s+`?[^\s]+)(`?\s+)/, "$1_" + newBufferIndex + "$2"))
+        reimportSqlDataList.push(indexSql.replace(/(\s+[Oo][Nn]\s+`?[^\s]+)(`?\s+)/, "$1_" + newBufferIndex + "$2"))
       }
-
-      // TODO: THIS IS WRONG.
-      // this will fail between files_{another_buffer_index} is destroyed and re-created.
-      reimportSqlList.push(
-        (process.env.SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW === "1") ? `DROP TABLE IF EXISTS files` : `DROP VIEW IF EXISTS files`,
-        `CREATE VIEW IF NOT EXISTS files AS
-            SELECT * FROM files_0 WHERE
-              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
-          UNION
-            SELECT * FROM files_1 WHERE
-              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
-        `,
-      )
-
-      reimportSqlList.push(
-        `DROP VIEW IF EXISTS tk_meta_kv`,
-        `CREATE VIEW IF NOT EXISTS tk_meta_kv AS
-            SELECT * FROM tk_meta_kv_0 WHERE
-              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
-          UNION
-            SELECT * FROM tk_meta_kv_1 WHERE
-              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
-        `,
-      )
 
       // reimportSqlList.forEach(x => {
       //   jsonPrettyPrint(x)
       // })
 
       await pRetry(async () => {
-        // for (const sql of reimportSqlList) {
-        //   l(sql)
-        //   await tursoc.batch([sql], "write")
-        // }
-        await tursoc.batch(reimportSqlList, "write")
+        // reimportSqlDdlList
+        {
+          const transaction = await tursoc.transaction("write");
+          try {
+            await tursoBatchWrapper(transaction, reimportSqlDdlList)
+
+            await transaction.commit();
+          } finally {
+            // make sure to close the transaction, even if an exception was thrown
+            transaction.close();
+          }
+        }
+        // reimportSqlDataList
+        {
+          await tursoBatchWrapper(tursoc, reimportSqlDataList)
+          // const transaction = await tursoc.transaction("write");
+          // try {
+          //   await tursoBatchWrapper(transaction, reimportSqlDataList)
+
+          //   await transaction.commit();
+          // } finally {
+          //   // make sure to close the transaction, even if an exception was thrown
+          //   transaction.close();
+          // }
+        }
       }, {
         onFailedAttempt: error => {
           le(error.message)
@@ -706,18 +765,18 @@ const main = async () => {
       return
     }
 
-    if (!process.env.TELEGRAM_HOARD_DEST_ROOT_PATH) {
+    if (!tkEnv.TELEGRAM_HOARD_DEST_ROOT_PATH) {
       throw new Error("TELEGRAM_HOARD_DEST_ROOT_PATH missing")
     }
-    const tgDest = replaceAll(process.env.TELEGRAM_HOARD_DEST_ROOT_PATH, '\\', '/')
+    const tgDest = replaceAll(tkEnv.TELEGRAM_HOARD_DEST_ROOT_PATH, '\\', '/')
     l("tgDest", tgDest)
     const tgMediaDest = replaceAll(path.join(tgDest, "media"), '\\', '/')
     l("tgMediaDest", tgMediaDest)
 
-    if (!process.env.TELEGRAM_PUB_HOARD_DEST_ROOT_PATH) {
+    if (!tkEnv.TELEGRAM_PUB_HOARD_DEST_ROOT_PATH) {
       throw new Error("TELEGRAM_PUB_HOARD_DEST_ROOT_PATH missing")
     }
-    const tgPubDest = replaceAll(process.env.TELEGRAM_PUB_HOARD_DEST_ROOT_PATH, '\\', '/')
+    const tgPubDest = replaceAll(tkEnv.TELEGRAM_PUB_HOARD_DEST_ROOT_PATH, '\\', '/')
     l("tgPubDest", tgPubDest)
     const tgPubMediaDest = replaceAll(path.join(tgPubDest, "media"), '\\', '/')
     l("tgPubMediaDest", tgPubMediaDest)
@@ -726,12 +785,12 @@ const main = async () => {
     await ensurePathDirExists(tgPubMediaDest)
 
     const storeSession = new StoreSession("tg_session")
-    const client = new telegram.TelegramClient(storeSession, parseInt(process.env.TELEGRAM_API_ID!), process.env.TELEGRAM_API_HASH!, {
+    const client = new telegram.TelegramClient(storeSession, parseInt(tkEnv.TELEGRAM_API_ID!), tkEnv.TELEGRAM_API_HASH!, {
       // useWSS: false, // Important. Most proxies cannot use SSL.
       useWSS: true,
       proxy: {
         ip: "127.0.0.1", // Proxy host (IP or hostname)
-        port: parseInt(process.env.TELEGRAM_PROXY_PORT!), // Proxy port
+        port: parseInt(tkEnv.TELEGRAM_PROXY_PORT!), // Proxy port
         secret: "", // If used MTProxy then you need to provide a secret (or zeros).
         socksType: 5, // If used Socks you can choose 4 or 5.
         timeout: 2, // Timeout (in seconds) for connection,

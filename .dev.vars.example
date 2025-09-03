@@ -6,6 +6,8 @@ HTTP_PROXY = "http://127.0.0.1:8118"
 HTTPS_PROXY = "http://127.0.0.1:8118"
 DEBUG = "proxy-agent,knex:query"
 
+HOARD_DB_BATCH_DEBUG_MODE = "0"
+
 TELEGRAM_API_ID = "11111"
 TELEGRAM_API_HASH = "xxxxxx"
 # socks

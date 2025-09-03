@@ -10,6 +10,7 @@ import { MainLiquidHandler } from "./liquidIntegrate.mts"
 import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError, TkContext } from "./serveDef.mts"
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { nodeResolvePath } from '../lib/nodeCommon.mts'
+import { applyTkEnvToProcessEnv, tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 
 if (process.platform === "freebsd") {
   console.error("freebsd not supported, readFile not returing EISDIR")
@@ -115,6 +116,10 @@ const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
   TkCtxHandler,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler">) => {
 
+  const tkEnv = await tkEnvFromDevVarsFile()
+
+  // applyTkEnvToProcessEnv(tkEnv)
+
   const super_ = await AbstractTkSqlLiquidHonoApp<HonoWithErrorHandler<AnyObj>>()({
     TienKouAssetFetchHandler,
     LiquidHandler,
@@ -124,7 +129,7 @@ const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
     TkContextHlGetEHandler: {
       getTkEnvGetter: async () => _ => {
         return {
-          ...process.env
+          ...tkEnv
         }
       },
     } as TkContextHlGetTkEnvHandler<AnyObj>,
