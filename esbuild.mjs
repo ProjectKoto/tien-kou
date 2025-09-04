@@ -64,7 +64,7 @@ export const hoardBuildCfg = ({
   format: 'esm',
   platform: 'node',
   outdir: 'nodeDist/',
-  sourceRoot: 'nodeDist',
+  sourceRoot: '',
   outExtension: {
     ".js": ".mjs",
   },

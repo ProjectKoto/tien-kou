@@ -258,14 +258,14 @@ const main = async () => {
       await pRetry(async () => {
         // reimportSqlDdlList
         {
-          const transaction = await tursoc.transaction("write");
+          const transaction = await tursoc.transaction("write")
           try {
             await tursoBatchWrapper(transaction, reimportSqlDdlList)
 
-            await transaction.commit();
+            await transaction.commit()
           } finally {
             // make sure to close the transaction, even if an exception was thrown
-            transaction.close();
+            transaction.close()
           }
         }
         // reimportSqlDataList
@@ -905,15 +905,19 @@ const main = async () => {
 
     const resolveRepliedMessage = async (theMessage: telegram.Api.Message) => {
       await new Promise(r => setTimeout(r, 1500))
-      let repliedMessage = await theMessage?.getReplyMessage()
+
+      // WARN: when current user havn't joined this peer (channel), this FETCHES THE WRONG MESSAGE
+      // let repliedMessage = await theMessage?.getReplyMessage()
+      let repliedMessage: telegram.Api.Message | undefined = undefined
 
       if (repliedMessage === undefined) {
         // will cause FLOOD_WAIT. CAUTION!!!
         // await client.getEntity(...)
 
+        l("theMessage?.replyTo?.replyToPeerId", theMessage?.replyTo?.replyToPeerId)
         const inputPeer = await client.getInputEntity(theMessage?.replyTo?.replyToPeerId as telegram.Api.TypePeer)
+        l("inputPeer", inputPeer)
         // const inputPeer = await client.getInputEntity(new telegram.Api.Channel({
-        //   // TODO: when current user havn't joined this peer (channel), this FETCHES THE WRONG MESSAGE
         //   id: (theMessage?.replyTo?.replyToPeerId as telegram.Api.PeerChannel).channelId
         // } as telegram.Api.Channel))
 
