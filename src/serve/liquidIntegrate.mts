@@ -8,6 +8,7 @@ import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um } from "../lib/common.mts"
 import { AHT, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError, TkContext } from './serveDef.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
+import { tgMessageToHtml } from "../lib/tgCommon.mts"
 
 export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
@@ -741,6 +742,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       customSql,
       customSqlArgs,
     })
+  })
+
+  LiquidHandler.registerFilterPostCreate("tgMsgRender", async function (x) {
+    return await tgMessageToHtml(x)
   })
 
   LiquidHandler.registerFilterPostCreate("btos", bytesLikeToString)
