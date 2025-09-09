@@ -11,6 +11,7 @@ import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, Main
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { nodeResolvePath } from '../lib/nodeCommon.mts'
 import { applyTkEnvToProcessEnv, tkEnvFromDevVarsFile } from '../nodeEnv.mts'
+import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
 
 if (process.platform === "freebsd") {
   console.error("freebsd not supported, readFile not returing EISDIR")
@@ -200,6 +201,7 @@ const nodeMain = async () => {
     await LiquidSqlFilterRegHandler({
       SqlDbHandler,
     }),
+    await LiquidTelegramMsgFilterRegHandler({}),
   ]
 
   const TienKouAssetCategoryLogicHandler = await TkSqlAssetCategoryLogicHandler({

@@ -7,6 +7,7 @@ import { MainLiquidHandler } from './liquidIntegrate.mts'
 import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, TkContext, WebRedirHeavyAssetHandler } from './serveDef.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from './tkAssetCategoryLogic.mts'
 import { TursoSqlDbHandler } from './tursoSql.mts'
+import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
 
 type CfweBindings = AnyObj
 type Cfwe = { "Bindings": CfweBindings, "Variables": AnyObj }
@@ -134,7 +135,7 @@ const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(
         }
       }
 
-      l("final sqlResult", sqlResult)
+      // l("final sqlResult", sqlResult)
       return sqlResult
     },
   } as TienKouAssetFetchHandler
@@ -227,6 +228,7 @@ const appExportedObjPromise = (async () => {
     await LiquidSqlFilterRegHandler({
       SqlDbHandler,
     }),
+    await LiquidTelegramMsgFilterRegHandler({}),
   ]
 
   const TienKouAssetCategoryLogicHandler = await TkSqlAssetCategoryLogicHandler({

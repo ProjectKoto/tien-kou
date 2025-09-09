@@ -5,6 +5,7 @@ import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions } from "../lib/common.mts"
+import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
 
 type KnownHandlerTypesMap0 = {
   MiddleCacheHandler: MiddleCacheHandler,
@@ -194,6 +195,8 @@ export interface LiquidHandler {
   listenOnLiquidPostCreate: (l: (liquid: Liquid) => Promise<void>) => void
   
   registerFilterPostCreate(name: string, filter: liquid.FilterImplOptions): void
+
+  registerTagPostCreate(name: string, filter: TagClass | TagImplOptions): void
 
   initBaseLiquidOptions(inputLiquidOptions: LiquidOptions): Promise<void>
 
@@ -1005,7 +1008,7 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
         }
       }
 
-      l("executing sql", sqlFragmentList.join('\n'), sqlArgs)
+      // l("executing sql", sqlFragmentList.join('\n'), sqlArgs)
 
       const sqlResult = await SqlDbHandler.sql({
         tkCtx,

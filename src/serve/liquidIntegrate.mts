@@ -5,10 +5,10 @@ import { LiquidCache } from "liquidjs/dist/cache"
 import { default as markdownit } from 'markdown-it'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um } from "../lib/common.mts"
+import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l } from "../lib/common.mts"
 import { AHT, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError, TkContext } from './serveDef.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
-import { tgMessageToHtml } from "../lib/tgCommon.mts"
+import { TagClass, TagImplOptions } from "liquidjs/dist/template"
 
 export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
@@ -80,6 +80,12 @@ export const MainLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCtxProvideH
     registerFilterPostCreate: (name: string, filter: liquid.FilterImplOptions): void => {
       r.listenOnLiquidPostCreate(async (liquid) => {
         liquid.registerFilter(name, filter)
+      })
+    },
+
+    registerTagPostCreate: (name: string, tag: TagClass | TagImplOptions): void => {
+      r.listenOnLiquidPostCreate(async (liquid) => {
+        liquid.registerTag(name, tag)
       })
     },
 
@@ -227,7 +233,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     },
     parseLimit: 1e8, // 100M?
     renderLimit: 3000, // limit each render to be completed in 1s
-    memoryLimit: 32e6, // 32M
+    memoryLimit: 32e6, // 32M,
+    relativeReference: false,
   }
 
   await LiquidHandler.initBaseLiquidOptions(liquidMainOption)
@@ -744,14 +751,104 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     })
   })
 
-  LiquidHandler.registerFilterPostCreate("tgMsgRender", async function (x) {
-    return await tgMessageToHtml(x)
-  })
-
   LiquidHandler.registerFilterPostCreate("btos", bytesLikeToString)
 
   LiquidHandler.registerFilterPostCreate("json", function (o) {
     return jsonPrettyStringify(o)
+  })
+
+  // Quickmacro wrapper
+  LiquidHandler.registerTagPostCreate("qw", {
+    parse(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[]) {
+      ;(this as liquid.Tag & TagImplOptions).renderTag = new liquid.RenderTag(tagToken, remainingTokens, this.liquid, this.liquid.parser)
+
+      const origFile = (this as liquid.Tag & TagImplOptions).renderTag.file
+      const [isEndWith, fileAfterStrip, _] = stripExtensionList(origFile, liquidExtName)
+      ;(this as liquid.Tag & TagImplOptions).renderTag.file = "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : "")
+
+      ;(this as liquid.Tag & TagImplOptions).tpls = []
+      let closed = false
+      while(remainingTokens.length) {
+        const token = remainingTokens.shift()
+        if (token && ((token as AnyObj).name === 'endqw' || (token as AnyObj).name === 'wq')) {
+          closed = true
+          break
+        }
+        // parse token into template
+        // parseToken() may consume more than 1 tokens
+        // e.g. {% if %}...{% endif %}
+        if (token !== undefined) {
+          const tpl = ((this as liquid.Tag & TagImplOptions).liquid.parser as liquid.Parser).parseToken(token, remainingTokens)
+          ;(this as liquid.Tag & TagImplOptions).tpls.push(tpl)
+        }
+      }
+      if (!closed) throw new Error(`tag ${tagToken.getText()} not closed`)
+    },
+    * render(context, emitter) {
+      const html: string = yield this.liquid.renderer.renderTemplates(this.tpls, context, undefined)
+
+      l("html", JSON.stringify(html))
+
+      ;((this as AnyObj).renderTag.hash as liquid.Hash).hash['qInner'] = {
+        content: html,
+        kind: 1024, //quoted
+        input: '<pseudo>',
+        begin: 1,
+        end: 2,
+        file: undefined,
+        getText() {
+          return html
+        },
+        getPosition(): number[] {
+          return [1,2]
+        },
+        size() {
+          return 1
+        }
+      } as liquid.Token
+      yield * ((this as AnyObj).renderTag).render(context, emitter)
+    },
+
+    * children (partials: boolean, sync: boolean) {
+      yield * (this as AnyObj).renderTag.children(partials, sync)
+    },
+
+    partialScope () {
+      return (this as AnyObj).renderTag.partialScope()
+    },
+
+    * arguments () {
+      yield * (this as AnyObj).renderTag.arguments()
+    },
+  })
+
+  // Quickmacro
+  LiquidHandler.registerTagPostCreate("q", {
+    parse(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[]) {
+      ;(this as liquid.Tag & TagImplOptions).renderTag = new liquid.RenderTag(tagToken, remainingTokens, this.liquid, this.liquid.parser)
+
+      const origFile = (this as liquid.Tag & TagImplOptions).renderTag.file
+      const [isEndWith, fileAfterStrip, _] = stripExtensionList(origFile, liquidExtName)
+      ;(this as liquid.Tag & TagImplOptions).renderTag.file = "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : "")
+    },
+    * render(context, emitter) {
+      if (!(((this as AnyObj).renderTag.hash as liquid.Hash).hash['qInner']) && (((this as AnyObj).renderTag.hash as liquid.Hash).hash['qi'])) {
+        ((this as AnyObj).renderTag.hash as liquid.Hash).hash['qInner'] = ((this as AnyObj).renderTag.hash as liquid.Hash).hash['qi']
+      }
+      yield * ((this as AnyObj).renderTag).render(context, emitter)
+    },
+
+    * children (partials: boolean, sync: boolean) {
+      yield * (this as AnyObj).renderTag.children(partials, sync)
+    },
+
+    partialScope () {
+      return (this as AnyObj).renderTag.partialScope()
+    },
+
+    * arguments () {
+      yield * (this as AnyObj).renderTag.arguments()
+    },
   })
 
   if (LiquidFilterRegisterHandlerList && LiquidFilterRegisterHandlerList.length > 0) {
