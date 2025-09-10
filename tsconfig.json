@@ -31,5 +31,5 @@
     },
   },
   "exclude": ["src/test"],
-  "include": ["worker-configuration.d.ts", "src/**/*.ts", "src/**/*.mts", "src/**/*.cts", "node_modules/string.prototype.replaceall/**/*.js", "node_modules/throttle-debounce/**/*.js", "node_modules/input/dist/**/*.js", "node_modules/random-bigint/**/*.js"],
+  "include": ["worker-configuration.d.ts", "src/**/*.ts", "src/**/*.mts", "src/**/*.cts", "node_modules/string.prototype.replaceall/**/*.js", "node_modules/throttle-debounce/**/*.js", "node_modules/input/dist/**/*.js", "node_modules/random-bigint/**/*.js", "node_modules/global-agent/**/*.js"],
 }

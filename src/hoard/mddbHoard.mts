@@ -7,7 +7,7 @@ import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionLis
 import { nodeResolvePath } from "../lib/nodeCommon.mts"
 import { TkContext } from "../serve/serveDef.mts"
 
-export const startMddbHoard = async (tkCtx: TkContext) => {
+export const startMddbHoard = async (tkCtx: TkContext, onUpdate: () => Promise<void>) => {
   const shouldRun = true
   if (!shouldRun) {
     return
@@ -343,6 +343,7 @@ export const startMddbHoard = async (tkCtx: TkContext) => {
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
         await doSyncToTurso()
+        await onUpdate()
         l("updated")
         return ret
       } catch (e) {
@@ -356,6 +357,7 @@ export const startMddbHoard = async (tkCtx: TkContext) => {
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [])
         await doSyncToTursoIncr()
+        await onUpdate()
         l("updated")
         return ret
       } catch (e) {

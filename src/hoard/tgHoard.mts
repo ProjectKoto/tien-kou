@@ -16,7 +16,7 @@ import { ensureParentDirExists, ensurePathDirExists, pathExists } from "../lib/n
 import { TkContext } from '../serve/serveDef.mts'
 import { TgMessageLike, tgMessageToHtml } from '../lib/tgCommon.mts'
 
-export const startTgHoard = async (tkCtx: TkContext) => {
+export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<void>) => {
   const tkEnv = tkCtx.e
 
   // eslint-disable-next-line no-constant-condition
@@ -449,6 +449,8 @@ export const startTgHoard = async (tkCtx: TkContext) => {
         flush: true,
       })
     })
+
+    await onUpdate()
 
     await new Promise(r => setTimeout(r, 300))
     throttledSendHoarded()

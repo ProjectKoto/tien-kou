@@ -68,7 +68,6 @@
     "eslint": "^9",
     "eslint-config-eslint": "^11",
     "eventemitter3": "^5.0.1",
-    "global-agent": "^3.0.0",
     "globals": "^16.3.0",
     "hono": "^4.9.2",
     "https-proxy-agent": "^7.0.6",

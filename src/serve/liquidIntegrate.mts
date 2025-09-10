@@ -33,8 +33,9 @@ export const MainLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCtxProvideH
     }
 
     await liquidPreCreateEvent.emitSerial('liquidPreCreate')
-    liquid = new Liquid(liquidOptions)
+    // TODO: is using r
     await r.mandatoryCustomizeLiquidOpt(liquidOptions)
+    liquid = new Liquid(liquidOptions)
     await liquidPostCreateEvent.emitSerial('liquidPostCreate')
     if (liquidReadyResolver) {
       liquidReadyResolver(liquid)
@@ -65,6 +66,9 @@ export const MainLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCtxProvideH
     customizeLiquidOpt: listenOnLiquidPreCreate,
 
     mandatoryCustomizeLiquidOpt: async (liquidOptions: LiquidOptions): Promise<void> => {
+      if (liquidOptions.cache) {
+        l(`warn: liquidOptions.cache is forcibly set to false, because MainLiquidHandler has no runtime cache lifecycle integration.`)
+      }
       liquidOptions.cache = false
     },
 
@@ -115,8 +119,9 @@ export const RuntimeCachedLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCt
         const lqCache = liquid.options.cache as LiquidCache & { clear: () => void }
         if (lqCache.clear) {
           lqCache.clear()
+          l("done lqCache.clear()")
         } else {
-          console.log("warn: !lqCache.clear ?????")
+          l("warn: !lqCache.clear ?????")
         }
       }
     }
@@ -758,13 +763,76 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   })
 
   // Quickmacro wrapper
+
+  const liquidRenderTagHashAdd = function (this: liquid.Tag & TagImplOptions, key: string, content: string) {
+    ;(this.renderTag.hash as liquid.Hash).hash[key] = {
+      content,
+      kind: 1024, //quoted
+      input: '<pseudo>',
+      begin: 1,
+      end: 2,
+      file: undefined,
+      getText() {
+        return content
+      },
+      getPosition(): number[] {
+        return [1,2]
+      },
+      size() {
+        return 1
+      }
+    } as liquid.Token
+  }
+
+  const processQuickmacroInc = function (this: liquid.Tag & TagImplOptions) {
+    let inc = this.renderTag.file
+    if (inc === undefined || typeof inc !== 'string') {
+      return
+    }
+    const parts = inc.split('?', 2)
+    
+    let subMacro: string | undefined
+
+    if (parts.length === 2) {
+      inc = parts[0]
+      subMacro = parts[1]
+    } else {
+      let firstNonDigit = 0
+      for (; firstNonDigit < inc.length; firstNonDigit++) {
+        const currChar = inc[firstNonDigit]
+        if (!(currChar >= '0' && currChar <= '9')) {
+          break
+        }
+      }
+      if (firstNonDigit < inc.length && firstNonDigit > 0) {
+        inc = inc.substring(0, firstNonDigit)
+        subMacro = inc.substring(firstNonDigit)
+      }
+    }
+
+    if (!inc) {
+      inc = 'index'
+    }
+
+    if (subMacro !== undefined) {
+      liquidRenderTagHashAdd.call(this, 'subMacro', subMacro)
+    }
+
+    const [isEndWith, fileAfterStrip, _] = stripExtensionList(inc, liquidExtName)
+    this.renderTag.file = "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : "")
+  }
+
+  const liquidRenderTagHashFallback = function (this: liquid.Tag & TagImplOptions, key1: string, fallbackToKey: string) {
+    if (!((this.renderTag.hash as liquid.Hash).hash[key1]) && ((this.renderTag.hash as liquid.Hash).hash[fallbackToKey])) {
+      (this.renderTag.hash as liquid.Hash).hash[key1] = (this.renderTag.hash as liquid.Hash).hash[fallbackToKey]
+    }
+  }
+
   LiquidHandler.registerTagPostCreate("qw", {
     parse(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[]) {
       ;(this as liquid.Tag & TagImplOptions).renderTag = new liquid.RenderTag(tagToken, remainingTokens, this.liquid, this.liquid.parser)
 
-      const origFile = (this as liquid.Tag & TagImplOptions).renderTag.file
-      const [isEndWith, fileAfterStrip, _] = stripExtensionList(origFile, liquidExtName)
-      ;(this as liquid.Tag & TagImplOptions).renderTag.file = "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : "")
+      processQuickmacroInc.call(this)
 
       ;(this as liquid.Tag & TagImplOptions).tpls = []
       let closed = false
@@ -787,25 +855,9 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     * render(context, emitter) {
       const html: string = yield this.liquid.renderer.renderTemplates(this.tpls, context, undefined)
 
-      l("html", JSON.stringify(html))
-
-      ;((this as AnyObj).renderTag.hash as liquid.Hash).hash['qInner'] = {
-        content: html,
-        kind: 1024, //quoted
-        input: '<pseudo>',
-        begin: 1,
-        end: 2,
-        file: undefined,
-        getText() {
-          return html
-        },
-        getPosition(): number[] {
-          return [1,2]
-        },
-        size() {
-          return 1
-        }
-      } as liquid.Token
+      liquidRenderTagHashAdd.call(this, 'qInner', html)
+      liquidRenderTagHashFallback.call(this, 'subMacro', 's')
+      
       yield * ((this as AnyObj).renderTag).render(context, emitter)
     },
 
@@ -827,14 +879,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     parse(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[]) {
       ;(this as liquid.Tag & TagImplOptions).renderTag = new liquid.RenderTag(tagToken, remainingTokens, this.liquid, this.liquid.parser)
 
-      const origFile = (this as liquid.Tag & TagImplOptions).renderTag.file
-      const [isEndWith, fileAfterStrip, _] = stripExtensionList(origFile, liquidExtName)
-      ;(this as liquid.Tag & TagImplOptions).renderTag.file = "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : "")
+      processQuickmacroInc.call(this)
     },
     * render(context, emitter) {
-      if (!(((this as AnyObj).renderTag.hash as liquid.Hash).hash['qInner']) && (((this as AnyObj).renderTag.hash as liquid.Hash).hash['qi'])) {
-        ((this as AnyObj).renderTag.hash as liquid.Hash).hash['qInner'] = ((this as AnyObj).renderTag.hash as liquid.Hash).hash['qi']
-      }
+      liquidRenderTagHashFallback.call(this, 'qInner', 'qi')
+      liquidRenderTagHashFallback.call(this, 'subMacro', 's')
       yield * ((this as AnyObj).renderTag).render(context, emitter)
     },
 

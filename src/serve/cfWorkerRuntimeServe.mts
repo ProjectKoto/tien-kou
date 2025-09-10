@@ -3,7 +3,7 @@ import * as hono from 'hono'
 import { AnyObj, l, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
 import { AbstractTkSqlLiquidHonoApp, hc, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
-import { MainLiquidHandler } from './liquidIntegrate.mts'
+import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
 import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, TkContext, WebRedirHeavyAssetHandler } from './serveDef.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from './tkAssetCategoryLogic.mts'
 import { TursoSqlDbHandler } from './tursoSql.mts'
@@ -220,8 +220,9 @@ const appExportedObjPromise = (async () => {
     HeavyAssetHandler,
   })
 
-  const LiquidHandler = await MainLiquidHandler({
+  const LiquidHandler = await RuntimeCachedLiquidHandler({
     TkFirstCtxProvideHandler,
+    RuntimeCacheHandler,
   })
   
   const LiquidFilterRegisterHandlerList = [

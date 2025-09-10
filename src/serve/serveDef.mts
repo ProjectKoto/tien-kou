@@ -411,9 +411,9 @@ export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFi
 
   return {
     ...super_,
-    listenOnEvict: (l: () => Promise<void>): void => {
+    listenOnEvict: (listener: () => Promise<void>): void => {
       evictEvent.on('evict', async () => {
-        await l()
+        await listener()
       })
     },
     checkIfShouldEvict: async (backstoreDataVersion: number | undefined): Promise<boolean> => {
@@ -630,22 +630,22 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
         pageNum,
         pageSize,
       }: QueryLiveAssetSqlCommonParam) => {
-      l("queryLiveAssetSqlCommon", {
-        tkCtx,
-        locatorTopDirs,
-        locatorSubPaths,
-        locatorSubAncestors,
-        locatorSubParents,
-        shouldIncludeDirectories,
-        shouldIncludeDerivingParent,
-        extensions,
-        customSql,
-        customSqlArgs,
-        orderBy,
-        shouldFetchRawBytes,
-        pageNum,
-        pageSize,
-      })
+      // l("queryLiveAssetSqlCommon", {
+      //   tkCtx,
+      //   locatorTopDirs,
+      //   locatorSubPaths,
+      //   locatorSubAncestors,
+      //   locatorSubParents,
+      //   shouldIncludeDirectories,
+      //   shouldIncludeDerivingParent,
+      //   extensions,
+      //   customSql,
+      //   customSqlArgs,
+      //   orderBy,
+      //   shouldFetchRawBytes,
+      //   pageNum,
+      //   pageSize,
+      // })
 
       locatorTopDirs = makeConcatenatablePathList(locatorTopDirs)
 

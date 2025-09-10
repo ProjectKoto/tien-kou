@@ -141,8 +141,10 @@ const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
     ...super_,
     start: async (): Promise<TkAppStartInfo<undefined>> => {
 
+      (super_.honoApp as AnyObj)['port'] = 8569
+
       const nodeServer = nodeServe(super_.honoApp, (info) => {
-        console.log(`Listening on http://localhost:${info.port}`) // Listening on http://localhost:3000
+        l(`Listening on http://localhost:${info.port}`)
       })
       
       return {
