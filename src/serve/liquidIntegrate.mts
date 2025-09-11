@@ -237,8 +237,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   
     },
     parseLimit: 1e8, // 100M?
-    renderLimit: 3000, // limit each render to be completed in 1s
-    memoryLimit: 32e6, // 32M,
+    // renderLimit: 3000, // limit each render to be completed in
+    renderLimit: 10000, // limit each render to be completed in
+    // memoryLimit: 32e6, // 32M,
+    memoryLimit: 320e6,
     relativeReference: false,
   }
 
@@ -785,7 +787,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   }
 
   const processQuickmacroInc = function (this: liquid.Tag & TagImplOptions) {
-    let inc = this.renderTag.file
+    let inc = this.renderTag.file as string | undefined
     if (inc === undefined || typeof inc !== 'string') {
       return
     }
@@ -797,21 +799,31 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       inc = parts[0]
       subMacro = parts[1]
     } else {
-      let firstNonDigit = 0
-      for (; firstNonDigit < inc.length; firstNonDigit++) {
-        const currChar = inc[firstNonDigit]
-        if (!(currChar >= '0' && currChar <= '9')) {
-          break
+      const parts = inc.split('#', 2)
+      if (parts.length === 2) {
+        inc = parts[0]
+        subMacro = parts[1]
+      } else {
+        let firstNonDigit = 0
+        for (; firstNonDigit < inc.length; firstNonDigit++) {
+          const currChar = inc[firstNonDigit]
+          if (!(currChar >= '0' && currChar <= '9')) {
+            break
+          }
         }
-      }
-      if (firstNonDigit < inc.length && firstNonDigit > 0) {
-        inc = inc.substring(0, firstNonDigit)
-        subMacro = inc.substring(firstNonDigit)
+        if (firstNonDigit < inc.length && firstNonDigit > 0) {
+          inc = inc.substring(0, firstNonDigit)
+          subMacro = inc.substring(firstNonDigit)
+        }
       }
     }
 
     if (!inc) {
       inc = 'index'
+    }
+
+    if (inc.endsWith('/')) {
+      inc = inc + 'index'
     }
 
     if (subMacro !== undefined) {

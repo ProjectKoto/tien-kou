@@ -239,16 +239,26 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
           // } as telegram.Api.Channel))
 
           if (theMessage?.replyTo?.replyToMsgId) {
-            repliedMessage = (await client.getMessages(inputPeer, {
-              ids: new telegram.Api.InputMessageID({ id: theMessage?.replyTo?.replyToMsgId }),
-            }))[0]
+            try {
+              repliedMessage = (await client.getMessages(inputPeer, {
+                ids: new telegram.Api.InputMessageID({ id: theMessage?.replyTo?.replyToMsgId }),
+              }))[0]
+            } catch (e) {
+              le("resolveExtInvolvedMessage#isReply#client.getMessages err", e)
+            }
           }
         }
 
         if (!repliedMessage) {
           return undefined
         }
-        await resolveMessagePeerInplace(repliedMessage)
+
+        try {
+          await resolveMessagePeerInplace(repliedMessage)
+        } catch (e) {
+          le("resolveExtInvolvedMessage#isReply#resolveMessagePeerInplace err", e)
+        }
+
         ;(repliedMessage as AnyObj).involvementType = 'reply'
         if ((repliedMessage as AnyObj).originalArgs) {
           (repliedMessage as AnyObj).originalArgs.involvementType = (repliedMessage as AnyObj).involvementType
@@ -271,15 +281,25 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
 
         const origMsgId = theMessage?.fwdFrom?.savedFromMsgId || theMessage?.fwdFrom?.channelPost
         if (origMsgId && inputPeer) {
-          fwdMessage = (await client.getMessages(inputPeer, {
-            ids: new telegram.Api.InputMessageID({ id: origMsgId }),
-          }))[0]
+          try {
+            fwdMessage = (await client.getMessages(inputPeer, {
+              ids: new telegram.Api.InputMessageID({ id: origMsgId }),
+            }))[0]
+          } catch (e) {
+            le("resolveExtInvolvedMessage#isFwd#client.getMessages err", e)
+          }
         }
 
         if (!fwdMessage) {
           return undefined
         }
-        await resolveMessagePeerInplace(fwdMessage)
+
+        try {
+          await resolveMessagePeerInplace(fwdMessage)
+        } catch (e) {
+          le("resolveExtInvolvedMessage#isFwd#resolveMessagePeerInplace err", e)
+        }
+
         ;(fwdMessage as AnyObj).involvementType = 'fwd'
         if ((fwdMessage as AnyObj).originalArgs) {
           (fwdMessage as AnyObj).originalArgs.involvementType = (fwdMessage as AnyObj).involvementType
@@ -457,5 +477,12 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     l(`telegram: saved message ${messageTextForLog} in ${tgFilePath}`)
   }
 
-  client.addEventHandler(msgEvent, new tgEvents.NewMessage({}))
+  client.addEventHandler(async function(event: tgEvents.NewMessageEvent) {
+    try {
+      await msgEvent(event)
+    } catch (e) {
+      le("telegram hoard message event handler err", e)
+      throw e
+    }
+  }, new tgEvents.NewMessage({}))
 }
