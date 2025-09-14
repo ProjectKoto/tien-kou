@@ -1018,7 +1018,8 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
 
       for (const x of sqlResult) {
         if (x.asset_locator) {
-          x.web_url_path_unencoded = '/' + x.asset_locator.split('/').slice(1).join('/')
+          x.web_url_path_tidy = x.asset_locator.split('/').slice(1).join('/')
+          x.web_url_path_unencoded = '/' + x.web_url_path_tidy
           x.web_url_path = '/' + x.asset_locator.split('/').slice(1).map(encodeURI).join('/')
         }
         if (x.metadata) {

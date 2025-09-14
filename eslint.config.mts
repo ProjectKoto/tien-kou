@@ -30,6 +30,12 @@ export default tseslint.config([
         "argsIgnorePattern": "(^_)|(^a$)|(^b$)|(^c$)",
         "caughtErrorsIgnorePattern": "(^_)|(^a$)|(^b$)|(^c$)",
       }],
+      "prefer-const": ["error", {
+        "destructuring": "all",
+      }],
+      "@typescript-eslint/prefer-const": ["error", {
+        "destructuring": "all",
+      }],
       "no-unused-vars": ["off" /* , {
         "vars": "all",
         "args": "after-used",

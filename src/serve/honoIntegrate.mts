@@ -16,6 +16,7 @@ export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
 
 export interface ResultGenContextHl<HE extends hono.Env,> extends ResultGenContext {
   tkCtx: () => TkContextHl<HE>,
+  g: ResultGenContextHl<HE>,
   reqPath: string,
   reqPathTidy: string,
   mainTemplateRelPath: string,
@@ -118,6 +119,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     const resultGenContext: ResultGenContextHl<HE> = {
       // get containing tkCtx
       tkCtx: () => tkCtx,
+      g: undefined as unknown as ResultGenContextHl<HE>,
       reqPath,
       reqPathTidy: reqPath.split('/').filter(x => x !== '').join('/'),
       mainTemplateRelPath: "main.tmpl.html",
@@ -125,6 +127,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       listableAssetExtNames,
       dedicatedAssetExtNames,
     }
+
+    resultGenContext.g = resultGenContext
 
     const tkEnvGetter = await TkContextHlGetEHandler.getTkEnvGetter()
 

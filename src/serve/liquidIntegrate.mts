@@ -196,11 +196,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
         })
   
         if (queryResultList.length === 0) {
-          throw new TkAssetNotFoundError('live asset not found').shouldLog()
+          throw new TkAssetNotFoundError('some related template not found: ' + fileRelPath).shouldLog()
         }
     
         if (queryResultList[0].is_asset_heavy === 1) {
-          throw new TkAssetIsHeavyError('live asset is heavy').shouldLog()
+          throw new TkAssetIsHeavyError('some related template is heavy:' + fileRelPath).shouldLog()
         }
   
         if (!queryResultList[0].asset_raw_bytes) {
@@ -246,13 +246,30 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
   await LiquidHandler.initBaseLiquidOptions(liquidMainOption)
 
-  LiquidHandler.registerFilterPostCreate("ctxSet", async function (v, k: string) {
-    (this.context.environments as AnyObj)[k] = v
+  LiquidHandler.registerFilterPostCreate("useg", async function (v, k: string) {
+    const g = this.context.getSync(['g']) as AnyObj
+    if (!g) {
+      throw new TkErrorHttpAware('no g')
+    }
+  })
+
+  LiquidHandler.registerFilterPostCreate("gset", async function (v, k: string) {
+    const g = this.context.getSync(['g']) as AnyObj
+    if (!g) {
+      throw new TkErrorHttpAware('no g')
+    }
+    g[k] = v
     return v
   })
 
-  LiquidHandler.registerFilterPostCreate("ctxGet", async function (k) {
-    return this.context.getSync([k])
+  LiquidHandler.registerFilterPostCreate("gget", async function (k) {
+    // return this.context.getSync([k])
+    const g = this.context.getSync(['g']) as AnyObj
+    if (!g) {
+      throw new TkErrorHttpAware('no g')
+    }
+    return g[k]
+    // return ((this.context as AnyObj).scopes[0])[k]
   })
 
   LiquidHandler.registerFilterPostCreate("sleep", async function (a, t) {
@@ -756,6 +773,44 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       customSql,
       customSqlArgs,
     })
+  })
+
+  // non-empty prepend
+  LiquidHandler.registerFilterPostCreate("nPrepend", async function (s, a) {
+    if (!s || typeof a !== 'string' || typeof s !== 'string') {
+      return s
+    }
+    return a + s
+  })
+
+  // non-empty append
+  LiquidHandler.registerFilterPostCreate("nAppend", async function (s, a) {
+    if (!s || typeof a !== 'string' || typeof s !== 'string') {
+      return s
+    }
+    return s + a
+  })
+
+  // non-empty then return
+  LiquidHandler.registerFilterPostCreate("nRet", async function (s, r) {
+    if (!s) {
+      return s
+    }
+    return r
+  })
+
+  LiquidHandler.registerFilterPostCreate("startsWith", async function (s, s1) {
+    if (!s || typeof s !== 'string' || typeof s1 !== 'string') {
+      return false
+    }
+    return s.startsWith(s1)
+  })
+
+  LiquidHandler.registerFilterPostCreate("endsWith", async function (s, s1) {
+    if (!s || typeof s !== 'string' || typeof s1 !== 'string') {
+      return false
+    }
+    return s.endsWith(s1)
   })
 
   LiquidHandler.registerFilterPostCreate("btos", bytesLikeToString)
