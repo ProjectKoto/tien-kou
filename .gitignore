@@ -178,7 +178,7 @@ dist
 # .vscode/
 /.markdowndb/
 
-/liveAsset/
+/liveAsset
 /static/staticAsset
 
 /markdown.db

@@ -55,6 +55,7 @@
     "@hono/node-server": "^1.18.2",
     "@libsql/client": "^0.15.11",
     "@libsql/isomorphic-fetch": "file:thirdparty/libsql_isomorphic-ts/isomorphic-fetch",
+    "@libsql/linux-x64-gnu": "^0.5.22",
     "@stylistic/eslint-plugin": "^5.2.3",
     "@telegraf/entity": "^0.7.0",
     "@types/async-lock": "^1.4.2",
