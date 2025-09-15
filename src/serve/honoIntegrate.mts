@@ -215,7 +215,9 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
   
     await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
   
-    const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc)
+    const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
+      globals: { g: rgc },
+    })
   
     // console.log(`renderResult: ${renderResult}`)
   

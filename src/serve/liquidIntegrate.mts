@@ -246,15 +246,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
   await LiquidHandler.initBaseLiquidOptions(liquidMainOption)
 
-  LiquidHandler.registerFilterPostCreate("useg", async function (v, k: string) {
-    const g = this.context.getSync(['g']) as AnyObj
-    if (!g) {
-      throw new TkErrorHttpAware('no g')
-    }
-  })
-
   LiquidHandler.registerFilterPostCreate("gset", async function (v, k: string) {
-    const g = this.context.getSync(['g']) as AnyObj
+    const g = (this.context.globals as AnyObj)['g']
     if (!g) {
       throw new TkErrorHttpAware('no g')
     }
@@ -263,13 +256,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   })
 
   LiquidHandler.registerFilterPostCreate("gget", async function (k) {
-    // return this.context.getSync([k])
-    const g = this.context.getSync(['g']) as AnyObj
+    const g = (this.context.globals as AnyObj)['g']
     if (!g) {
       throw new TkErrorHttpAware('no g')
     }
     return g[k]
-    // return ((this.context as AnyObj).scopes[0])[k]
   })
 
   LiquidHandler.registerFilterPostCreate("sleep", async function (a, t) {

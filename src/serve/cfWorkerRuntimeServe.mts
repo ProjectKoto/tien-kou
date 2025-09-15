@@ -131,7 +131,7 @@ const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(
 
       for (const x of sqlResult) {
         if (x.is_asset_heavy === 1) {
-          x.redirect_url = await HeavyAssetHandler.makeHeavyAssetUrl(x.asset_locator)
+          x.redirect_url = await HeavyAssetHandler.makeHeavyAssetUrl(x as TkAssetInfo)
         }
       }
 

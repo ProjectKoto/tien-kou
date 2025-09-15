@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tien-kou",
   "main": "src/serve/cfWorkerRuntimeServe.mts",
-  "compatibility_date": "2025-08-16",
+  "compatibility_date": "2025-08-13",
   "compatibility_flags": [
     "nodejs_compat"
   ],

@@ -424,3 +424,18 @@ export const makeConcatenatablePathList = (l: string[]) => {
   }
   return l
 }
+
+export const delayInitVal = <T,>() => {
+  let val: T | undefined = undefined
+  return {
+    get val() {
+      if (val === undefined) {
+        throw new TkErrorHttpAware('not initialzed')
+      }
+      return val
+    },
+    set val(nv: T) {
+      val = nv
+    },
+  }
+}

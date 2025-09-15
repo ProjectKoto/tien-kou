@@ -3,7 +3,7 @@ import { MarkdownDB } from "mddb"
 import fs from "node:fs"
 import path from "node:path"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, l, makeConcatenatablePath, TkError } from "../lib/common.mts"
+import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidHonoApp, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
@@ -49,12 +49,17 @@ const isPath2InDir1 = (path1: string, path2: string) => {
   return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
 }
 
-const NodeJsTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(async ({ SqlDbHandler}: KD<"SqlDbHandler">) => {
+const NodeJsTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(async ({ SqlDbHandler,  TkFirstCtxProvideHandler }: KD<"SqlDbHandler" | "TkFirstCtxProvideHandler">) => {
 
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
-  const liveAssetFileSystemRootPath = path.normalize(nodeResolvePath("./liveAsset"))
-  const staticAssetFileSystemRootPath = path.normalize(nodeResolvePath("./staticAsset"))
+  const liveAssetFileSystemRootPath = delayInitVal<string>()
+  const staticAssetFileSystemRootPath = delayInitVal<string>()
+
+  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
+    liveAssetFileSystemRootPath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!))
+    staticAssetFileSystemRootPath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_STATIC_ASSET_ROOT_PATH!))
+  })
   
   const calcValidateFileSystemPathSync = (rootPath: string, assetOriginFilePath: string) => {
     const fileSystemPath = path.normalize(path.join(rootPath, assetOriginFilePath))
@@ -70,13 +75,13 @@ const NodeJsTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(async ({ S
 
   const r = {
     fetchLiveHeavyAssetBytes: async ({ originFilePath }: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer }> => {
-      const fileSystemPath = calcValidateFileSystemPathSync(liveAssetFileSystemRootPath, originFilePath)
+      const fileSystemPath = calcValidateFileSystemPathSync(liveAssetFileSystemRootPath.val, originFilePath)
       return {
         asset_raw_bytes: await fs.promises.readFile(fileSystemPath),
       }
     },
     fetchStaticAsset: async ({ locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer> => {
-      const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath, makeConcatenatablePath(locatorTopDir) + makeConcatenatablePath(locatorSubPath))
+      const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath.val, makeConcatenatablePath(locatorTopDir) + makeConcatenatablePath(locatorSubPath))
      
       try {
         const fileBytes = await fs.promises.readFile(fileSystemPath)

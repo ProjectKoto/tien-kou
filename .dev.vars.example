@@ -19,3 +19,8 @@ TELEGRAM_PROXY_PORT = "1080"
 TELEGRAM_HOARD_DEST_ROOT_PATH = "/path/to/tg_hoard_dest"
 TELEGRAM_PUB_HOARD_DEST_ROOT_PATH = "/path/to/tg_pub_hoard_dest"
 
+NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH = "..../liveAsset"
+NODE_LOCAL_FS_STATIC_ASSET_ROOT_PATH = "..../staticAsset"
+
+HEAVY_ASSET_WEB_REDIR_URL_PREFIX = "https://my.static.asset.site/sub/path/"
+

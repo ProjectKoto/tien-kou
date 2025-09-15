@@ -237,7 +237,7 @@ export interface LiquidFilterRegisterHandler {
 
 export interface HeavyAssetHandler {
   
-  makeHeavyAssetUrl(assetLocator: string): Promise<string>
+  makeHeavyAssetUrl(asset: TkAssetInfo): Promise<string>
 
 }
 
@@ -559,12 +559,12 @@ export const WebRedirHeavyAssetHandler = HT<HeavyAssetHandler>()(async ({ TkFirs
   let heavyAssetPrefix: string
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (ctx0: TkContext) => {
-    heavyAssetPrefix = ctx0.e.HEAVY_ASSET_PREFIX || "https://raw.githubusercontent.com/Your_username/Repo_name/Your_branch/"
+    heavyAssetPrefix = ctx0.e.HEAVY_ASSET_WEB_REDIR_URL_PREFIX || "https://raw.githubusercontent.com/Your_username/Repo_name/Your_branch/"
   })
 
   return {
-    makeHeavyAssetUrl: async (assetLocator: string): Promise<string> => {
-      return heavyAssetPrefix + assetLocator
+    makeHeavyAssetUrl: async (asset: TkAssetInfo): Promise<string> => {
+      return heavyAssetPrefix + asset.origin_file_path
     },
   }
 })
@@ -575,7 +575,7 @@ export const StubHeavyAssetHandler = HT<HeavyAssetHandler>()(async ({ TkFirstCtx
   })
 
   return {
-    makeHeavyAssetUrl: async (_assetLocator: string): Promise<string> => {
+    makeHeavyAssetUrl: async (_asset: TkAssetInfo): Promise<string> => {
       throw new TkErrorHttpAware("makeHeavyAssetUrl not implemented")
     },
   }

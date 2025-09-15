@@ -692,7 +692,7 @@ export const startMddbHoard = async (tkCtx: TkContext, onUpdate: () => Promise<v
 
   // have background parts
   await mddb.indexFolder({
-    folderPath: nodeResolvePath("./liveAsset"),
+    folderPath: nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!),
     ignorePatterns: [/Excalidraw/, /\.obsidian/, /DS_Store/],
     customConfig: {
       handleDedicated: async (filePath) => {
