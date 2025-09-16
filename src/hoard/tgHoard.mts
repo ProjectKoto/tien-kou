@@ -14,7 +14,7 @@ import '../nodeEnv.mts'
 
 import { AnyObj, datePath, genTimestampString, l, le } from '../lib/common.mts'
 import { ensureParentDirExists, ensurePathDirExists, pathExists } from "../lib/nodeCommon.mts"
-import { TkContext } from '../serve/serveDef.mts'
+import { TkContext } from '../lib/common.mts'
 import { TgMessageLike, tgMessageToHtml } from '../lib/tgCommon.mts'
 
 export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<void>) => {

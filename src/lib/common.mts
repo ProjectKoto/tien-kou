@@ -6,6 +6,11 @@ import replaceAll from 'string.prototype.replaceall'
 export type AnyObj = Record<keyof ReturnType<JSON["parse"]>, ReturnType<JSON["parse"]>>
 export type Ao = AnyObj
 
+export interface TkContext {
+  tkEnv: Record<string, string | undefined>
+  e: Record<string, string | undefined>
+}
+
 const extensionMemo: Record<string, Set<string>> = {}
 
 // only one

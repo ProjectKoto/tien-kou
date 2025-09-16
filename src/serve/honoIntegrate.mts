@@ -8,7 +8,8 @@ import mimeType from 'mime-types'
 import { dedicatedAssetExtNames, l, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
-import { AHT, KD, TienKouApp, TkContext, TkInvalidReqError } from "./serveDef.mts"
+import { AHT, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
+import { TkContext } from '../lib/common.mts'
 
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
   getTkEnvGetter: () => Promise<(honoCtx: hono.Context<HE>) => Record<string, string | undefined>>

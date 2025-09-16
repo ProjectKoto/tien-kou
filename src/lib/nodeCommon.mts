@@ -1,6 +1,6 @@
 import path from "node:path"
 import fs from "node:fs"
-import { getParentPath } from "./common.mts"
+import { AnyObj, getParentPath, TkContext } from "./common.mts"
 
 export const nodeResolvePath = (p: string) => {
   // return url.fileURLToPath(import.meta.resolve(p))
@@ -23,4 +23,7 @@ export const ensureParentDirExists = async (p: string) => {
   return await ensurePathDirExists(getParentPath(p))
 }
 
+export interface TkContextHoard extends TkContext {
+  rcloneW: (...args: (string | AnyObj)[]) => Promise<any>
+}
 

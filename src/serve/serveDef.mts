@@ -4,7 +4,7 @@ import Emittery from "emittery"
 import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
-import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions } from "../lib/common.mts"
+import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext } from "../lib/common.mts"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
 
 type KnownHandlerTypesMap0 = {
@@ -57,11 +57,6 @@ export const AHT = <RTSatisfy,>() => HT<PartialWithNull<RTSatisfy>>()
 
 // canNot-be-Promise This
 const NPT = <T,>(this_: T | PromiseLike<T>) => this_ as T
-
-export interface TkContext {
-  tkEnv: Record<string, string | undefined>
-  e: Record<string, string | undefined>
-}
 
 export interface TkFirstCtxProvideHandler {
 

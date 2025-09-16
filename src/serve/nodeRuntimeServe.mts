@@ -7,7 +7,8 @@ import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidHonoApp, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
-import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError, TkContext } from "./serveDef.mts"
+import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
+import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { nodeResolvePath } from '../lib/nodeCommon.mts'
 import { applyTkEnvToProcessEnv, tkEnvFromDevVarsFile } from '../nodeEnv.mts'
@@ -196,6 +197,7 @@ const nodeMain = async () => {
   })
 
   const TienKouAssetFetchHandler = await NodeJsTienKouAssetFetchHandler({
+    TkFirstCtxProvideHandler,
     SqlDbHandler,
     HeavyAssetHandler,
   })

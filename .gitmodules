@@ -10,3 +10,6 @@
 [submodule "thirdparty/telegram"]
 	path = thirdparty/telegram
 	url = git@github.com:ProjectKoto/gramjs.git
+[submodule "thirdparty/rclone.js"]
+	path = thirdparty/rclone.js
+	url = git@github.com:ProjectKoto/rclone.js.git

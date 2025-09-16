@@ -4,10 +4,10 @@ import { MarkdownDB } from "mddb"
 import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
 import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
-import { nodeResolvePath } from "../lib/nodeCommon.mts"
-import { TkContext } from "../serve/serveDef.mts"
+import { nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
+import { TkContext } from '../lib/common.mjs'
 
-export const startMddbHoard = async (tkCtx: TkContext, onUpdate: () => Promise<void>) => {
+export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Promise<void>) => {
   const shouldRun = true
   if (!shouldRun) {
     return
@@ -336,6 +336,20 @@ export const startMddbHoard = async (tkCtx: TkContext, onUpdate: () => Promise<v
     }
   }
 
+  const rcloneHeavy = async () => {
+    try {
+      const [exitStatus, exitSignal, stdout, stderr] = await tkCtx.rcloneW('sync', tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_SOURCE_DIR!, 'TK_HOARD_HEAVY_SYNC:' + (tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR || ''), {
+        'verbose': true,
+        'max-duration': '10m',
+        abortSignal: AbortSignal.timeout(60 * 12 * 1000),
+      }) as [number, number, Buffer, Buffer]
+
+      l('rcloneHeavy result', exitStatus, stdout.toString('utf-8'), stderr.toString('utf-8'))
+    } catch (e) {
+      le('rcloneHeavy err', e)
+    }
+  }
+
   const mddb = await (async (origClient) => {
     const origSaveDataToDisk = origClient["saveDataToDisk"]
     origClient["saveDataToDisk"] = async function(...args: unknown[]) {
@@ -343,6 +357,7 @@ export const startMddbHoard = async (tkCtx: TkContext, onUpdate: () => Promise<v
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
         await doSyncToTurso()
+        await rcloneHeavy()
         await onUpdate()
         l("updated")
         return ret
@@ -357,6 +372,7 @@ export const startMddbHoard = async (tkCtx: TkContext, onUpdate: () => Promise<v
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [])
         await doSyncToTursoIncr()
+        await rcloneHeavy()
         await onUpdate()
         l("updated")
         return ret

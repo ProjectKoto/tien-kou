@@ -1,23 +1,77 @@
-import { l, le } from '../lib/common.mts'
+import { AnyObj, l, le } from '../lib/common.mts'
 import '../nodeEnv.mts'
 
 import { setGlobalDispatcher, ProxyAgent } from 'undici'
 import { tkEnvFromDevVarsFile } from "../nodeEnv.mts"
-import { TkContext } from "../serve/serveDef.mts"
+import { TkContext } from '../lib/common.mts'
 import { startMddbHoard } from "./mddbHoard.mts"
 import { startTgHoard } from "./tgHoard.mts"
+
+import rcloneJs from 'rclone.js'
+import { TkContextHoard } from '../lib/nodeCommon.mjs'
+
+const makeRcloneJsWrapper = (tkCtx: TkContext) => {
+  const tkEnv = tkCtx.e
+
+  const defaultEnvForRclone = {
+  } as AnyObj
+
+  const defaultOptionForRclone = {
+  } as AnyObj
+
+  for (const k of Object.keys(tkEnv)) {
+    if (k.startsWith('HOARD_RCLONE_CONFIG_')) {
+      const v = tkEnv[k]
+      defaultEnvForRclone[k.substring('HOARD_RCLONE_CONFIG_'.length - 'RCLONE_CONFIG_'.length)] = v
+    }
+    if (k === 'HOARD_RCLONE_EXECUTABLE') {
+      const v = tkEnv[k]
+      defaultOptionForRclone['rcloneExecutable'] = v
+    }
+  }
+
+  if (tkEnv['HTTP_PROXY']) {
+    defaultEnvForRclone['HTTP_PROXY'] = tkEnv['HTTP_PROXY']
+    defaultEnvForRclone['HTTPS_PROXY'] = tkEnv['HTTP_PROXY']
+    defaultEnvForRclone['ALL_PROXY'] = tkEnv['HTTP_PROXY']
+  }
+
+  return async (...args: (string | AnyObj)[]) => {
+    const argsEmpty = args.length === 0
+    let flags = args.pop();
+
+    if (!!flags && typeof flags === 'object' && flags.constructor === Object && flags.constructor !== Number) {
+      flags = {
+        ...defaultOptionForRclone,
+        ...flags,
+        env: {
+          ...defaultEnvForRclone,
+          ...(flags.env || {}),
+        }
+      }
+      args.push(flags!)
+    } else {
+      if (!argsEmpty) {
+        args.push(flags!)
+      }
+    }
+    return await rcloneJs.promises(...args)
+  }
+}
 
 const main = async () => {
   const tkEnv = await tkEnvFromDevVarsFile()
 
   // applyTkEnvToProcessEnv(tkEnv)
 
-  const tkCtx: TkContext = {
+  const tkCtx: TkContextHoard = {
     tkEnv,
     get e() {
       return this.tkEnv
     },
+    rcloneW: undefined!,
   }
+  tkCtx.rcloneW = makeRcloneJsWrapper(tkCtx)
 
   if (tkEnv.HTTP_PROXY) {
     setGlobalDispatcher(new ProxyAgent(tkEnv.HTTP_PROXY))
