@@ -8,7 +8,7 @@ import mimeType from 'mime-types'
 import { dedicatedAssetExtNames, l, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
-import { AHT, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
+import { AHT, EA, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
 import { TkContext } from '../lib/common.mts'
 
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
@@ -229,10 +229,9 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     return c.html(renderResult, rgc.respStatusCode || 200)
   })
 
-  return {
-    ...super_,
+  return EA(super_, {
     honoApp,
-  }
+  })
 
 })
 

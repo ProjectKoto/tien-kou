@@ -56,7 +56,12 @@ export const AHT = <RTSatisfy,>() => HT<PartialWithNull<RTSatisfy>>()
 // }
 
 // canNot-be-Promise This
-const NPT = <T,>(this_: T | PromiseLike<T>) => this_ as T
+export const NPT = <T,>(this_: T | PromiseLike<T>) => this_ as T
+
+// Extends Abstract
+export const EA = <ST extends AnyObj, DT extends AnyObj,>(super_: ST, subImpl: DT) => {
+  return Object.assign(super_, subImpl) as Omit<ST, keyof DT> & DT
+}
 
 export interface TkFirstCtxProvideHandler {
 
@@ -404,8 +409,7 @@ export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFi
 
   const lock = new AsyncLock()
 
-  return {
-    ...super_,
+  return EA(super_, {
     listenOnEvict: (listener: () => Promise<void>): void => {
       evictEvent.on('evict', async () => {
         await listener()
@@ -439,7 +443,7 @@ export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFi
     putInCache: async <T,>(ctx: TkContext, k: string, v: T | undefined): Promise<void> => {
       cacheMap[k] = v
     },
-  }
+  })
 })
 
 

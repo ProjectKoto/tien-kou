@@ -4,7 +4,7 @@ import { AnyObj, l, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
 import { AbstractTkSqlLiquidHonoApp, hc, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
-import { AbstractTkSqlAssetFetchHandler, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from './serveDef.mts'
+import { AbstractTkSqlAssetFetchHandler, EA, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from './tkAssetCategoryLogic.mts'
 import { TursoSqlDbHandler } from './tursoSql.mts'
@@ -119,7 +119,7 @@ const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(
 
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
-  return {
+  return EA(super_, {
     fetchLiveHeavyAssetBytes: async (_: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer }> => {
       throw new TkAssetNotFoundError('fetchLiveHeavyAsset not implemented').shouldLog()
     },
@@ -127,7 +127,7 @@ const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(
       return await (await (cfwe(tkCtx).ASSETS.fetch as typeof fetch)(new Request(new URL("/static/" + locatorTopDir + locatorSubPath, hc(tkCtx).req.url)))).arrayBuffer()
     },
 
-    queryLiveAsset: async (param: QueryLiveAssetSqlCommonParam): Promise<TkAssetInfo> => {
+    queryLiveAsset: async (param: QueryLiveAssetSqlCommonParam): Promise<TkAssetInfo[]> => {
       const sqlResult = await super_.queryLiveAssetSqlCommon(param)
 
       for (const x of sqlResult) {
@@ -139,7 +139,7 @@ const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(
       // l("final sqlResult", sqlResult)
       return sqlResult
     },
-  } as TienKouAssetFetchHandler
+  })
 })
 
 
@@ -167,15 +167,13 @@ const TienKouCloudflareWorkerApp = HT<TienKouApp<HonoWithErrorHandler<Cfwe>
     TkCtxHandler,
   })
 
-  return {
-    ...super_,
+  return EA(super_, {
     start: async (): Promise<TkAppStartInfo<HonoWithErrorHandler<Cfwe>>> => {
       return {
         defaultExportObject: super_.honoApp
       }
     }
-  }
-
+  })
 })
 
 const appExportedObjPromise = (async () => {

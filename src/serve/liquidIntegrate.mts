@@ -6,7 +6,7 @@ import { default as markdownit } from 'markdown-it'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l } from "../lib/common.mts"
-import { AHT, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
+import { AHT, EA, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
 import { TagClass, TagImplOptions } from "liquidjs/dist/template"
@@ -108,10 +108,6 @@ export const RuntimeCachedLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCt
 
   const super_ = await MainLiquidHandler({ TkFirstCtxProvideHandler })
 
-  super_.mandatoryCustomizeLiquidOpt = async (opt: LiquidOptions): Promise<void> => {
-    opt.cache = true
-  }
-
   RuntimeCacheHandler.listenOnEvict(async () => {
     const liquid = super_.liquid
     if (liquid) {
@@ -128,9 +124,11 @@ export const RuntimeCachedLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCt
     }
   })
 
-  return {
-    ...super_,
-  }
+  return EA(super_, {
+    mandatoryCustomizeLiquidOpt: async (opt: LiquidOptions): Promise<void> => {
+      opt.cache = true
+    },
+  })
 
 })
 
@@ -247,21 +245,21 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
   await LiquidHandler.initBaseLiquidOptions(liquidMainOption)
 
-  LiquidHandler.registerFilterPostCreate("gset", async function (v, k: string) {
-    const g = (this.context.globals as AnyObj)['g']
-    if (!g) {
-      throw new TkErrorHttpAware('no g')
+  LiquidHandler.registerFilterPostCreate("rgcSet", async function (v, k: string) {
+    const rgc = (this.context.globals as AnyObj)['rgc']
+    if (!rgc) {
+      throw new TkErrorHttpAware('no rgc')
     }
-    g[k] = v
+    rgc[k] = v
     return v
   })
 
-  LiquidHandler.registerFilterPostCreate("gget", async function (k) {
-    const g = (this.context.globals as AnyObj)['g']
-    if (!g) {
-      throw new TkErrorHttpAware('no g')
+  LiquidHandler.registerFilterPostCreate("rgcGet", async function (k) {
+    const rgc = (this.context.globals as AnyObj)['rgc']
+    if (!rgc) {
+      throw new TkErrorHttpAware('no rgc')
     }
-    return g[k]
+    return rgc[k]
   })
 
   LiquidHandler.registerFilterPostCreate("sleep", async function (a, t) {
@@ -752,11 +750,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     return result
   })
 
-  LiquidHandler.registerFilterPostCreate("listAssetDescendants", async function (ancestor, orderBy, pageNum, pageSize, customSql, ...customSqlArgs) {
+  LiquidHandler.registerFilterPostCreate("listAssetDescendants", async function (ancestor, shouldIncludeDerivingParent, orderBy, pageNum, pageSize, customSql, ...customSqlArgs) {
     return await TienKouAssetFetchHandler.queryLiveAsset({
       locatorTopDirs: ["guarded/", "open/"],
       locatorSubAncestors: [ancestor],
-      shouldIncludeDerivingParent: true,
+      shouldIncludeDerivingParent,
       shouldFetchRawBytes: true,
       orderBy,
       pageNum,
