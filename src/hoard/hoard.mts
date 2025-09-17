@@ -7,6 +7,7 @@ import { TkContext } from '../lib/common.mts'
 import { startMddbHoard } from "./mddbHoard.mts"
 import { startTgHoard } from "./tgHoard.mts"
 
+import process from "node:process"
 import rcloneJs from 'rclone.js'
 import { TkContextHoard } from '../lib/nodeCommon.mjs'
 
@@ -46,7 +47,7 @@ const makeRcloneJsWrapper = (tkCtx: TkContext) => {
         ...flags,
         env: {
           ...defaultEnvForRclone,
-          ...(flags.env || {}),
+          ...(flags.env || { ...process.env }),
         }
       }
       args.push(flags!)
