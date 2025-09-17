@@ -17,7 +17,7 @@ export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
 
 export interface ResultGenContextHl<HE extends hono.Env,> extends ResultGenContext {
   tkCtx: () => TkContextHl<HE>,
-  g: ResultGenContextHl<HE>,
+  rgc: ResultGenContextHl<HE>,
   reqPath: string,
   reqPathTidy: string,
   mainTemplateRelPath: string,
@@ -120,7 +120,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     const resultGenContext: ResultGenContextHl<HE> = {
       // get containing tkCtx
       tkCtx: () => tkCtx,
-      g: undefined as unknown as ResultGenContextHl<HE>,
+      rgc: undefined as unknown as ResultGenContextHl<HE>,
       reqPath,
       reqPathTidy: reqPath.split('/').filter(x => x !== '').join('/'),
       mainTemplateRelPath: "main.tmpl.html",
@@ -129,7 +129,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       dedicatedAssetExtNames,
     }
 
-    resultGenContext.g = resultGenContext
+    resultGenContext.rgc = resultGenContext
 
     const tkEnvGetter = await TkContextHlGetEHandler.getTkEnvGetter()
 
@@ -217,7 +217,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
   
     const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
-      globals: { g: rgc },
+      globals: { rgc },
     })
   
     // console.log(`renderResult: ${renderResult}`)
