@@ -336,11 +336,25 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     }
   }
 
+  const rcloneAssetFilter = (() => {
+    const result = []
+    result.push(`- /liveAsset/backstage/**`)
+    dedicatedAssetExtNames.forEach(extName => {
+      result.push(`- /liveAsset/guarded/**/*.${extName}`)
+    })
+    return result
+  })()
+
   const rcloneHeavy = async () => {
     try {
       const [exitStatus, exitSignal, stdout, stderr] = await tkCtx.rcloneW('sync', tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_SOURCE_DIR!, 'TK_HOARD_HEAVY_SYNC:' + (tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR || ''), {
         'verbose': true,
+        'ignore-case': true,
+        'ignore-errors': true,
+        'delete-after': true,
+        'delete-excluded': true,
         'max-duration': '10m',
+        'filter': rcloneAssetFilter,
         abortSignal: AbortSignal.timeout(60 * 12 * 1000),
       }) as [number, number, Buffer, Buffer]
 

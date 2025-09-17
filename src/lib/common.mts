@@ -137,7 +137,7 @@ export const isInExtensionList = (lowerCaseExtNameWithoutPrefixDot: string, exte
 }
 
 export const markdownExtNames = extensionListStrToSet(".md,.markdown")
-export const dedicatedAssetExtNames = extensionListStrToSet([...markdownExtNames, liquidExtName, ".html,.liquidjs"].join(","))
+export const dedicatedAssetExtNames = extensionListStrToSet([...markdownExtNames, liquidExtName, ".liquidjs"].join(","))
 export const allKnownAssetExtNames = extensionListStrToSet([...dedicatedAssetExtNames, ".pug.html", ".ejs.html"].join(","))
 export const listableAssetExtNames = extensionListStrToSet([...markdownExtNames, "html"].join(","))
 export const strippedInLocatorExtNames = extensionListStrToSet([...markdownExtNames, "html"].join(","))
