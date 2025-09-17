@@ -221,6 +221,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     })
   
     // console.log(`renderResult: ${renderResult}`)
+    l('rgc', rgc)
   
     if (rgc.respGenericLocatableAssetSubPath) {
       return await serveGenericLocatableAsset(tkCtx, rgc.respGenericLocatableAssetSubPath)

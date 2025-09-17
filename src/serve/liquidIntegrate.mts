@@ -315,7 +315,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
           rgc.isLocatableContentNotDirectory = false
           rgc.isLocatableContentHasDerivedChildren = false
           rgc.isLocatableContentHasNotDerivedChildren = false
-          rgc.locatableContentAssetType = 'liveHeavy___'
+          rgc.locatableContentAssetType = 'live_______'
           rgc.isLocatableContentOpen = false
           rgc.isAssetHeavy = false
           return undefined
