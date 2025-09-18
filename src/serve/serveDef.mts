@@ -479,14 +479,14 @@ export const NoMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtx
 export const getAndFillCachedValOneLayer = async <T,> (ctx: TkContext, cacheLayer: CacheHandler, k: string, getIfMissing: () => Promise<T>): Promise<T> => {
   let result: T | undefined = undefined
   result = await cacheLayer.getInCache(ctx, k)
-  if (result !== undefined) {
+  if (result !== undefined && result != null) {
     return result
   }
   try {
     result = await getIfMissing()
     return result
   } finally {
-    if (result !== undefined) {
+    if (result !== undefined && result != null) {
       await cacheLayer.putInCache(ctx, k, result)
     }
   }

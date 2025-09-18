@@ -81,14 +81,7 @@ const main = async () => {
   const onUpdate = async () => {
     const dataUpdateCbUrlStr = tkEnv.HOARD_DATA_UPDATE_CALLBACK_URL_LIST
     if (dataUpdateCbUrlStr) {
-      batchCallUrl(dataUpdateCbUrlStr)
-      // (async () => {
-      //   try {
-      //     await Promise.all(pList)
-      //   } catch (e) {
-      //     le('http callback dataUpdateCbUrl err', e)
-      //   }
-      // })()
+      await batchCallUrl(dataUpdateCbUrlStr)
     }
 
     const dataUpdateRecacheUrlStr = tkEnv.HOARD_DATA_UPDATE_RECACHE_URL_LIST
@@ -120,6 +113,8 @@ function batchCallUrl(dataUpdateCbUrlStr: string) {
       }
     })())
   }
+
+   return Promise.all(pList)
 }
 
 main()
