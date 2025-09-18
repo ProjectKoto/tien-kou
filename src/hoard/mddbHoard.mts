@@ -403,7 +403,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     const Initial = 0
     const InOneChildDirectivePossible = 1
     const InOneChildSource = 2
-    const regexTimestampPrefix = /^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d /i
+    const regexTimestampPrefix = /^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/i
 
     // credits: https://github.com/tremby/json-multi-parse MIT
     const JSON_PARSE_ERROR_REGEXES = [
@@ -517,7 +517,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       for (const line of lines) {
         let i = 0
         const lineLength = line.length
-        if (lineLength >= 20) {
+        if (lineLength >= 19) {
           if (regexTimestampPrefix.test(line).valueOf()) {
             endOneChild()
 
@@ -568,7 +568,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             currentChildFileInfo.metadata!.derivedChildrenPathSep = undefined
             childFileInfoList.push(currentChildFileInfo)
             currentChildFileAccumulatedSourceLines = []
-            i = 20
+            i = lineLength >= 20 ? 20 : 19
           }
         }
 
