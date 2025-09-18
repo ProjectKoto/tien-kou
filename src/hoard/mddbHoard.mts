@@ -500,6 +500,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       let currentChildFileInfo: FileInfo = {} as FileInfo
       let currentChildFileAccumulatedSourceLines: string[] = []
       const parentSourceLines: string[] = []
+      let ongoingAssetGroup: string | undefined = undefined
 
       const endOneChild = () => {
         // further removed in process.js:processFile
@@ -596,6 +597,10 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             if (lineLength - i >= 2) {
               const char0 = line[i]
               const char1 = line[i + 1]
+              let char2: string = undefined!
+              if (lineLength - i >= 3) {
+                char2 = line[i + 2]
+              }
               if (char0 === '{') {
                 const cjr = consumeJson(line, i)
                 if (cjr === undefined) {
@@ -615,6 +620,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                     break
                   }
                 }
+              } else if (char0 === '[' && char1 == '[' && (char2 === undefined || char2 === ' ')) {
+                ongoingAssetGroup = currentChildFileInfo.asset_locator
+                i += 2
               } else if (char0 === '#') {
                 // tag
                 if (char1 === '"') {
