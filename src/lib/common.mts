@@ -420,7 +420,7 @@ export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | { t
     return textDecoder.decode(bytesLike)
   }
 
-  throw new TkErrorHttpAware(`bytesLikeToString: invalid input: ${bytesLike === null ? "<null>" : bytesLike.toString()}`)
+  throw new TkErrorHttpAware(`bytesLikeToString: invalid input: ${bytesLike === null ? "<null>" : JSON.stringify(bytesLike)}`)
 }
 
 export const makeConcatenatablePath = (x: string) => (!x || x === '/') ? '' : (x[x.length - 1] !== '/' ? (x + '/') : x)

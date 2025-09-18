@@ -9,6 +9,7 @@ import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from './tkAssetCategoryLogic.mts'
 import { TursoSqlDbHandler } from './tursoSql.mts'
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
+import isArrayBuffer from 'is-array-buffer'
 
 type CfweBindings = AnyObj
 type Cfwe = { "Bindings": CfweBindings, "Variables": AnyObj }
@@ -98,7 +99,15 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
     putInCache: async <T,>(ctx: TkContext, k: string, v: T | undefined): Promise<void> => {
       // TODO: LOCK???
       const we = cfwe(ctx)
-      await we.KV.put("middleCacheVal:" + k, JSON.stringify(v))
+      await we.KV.put("middleCacheVal:" + k, JSON.stringify(v, function (k, v) {
+        if (isArrayBuffer(v)) {
+          return {
+            type: 'Buffer',
+            data: [...new Uint8Array(v)]
+          }
+        }
+        return v
+      }))
     },
   }
 })
