@@ -501,11 +501,26 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       let currentChildFileAccumulatedSourceLines: string[] = []
       const parentSourceLines: string[] = []
       let ongoingAssetGroup: string | undefined = undefined
+      let ongoingAssetGroupPrimaryUpdaters: ((p: string) => void)[] | undefined = undefined
 
       const endOneChild = () => {
         // further removed in process.js:processFile
         currentChildFileInfo._sourceWithoutMatter = currentChildFileAccumulatedSourceLines.join('\n')
         currentChildFileInfo.asset_raw_bytes = Buffer.from(currentChildFileInfo._sourceWithoutMatter, "utf-8")
+        if (ongoingAssetGroup) {
+          if (!currentChildFileInfo.metadata) {
+            currentChildFileInfo.metadata = {}
+          }
+          currentChildFileInfo.metadata.groupPrimaryLocator = ongoingAssetGroup
+          if (ongoingAssetGroupPrimaryUpdaters !== undefined) {
+            {
+              const currentChildFileInfoCaptured = currentChildFileInfo
+              ongoingAssetGroupPrimaryUpdaters.push(p => {
+                currentChildFileInfoCaptured.metadata!.groupPrimaryLocator = p
+              })
+            }
+          }
+        }
         currentChildFileInfo.asset_type = currentChildFileInfo.metadata?.type || null
         currentChildFileInfo.tags = (currentChildFileInfo.metadata?.tags || [])
         currentChildFileInfo.asset_size = currentChildFileInfo.asset_raw_bytes.byteLength
@@ -564,6 +579,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               has_derived_children: false,
               deriving_parent_id: fileInfo._id,
               // deriving_parent: fileInfo.asset_path,
+              should_discard: false,
             }
             currentChildFileInfo.metadata!.isDerivableIntoChildren = false
             currentChildFileInfo.metadata!.derivedChildrenPathSep = undefined
@@ -622,6 +638,22 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                 }
               } else if (char0 === '[' && char1 == '[' && (char2 === undefined || char2 === ' ')) {
                 ongoingAssetGroup = currentChildFileInfo.asset_locator
+                ongoingAssetGroupPrimaryUpdaters = []
+                
+                i += 2
+              } else if (char0 === '^' && char1 == '*' && (char2 === undefined || char2 === ' ')) {
+                ongoingAssetGroup = currentChildFileInfo.asset_locator
+                if (ongoingAssetGroupPrimaryUpdaters !== undefined) {
+                  ongoingAssetGroupPrimaryUpdaters.forEach(u => {
+                    u(currentChildFileInfo.asset_locator)
+                  })
+                }
+                
+                i += 2
+              } else if (char0 === ']' && char1 == ']' && (char2 === undefined || char2 === ' ')) {
+                ongoingAssetGroup = undefined
+                ongoingAssetGroupPrimaryUpdaters = undefined
+                currentChildFileInfo.should_discard = true
                 i += 2
               } else if (char0 === '#') {
                 // tag
@@ -724,7 +756,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
       fileInfo.asset_raw_bytes = Buffer.from(parentSourceLines.join('\n') + '\n')
       fileInfo.asset_size = fileInfo.asset_raw_bytes.byteLength
-      return childFileInfoList
+      return childFileInfoList.filter(f => !f.should_discard)
     }
   })()
 

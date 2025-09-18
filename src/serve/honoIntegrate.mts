@@ -75,6 +75,27 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     LiquidHandler,
     TienKouAssetCategoryLogicHandler,
     LiquidFilterRegisterHandlerList,
+    IntegratedCachePolicyHandler,
+    TkProvideCtxFromNothingHandler: {
+      fetchTkCtxFromNothing: async () => {
+        // simulate one
+        const honoCtx = honoGetContext()
+        return {
+          tkEnv: honoCtx.env,
+          e: honoCtx.env,
+          honoCtx: honoCtx,
+          hc: honoCtx,
+          get resultGenContext(): ResultGenContextHl<hono.Env> {
+            // TODO: save rgc in AsyncLocalContext and get
+            throw new TkErrorHttpAware("getting resultGenContext from TkProvideCtxFromNothingHandler not implemented") 
+          },
+          get rgc(): ResultGenContextHl<hono.Env> {
+            // TODO: save rgc in AsyncLocalContext and get
+            throw new TkErrorHttpAware("getting resultGenContext from TkProvideCtxFromNothingHandler not implemented")
+          },
+        } as TkContextHl<hono.Env>
+      },
+    }
   })
 
   const honoApp = new Hono<HE>() as HonoWithErrorHandler<HE>

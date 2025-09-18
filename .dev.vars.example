@@ -8,6 +8,7 @@ DEBUG = "proxy-agent,knex:query"
 HOARD_DB_BATCH_DEBUG_MODE = "0"
 
 HOARD_DATA_UPDATE_CALLBACK_URL_LIST = "http://127.0.0.1:8568/admin/refreshSiteVersion;http://127.0.0.1:8569/admin/refreshSiteVersion;https://mysite.dev/admin/refreshSiteVersion"
+HOARD_DATA_UPDATE_RECACHE_URL_LIST = "http://127.0.0.1:8568/;http://127.0.0.1:8569/;https://mysite.dev/"
 
 TELEGRAM_API_ID = "11111"
 TELEGRAM_API_HASH = "xxxxxx"

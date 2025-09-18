@@ -21,6 +21,7 @@ type KnownHandlerTypesMap0 = {
   TienKouAssetFetchHandler: TienKouAssetFetchHandler,
   TienKouAssetCategoryLogicHandler: TienKouAssetCategoryLogicHandler,
   LiquidFilterRegisterHandler: LiquidFilterRegisterHandler,
+  TkProvideCtxFromNothingHandler: TkProvideCtxFromNothingHandler,
 }
 
 type KnownHandlerTypesMap = KnownHandlerTypesMap0 & {
@@ -86,6 +87,12 @@ export interface TkEachCtxNotifyHandler {
 export interface TkCtxHandler extends TkFirstCtxProvideHandler, TkEachCtxNotifyHandler {
 
   triggerProcessTkCtx(ctx: TkContext): Promise<void>
+
+}
+
+export interface TkProvideCtxFromNothingHandler {
+
+  fetchTkCtxFromNothing(): Promise<TkContext>
 
 }
 

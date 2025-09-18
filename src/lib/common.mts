@@ -399,13 +399,17 @@ export class TkError extends Error implements TkErrorIntf {
 
 const textDecoder = new TextDecoder('utf-8')
 
-export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | unknown) => {
+export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | { type: "Buffer" } | unknown) => {
   if (bytesLike === undefined) {
     throw new TkErrorHttpAware(`bytesLikeToString: input is undefined`)
   }
 
   if (typeof(bytesLike) === 'string') {
     return bytesLike
+  }
+
+  if (bytesLike && typeof bytesLike === 'object' && (bytesLike as AnyObj)['type'] === 'Buffer') {
+    return Buffer.from(bytesLike as Buffer).toString('utf-8')
   }
   
   if (Buffer.isBuffer(bytesLike)) {

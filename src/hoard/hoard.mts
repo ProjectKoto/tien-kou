@@ -81,22 +81,7 @@ const main = async () => {
   const onUpdate = async () => {
     const dataUpdateCbUrlStr = tkEnv.HOARD_DATA_UPDATE_CALLBACK_URL_LIST
     if (dataUpdateCbUrlStr) {
-      const timeoutSignal = AbortSignal.timeout(6000)
-      const urls = dataUpdateCbUrlStr.split(';')
-      const pList = [] as Promise<unknown>[]
-      for (let url of urls) {
-        url = url.trim()
-        pList.push((async () => {
-          try {
-            await fetch(url, {
-              signal: timeoutSignal,
-            })
-            l(`http callback dataUpdateCbUrl success: ${url}`)
-          } catch (e) {
-            le(`http callback dataUpdateCbUrl err: ${url}`, e)
-          }
-        })())
-      }
+      batchCallUrl(dataUpdateCbUrlStr)
       // (async () => {
       //   try {
       //     await Promise.all(pList)
@@ -105,11 +90,36 @@ const main = async () => {
       //   }
       // })()
     }
+
+    const dataUpdateRecacheUrlStr = tkEnv.HOARD_DATA_UPDATE_RECACHE_URL_LIST
+    if (dataUpdateRecacheUrlStr) {
+      batchCallUrl(dataUpdateRecacheUrlStr)
+    }
   }
       
   await startMddbHoard(tkCtx, onUpdate)
   await startTgHoard(tkCtx, onUpdate)
 
+}
+
+
+function batchCallUrl(dataUpdateCbUrlStr: string) {
+  const timeoutSignal = AbortSignal.timeout(6000)
+  const urls = dataUpdateCbUrlStr.split(';')
+  const pList = [] as Promise<unknown>[]
+  for (let url of urls) {
+    url = url.trim()
+    pList.push((async () => {
+      try {
+        await fetch(url, {
+          signal: timeoutSignal,
+        })
+        l(`http callback dataUpdateCbUrl success: ${url}`)
+      } catch (e) {
+        le(`http callback dataUpdateCbUrl err: ${url}`, e)
+      }
+    })())
+  }
 }
 
 main()

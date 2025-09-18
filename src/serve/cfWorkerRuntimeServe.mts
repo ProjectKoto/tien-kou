@@ -70,6 +70,23 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
       const we = cfwe(ctx)
       await we.KV.delete("dataVersion")
 
+      const cacheKvList = []
+      let currCursor = undefined
+      while (true) {
+        // max 1000
+        const currPage = await we.KV.list({ prefix: "middleCacheVal:", cursor: currCursor }) as AnyObj
+        cacheKvList.push(...currPage.keys)
+        if (!currPage.list_complete && currPage.cursor) {
+          currCursor = currPage.cursor
+          continue
+        } else {
+          break
+        }
+      }
+      for (const k of cacheKvList) {
+        await we.KV.delete(k.name)
+      }
+
       console.log("KvCache:evictForNewDataVersion:new", backstoreDataVersion)
       await we.KV.put("dataVersion", backstoreDataVersion)
     },

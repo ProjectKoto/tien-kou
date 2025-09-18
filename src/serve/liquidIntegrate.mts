@@ -149,7 +149,9 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   LiquidHandler,
   TienKouAssetCategoryLogicHandler,
   LiquidFilterRegisterHandlerList,
-}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList">) => {
+  IntegratedCachePolicyHandler,
+  TkProvideCtxFromNothingHandler,
+}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkProvideCtxFromNothingHandler">) => {
 
   const parseExtraOptFromLiquidShapeParams = <T extends AnyObj,>(optDefault: T, liquidShapeParams: unknown[]) => {
     const opt: T = {
@@ -186,27 +188,34 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
           }
           return justResolvedTemplateString
         }
+        
+        const templateAsset = await IntegratedCachePolicyHandler.getCachedVal(
+          await TkProvideCtxFromNothingHandler.fetchTkCtxFromNothing(),
+          'liquidMain:template::' + fileRelPath,
+          async () => {
+            const queryResultList = await TienKouAssetFetchHandler.queryLiveAsset({
+              locatorTopDirs: ['backstage/'],
+              locatorSubPaths: [fileRelPath],
+              shouldIncludeDerivingParent: false,
+              shouldFetchRawBytes: true,
+            })
+      
+            if (queryResultList.length === 0) {
+              throw new TkAssetNotFoundError('some related template not found: ' + fileRelPath).shouldLog()
+            }
+        
+            if (queryResultList[0].is_asset_heavy === 1) {
+              throw new TkAssetIsHeavyError('some related template is heavy:' + fileRelPath).shouldLog()
+            }
+      
+            if (!queryResultList[0].asset_raw_bytes) {
+              throw new TkErrorHttpAware('no asset_raw_bytes').shouldLog()
+            }
+            return queryResultList[0]
+          }
+        )
   
-        const queryResultList = await TienKouAssetFetchHandler.queryLiveAsset({
-          locatorTopDirs: ['backstage/'],
-          locatorSubPaths: [fileRelPath],
-          shouldIncludeDerivingParent: false,
-          shouldFetchRawBytes: true,
-        })
-  
-        if (queryResultList.length === 0) {
-          throw new TkAssetNotFoundError('some related template not found: ' + fileRelPath).shouldLog()
-        }
-    
-        if (queryResultList[0].is_asset_heavy === 1) {
-          throw new TkAssetIsHeavyError('some related template is heavy:' + fileRelPath).shouldLog()
-        }
-  
-        if (!queryResultList[0].asset_raw_bytes) {
-          throw new TkErrorHttpAware('no asset_raw_bytes').shouldLog()
-        }
-  
-        return bytesLikeToString(queryResultList[0].asset_raw_bytes)
+        return bytesLikeToString(templateAsset.asset_raw_bytes)
       },
   
       existsSync() {
