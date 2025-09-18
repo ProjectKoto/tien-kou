@@ -955,63 +955,65 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
         if (customSqlArgs !== undefined) {
           sqlArgs.push(...customSqlArgs)
         }
+      }
+
+      if (orderBy === 'condTimeDesc') {
+        sqlFragmentList.push(`
+          ORDER BY second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
+        `)
+      } else if (orderBy === 'condTimeAsc') {
+        sqlFragmentList.push(`
+          ORDER BY second_cond_index ASC, publish_time_by_metadata ASC, update_time_by_hoard ASC, asset_locator ASC
+        `)
+      } else if (orderBy === 'condLocatorAsc') {
+        sqlFragmentList.push(`
+          ORDER BY second_cond_index ASC, asset_locator ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC
+        `)
+      } else if (orderBy === 'condLocatorDesc') {
+        sqlFragmentList.push(`
+          ORDER BY second_cond_index ASC, asset_locator DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
+        `)
+      } else if (orderBy === 'timeDesc') {
+        sqlFragmentList.push(`
+          ORDER BY publish_time_by_metadata DESC, second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
+        `)
+      } else if (orderBy === 'timeAsc') {
+        sqlFragmentList.push(`
+          ORDER BY publish_time_by_metadata ASC, second_cond_index ASC, publish_time_by_metadata ASC, update_time_by_hoard ASC, asset_locator ASC
+        `)
+      } else if (orderBy === 'locatorAsc') {
+        sqlFragmentList.push(`
+          ORDER BY asset_locator ASC, second_cond_index ASC, publish_time_by_metadata DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
+        `)
+      } else if (orderBy === 'locatorDesc') {
+        sqlFragmentList.push(`
+          ORDER BY asset_locator DESC, second_cond_index ASC, publish_time_by_metadata DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
+        `)
+      } else if (orderBy === '') {
+
+      } else if (orderBy) {
+        sqlFragmentList.push(`
+          ORDER BY ${orderBy}
+        `)
       } else {
-        if (orderBy === 'condTimeDesc') {
-          sqlFragmentList.push(`
-            ORDER BY second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
-          `)
-        } else if (orderBy === 'condTimeAsc') {
-          sqlFragmentList.push(`
-            ORDER BY second_cond_index ASC, publish_time_by_metadata ASC, update_time_by_hoard ASC, asset_locator ASC
-          `)
-        } else if (orderBy === 'condLocatorAsc') {
-          sqlFragmentList.push(`
-            ORDER BY second_cond_index ASC, asset_locator ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC
-          `)
-        } else if (orderBy === 'condLocatorDesc') {
-          sqlFragmentList.push(`
-            ORDER BY second_cond_index ASC, asset_locator DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
-          `)
-        } else if (orderBy === 'timeDesc') {
-          sqlFragmentList.push(`
-            ORDER BY publish_time_by_metadata DESC, second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
-          `)
-        } else if (orderBy === 'timeAsc') {
-          sqlFragmentList.push(`
-            ORDER BY publish_time_by_metadata ASC, second_cond_index ASC, publish_time_by_metadata ASC, update_time_by_hoard ASC, asset_locator ASC
-          `)
-        } else if (orderBy === 'locatorAsc') {
-          sqlFragmentList.push(`
-            ORDER BY asset_locator ASC, second_cond_index ASC, publish_time_by_metadata DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
-          `)
-        } else if (orderBy === 'locatorDesc') {
-          sqlFragmentList.push(`
-            ORDER BY asset_locator DESC, second_cond_index ASC, publish_time_by_metadata DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
-          `)
-        } else if (orderBy) {
-          sqlFragmentList.push(`
-            ORDER BY ${orderBy}
-          `)
-        } else {
-          sqlFragmentList.push(`
-            ORDER BY second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
-          `)
+        sqlFragmentList.push(`
+          ORDER BY second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
+        `)
+      }
+      if (pageNum !== undefined && pageNum !== null) {
+        if (pageNum < 0) {
+          pageNum = 0
         }
-        if (pageNum !== undefined && pageNum !== null) {
-          if (pageNum < 0) {
-            pageNum = 0
-          }
-          if (!pageSize) {
-            pageSize = 10
-          }
-          if (pageSize < 0 || pageSize > 700) {
-            pageSize = 700
-          }
-          sqlFragmentList.push(`
-            LIMIT ? OFFSET ?
-          `)
-          sqlArgs.push(pageSize, pageNum * pageSize)
+        if (!pageSize) {
+          pageSize = 10
         }
+        if (pageSize < 0 || pageSize > 700) {
+          pageSize = 700
+        }
+        sqlFragmentList.push(`
+          LIMIT ? OFFSET ?
+        `)
+        sqlArgs.push(pageSize, pageNum * pageSize)
       }
 
       // l("executing sql", sqlFragmentList.join('\n'), sqlArgs)
