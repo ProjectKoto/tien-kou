@@ -45,7 +45,9 @@
     "cfDeploy": "npx wrangler deploy",
     "cfdeploy": "npx wrangler deploy",
     "cfType": "npx wrangler types",
-    "upgradeThirdpartyForkDep": "npx rimraf node_modules/telegram node_modules/rclone.js node_modules/miniflare node_modules/@libsql/isomorphic-fetch node_modules/mddb && npm install ./thirdparty/rclone.js && npm install ./thirdparty/telegram/dist ./thirdparty/markdowndb ./thirdparty/cloudflare_workers-sdk/packages/miniflare/package ./thirdparty/libsql_isomorphic-ts/isomorphic-fetch",
+    "pull": "git pull && git submodule foreach \"( git checkout main || git checkout master ) && echo ======= && git rev-parse --show-toplevel && git log -1 && echo =======\" && git submodule foreach \"git pull\" && git pull --recurse-submodules",
+    "buildThirdpartyForkDep": "busybox ash -c \"cd thirdparty/telegram && npm install && npm run buildForTk && cd ../markdowndb && npm install && npm run buildForTk && cd ../cloudflare_workers-sdk && npx --yes pnpm install && npx --yes pnpm --dir ./packages/miniflare run buildForTk && cd ../../\"",
+    "upgradeBuiltThirdpartyForkDep": "npx rimraf node_modules/telegram node_modules/rclone.js node_modules/miniflare node_modules/@libsql/isomorphic-fetch node_modules/mddb && npm install ./thirdparty/rclone.js && npm install ./thirdparty/telegram/dist ./thirdparty/markdowndb ./thirdparty/cloudflare_workers-sdk/packages/miniflare/package ./thirdparty/libsql_isomorphic-ts/isomorphic-fetch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
