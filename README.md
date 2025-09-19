@@ -2,6 +2,7 @@
 
 - git clone with submodules.
 - cd into each thirdparty/ directories, build them into dist files.
+  - shorthand: `npm run buildThirdpartyForkDep`
   - for telegram: run `npm install`, then `node publish_npm.js`. (the `package.json` should remain unchanged except whitelines if everythng succeeds; else please revert it and gramjs/Version.ts) The all files suitable for npm/javascript import will entirely reside in `dist` directory, which is indicated in root package.json `file:` version string.
   - for libsql_isomorphic-ts/isomorphic-fetch: do nothing
   - for rclone.js: do nothing
