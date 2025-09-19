@@ -45,7 +45,7 @@
     "cfDeploy": "npx wrangler deploy",
     "cfdeploy": "npx wrangler deploy",
     "cfType": "npx wrangler types",
-    "pull": "git pull && git submodule foreach \"( echo; ) && git rev-parse --show-toplevel && ( git stash push package-lock.json || true ) && ( git stash push pnpm-lock.yaml || true ) && ( git checkout main || git checkout master ) && git pull\" && git pull --recurse-submodules && git submodule foreach \"echo ======= && git rev-parse --show-toplevel && git log -1 && echo ======= && echo;\"",
+    "pull": "git pull --recurse-submodules && git submodule foreach \"( echo; ) && git rev-parse --show-toplevel && ( git stash push package-lock.json || true ) && ( git stash push pnpm-lock.yaml || true ) && ( git checkout main || git checkout master ) && git pull && ( echo; ) && echo =======\" && git submodule foreach \"( echo; ) && git rev-parse --show-toplevel && git log -1 && ( echo; ) && echo =======\" && echo root && git status && ( echo; )",
     "buildThirdpartyForkDep": "pushd \"thirdparty/telegram\" && npm install && npm run buildForTk && popd && pushd \"thirdparty/markdowndb\" && npm install && npm run buildForTk && popd && pushd \"thirdparty/cloudflare_workers-sdk\" && npx --yes pnpm install && npx --yes pnpm --dir ./packages/miniflare run buildForTk && popd",
     "b3": "npm run buildThirdpartyForkDep",
     "3b": "npm run buildThirdpartyForkDep",
