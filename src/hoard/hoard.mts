@@ -18,6 +18,7 @@ const makeRcloneJsWrapper = (tkCtx: TkContext) => {
   } as AnyObj
 
   const defaultOptionForRclone = {
+    config: "",
   } as AnyObj
 
   for (const k of Object.keys(tkEnv)) {

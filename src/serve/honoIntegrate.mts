@@ -238,11 +238,11 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
   
     const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
-      globals: { rgc },
+      globals: { rgc, now: new Date().getTime() },
     })
   
     // console.log(`renderResult: ${renderResult}`)
-    l('rgc', rgc)
+    // l('rgc', rgc)
   
     if (rgc.respGenericLocatableAssetSubPath) {
       return await serveGenericLocatableAsset(tkCtx, rgc.respGenericLocatableAssetSubPath)

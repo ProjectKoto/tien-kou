@@ -52,6 +52,8 @@
     "upgradeBuiltThirdpartyForkDep": "npx rimraf node_modules/telegram node_modules/rclone.js node_modules/miniflare node_modules/@libsql/isomorphic-fetch node_modules/mddb && npm install ./thirdparty/rclone.js && npm install ./thirdparty/telegram/dist ./thirdparty/markdowndb ./thirdparty/cloudflare_workers-sdk/packages/miniflare/package ./thirdparty/libsql_isomorphic-ts/isomorphic-fetch",
     "u3": "npm run upgradeBuiltThirdpartyForkDep",
     "3u": "npm run upgradeBuiltThirdpartyForkDep",
+    "b3u3": "npm run buildThirdpartyForkDep && npm run upgradeBuiltThirdpartyForkDep",
+    "3b3u": "npm run buildThirdpartyForkDep && npm run upgradeBuiltThirdpartyForkDep",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

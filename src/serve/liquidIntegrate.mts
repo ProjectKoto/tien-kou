@@ -5,11 +5,11 @@ import { LiquidCache } from "liquidjs/dist/cache"
 import { default as markdownit } from 'markdown-it'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l } from "../lib/common.mts"
-import { AHT, EA, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
+import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le } from "../lib/common.mts"
+import { AHT, EA, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
-import { TagClass, TagImplOptions } from "liquidjs/dist/template"
+import { FilterHandler, FilterOptions, TagClass, TagImplOptions } from "liquidjs/dist/template"
 
 export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
@@ -153,13 +153,17 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   TkProvideCtxFromNothingHandler,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkProvideCtxFromNothingHandler">) => {
 
-  const parseExtraOptFromLiquidShapeParams = <T extends AnyObj,>(optDefault: T, liquidShapeParams: unknown[]) => {
+  const parseExtraOptFromLiquidShapeParams = <T extends AnyObj,>(optDefault: T, liquidShapeParams: unknown[], aliasMap: ({[x: string]: string}) = {}) => {
     const opt: T = {
       ...optDefault,
     }
     for (const p of liquidShapeParams) {
       if (p !== undefined && p !== null && Array.isArray(p) && p.length >= 2) {
-        const k = p[0]
+        let k = p[0]
+        let kMapped = aliasMap[k]
+        if (kMapped) {
+          k = kMapped
+        }
         if (typeof k === 'string') {
           (opt as AnyObj)[k] = p[1]
         }
@@ -287,6 +291,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     return a
   })
 
+  LiquidHandler.registerFilterPostCreate("l", async function (...rest) {
+    l('liquidLog', ...rest)
+  })
+
   // - Liquid result gen related functions/filters
 
   // -- fetch LocatableContent
@@ -392,7 +400,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
   {
     const filterFuncCommon: (defaultShouldConvertToString: boolean) => liquid.FilterImplOptions = (defaultShouldConvertToString) => async function (a, ...rest) {
-      const { rgc } = this.context.getSync(['tkCtx']) as ResultGenContext
+      const rgc = this.context.getSync(['rgc']) as ResultGenContext
       const subPath = a ?? this.context.getSync(['locatableContentSubPath'])
 
       if (typeof subPath !== 'string') {
@@ -573,7 +581,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
   {
     const filterFuncCommon: (defaultShouldConvertToString: boolean, classCallInfo: { className: string, subPathFieldName: string, func: (rgcOptional: ResultGenContext, subPath: string, extraOpt: WrapperOpt<FetchBackstageAssetOpt>) => Promise<string | AnyObj | undefined>}) => liquid.FilterImplOptions = (defaultShouldConvertToString, classCallInfo) => async function (a, ...rest) {
-      const { rgc } = this.context.getSync(['tkCtx']) as ResultGenContext
+      const rgc = this.context.getSync(['rgc']) as ResultGenContext
       const subPath = a ?? this.context.getSync([classCallInfo.subPathFieldName])
 
       if (typeof subPath !== 'string') {
@@ -672,7 +680,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   {
     LiquidHandler.registerFilterPostCreate("fetchGenericLocatableAsset", async function (a, ...rest) {
 
-      const { rgc } = this.context.getSync(['tkCtx']) as ResultGenContext
+      const rgc = this.context.getSync(['rgc']) as ResultGenContext
       const subPath = a ?? this.context.getSync(['genericLocatableAssetSubPath'])
 
       if (typeof subPath !== 'string') {
@@ -735,6 +743,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     throw new TkErrorHttpAware(um(a))
   })
 
+  LiquidHandler.registerFilterPostCreate("toBoolean", function (a) { return !!a })
   LiquidHandler.registerFilterPostCreate("forceFalse", function (a) { return false })
   LiquidHandler.registerFilterPostCreate("forceTrue", function (a) { return true })
   LiquidHandler.registerFilterPostCreate("sqlLikePatternEscape", sqlLikePatternEscape)
@@ -757,6 +766,194 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       customSqlArgs,
     })
     return result
+  })
+
+  LiquidHandler.registerFilterPostCreate("queryLiveAssetByRawLocators", async function (a, ...rest) {
+    const rgc = this.context.getSync(['rgc']) as ResultGenContext
+      const assetLocators = a ?? this.context.getSync(['liveAssetLocators'])
+
+      if (typeof assetLocators !== 'object' || !Array.isArray(assetLocators)) {
+        le('assetLocators is not an array', a, assetLocators)
+        throw new TkErrorHttpAware('assetLocators is not an array')
+      }
+
+      const extraOpt = parseExtraOptFromLiquidShapeParams<WrapperOpt<QueryLiveAssetCommonParam>>({
+        tkCtx: rgc.tkCtx(),
+        locatorSubPaths: assetLocators,
+        locatorTopDirs: [''],
+        shouldIncludeDerivingParent: true,
+        shouldFetchRawBytes: true,
+        shouldThrowIfNotFound: false,
+        shouldConvertToString: true,
+      }, rest, {
+        locatorPaths: 'locatorSubPaths',
+      })
+
+
+    const result = await TienKouAssetFetchHandler.queryLiveAsset(extraOpt)
+    return result
+  })
+
+  LiquidHandler.registerFilterPostCreate("arrToObjByKey", function (a: AnyObj[], k1: string, k2: string | undefined) {
+    const result: AnyObj = {}
+    for (const el of a) {
+      let t1 = el[k1]
+      if (k2 !== undefined) {
+        if (t1 !== undefined && t1 !== null) {
+          t1 = t1[k2]
+        }
+      }
+      if (t1 !== undefined && t1 !== null) {
+        if (!(t1 in result)) {
+          result[t1] = el
+        }
+      }
+    }
+    return result
+  })
+
+  const arrayInplaceSortFunc = (desc: boolean) => function (a: AnyObj[], k1: string, k2: string | undefined) {
+    a.sort((el1, el2) => {
+      let t1 = el1[k1]
+      if (k2 !== undefined) {
+        if (t1 !== undefined && t1 !== null) {
+          t1 = t1[k2]
+        }
+      }
+      let t2 = el2[k1]
+      if (k2 !== undefined) {
+        if (t2 !== undefined && t2 !== null) {
+          t2 = t2[k2]
+        }
+      }
+      let result
+      if (t1 !== undefined && t1 !== null) {
+        if (t2 !== undefined && t2 !== null) {
+          result = t1 > t2 ? 1 : t1 < t2 ? -1 : 0
+        } else {
+          result = 1
+        }
+      } else {
+        if (t2 !== undefined && t2 !== null) {
+          result = -1
+        } else {
+          result = 0
+        }
+      }
+      if (desc) {
+        result = -result
+      }
+      return result
+    })
+    return a
+  }
+  
+  LiquidHandler.registerFilterPostCreate("arrInplaceSortAscByKey", arrayInplaceSortFunc(false))
+  LiquidHandler.registerFilterPostCreate("arrInplaceSortDescByKey", arrayInplaceSortFunc(true))
+
+  LiquidHandler.registerFilterPostCreate("arrToGroupingObjByKey", function (a: AnyObj[], k1: string, k2: string | undefined) {
+    const result: AnyObj = {}
+    for (const el of a) {
+      let t1 = el[k1]
+      if (k2 !== undefined) {
+        if (t1 !== undefined && t1 !== null) {
+          t1 = t1[k2]
+        }
+      }
+      if (t1 !== undefined && t1 !== null) {
+        if (!(t1 in result)) {
+          result[t1] = []
+        }
+        result[t1].push(el)
+      }
+    }
+    return result
+  })
+
+  LiquidHandler.registerFilterPostCreate("newObj", function (a: undefined) {
+    return {}
+  })
+
+  LiquidHandler.registerFilterPostCreate("gkeys", function (a) {
+    l('keys', a)
+    return Object.keys(a)
+  })
+
+  LiquidHandler.registerFilterPostCreate("values", function (a) {
+    return Object.values(a)
+  })
+
+  LiquidHandler.registerFilterPostCreate("newArr", function (a: undefined) {
+    return []
+  })
+
+  const arrayInplacePush: liquid.FilterImplOptions = function (a: AnyObj[], ...rest) {
+    for (const b of rest) {
+      a.push(b)
+    }
+    return a
+  }
+  const arrayInplacePushTo: liquid.FilterImplOptions = function (a, b: any[]) {
+    b.push(a)
+    return b
+  }
+
+  LiquidHandler.registerFilterPostCreate("inplacePush", arrayInplacePush)
+  LiquidHandler.registerFilterPostCreate("inplace_push", arrayInplacePush)
+  LiquidHandler.registerFilterPostCreate("inplacePushTo", arrayInplacePushTo)
+  LiquidHandler.registerFilterPostCreate("inplace_push_to", arrayInplacePushTo)
+
+  LiquidHandler.registerFilterPostCreate("applyFilters", async function(a, b: [string, ...any][] | undefined) {
+    if (b === undefined) {
+      return a
+    }
+    const filters = this.liquid.filters
+    for (const fAndArgs of b) {
+      let f: FilterHandler = filters[fAndArgs[0]] as FilterHandler
+      if ((f as unknown as FilterOptions).handler) {
+        f = (f as unknown as FilterOptions).handler
+      }
+      a = await f.call(this, a, ...fAndArgs.slice(1))
+    }
+    return a
+  })
+
+  LiquidHandler.registerFilterPostCreate("objSet", function (a: AnyObj, k: string, v) {
+    if (v === undefined) {
+      delete a[k]
+    } else {
+      a[k] = v
+    }
+  })
+
+  LiquidHandler.registerFilterPostCreate("objSetIfAbsent", function (a: AnyObj, k: string, v) {
+    if (a[k] !== undefined) {
+      return
+    }
+    if (v === undefined) {
+      delete a[k]
+    } else {
+      a[k] = v
+    }
+  })
+
+  LiquidHandler.registerFilterPostCreate("setToObj", function (v, a: AnyObj, k: string) {
+    if (v === undefined) {
+      delete a[k]
+    } else {
+      a[k] = v
+    }
+  })
+
+  LiquidHandler.registerFilterPostCreate("setToObjIfAbsent", function (v, a: AnyObj, k: string) {
+    if (a[k] !== undefined) {
+      return
+    }
+    if (v === undefined) {
+      delete a[k]
+    } else {
+      a[k] = v
+    }
   })
 
   LiquidHandler.registerFilterPostCreate("listAssetDescendants", async function (ancestor, shouldIncludeDerivingParent, orderBy, pageNum, pageSize, customSql, ...customSqlArgs) {

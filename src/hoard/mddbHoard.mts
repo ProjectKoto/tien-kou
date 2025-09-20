@@ -202,7 +202,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             reimportSqlDataList
               .push({
                 get sql() {
-                  l(`${t.tbl_name}_${newBufferIndexStr} table: [${currBatchI}/${currTableAllData.length}]`)
+                  let endI = currBatchI + batchSize
+                  endI = endI > currTableAllData.length ? currTableAllData.length : endI
+                  l(`${t.tbl_name}_${newBufferIndexStr} table: [${endI}/${currTableAllData.length}]`)
 
                   return `INSERT INTO ${t.tbl_name}_${newBufferIndexStr} VALUES ` + currBatch.map(oneRow => ('( ' + Object.values(oneRow).map((_) => '?').join(', ') + ' )')).join(', ') + ';'
                 },
@@ -299,7 +301,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             syncSqlList
               .push({
                 get sql() {
-                  l(`files_${newBufferIndex} table: [${currBatchI}/${currTableNewData.length}]`)
+                  let endI = currBatchI + batchSize
+                  endI = endI > currTableNewData.length ? currTableNewData.length : endI
+                  l(`files_${newBufferIndex} table: [${endI}/${currTableNewData.length}]`)
 
                   return `DELETE FROM files_${newBufferIndex} WHERE _id IN (` + currBatch.map(_oneRow => '?').join(', ') + ');'
                 },
@@ -371,7 +375,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
         await doSyncToTurso()
-        await rcloneHeavy()
+        l('scheduling rcloneHeavy...')
+        rcloneHeavy()
+        l('running update hook...')
         await onUpdate()
         l("updated")
         return ret
@@ -386,7 +392,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [])
         await doSyncToTursoIncr()
-        await rcloneHeavy()
+        l('scheduling rcloneHeavy...')
+        rcloneHeavy()
+        l('running update hook...')
         await onUpdate()
         l("updated")
         return ret
@@ -402,7 +410,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const genChildAssetFromLines = (() => {
     const Initial = 0
     const InOneChildDirectivePossible = 1
-    const InOneChildSource = 2
+    const InOneChildAfterDirective = 2
+    const InOneChildSource = 3
     const regexTimestampPrefix = /^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/i
 
     // credits: https://github.com/tremby/json-multi-parse MIT
@@ -506,6 +515,17 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       const endOneChild = () => {
         // further removed in process.js:processFile
         currentChildFileInfo._sourceWithoutMatter = currentChildFileAccumulatedSourceLines.join('\n')
+        {
+          let i = currentChildFileInfo._sourceWithoutMatter.length - 1
+          while (i >= 0) {
+            if (currentChildFileInfo._sourceWithoutMatter[i] === '\n') {
+              i--
+            } else {
+              break
+            }
+          }
+          currentChildFileInfo._sourceWithoutMatter = currentChildFileInfo._sourceWithoutMatter.substring(0, i + 1)
+        }
         currentChildFileInfo.asset_raw_bytes = Buffer.from(currentChildFileInfo._sourceWithoutMatter, "utf-8")
         if (ongoingAssetGroup) {
           if (!currentChildFileInfo.metadata) {
@@ -605,7 +625,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                   i++
                 } while (lineLength - i >= 1 && line[i] === ' ')
               } else {
-                state = InOneChildSource
+                state = InOneChildAfterDirective
                 break
               }
             }
@@ -620,16 +640,16 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               if (char0 === '{') {
                 const cjr = consumeJson(line, i)
                 if (cjr === undefined) {
-                  state = InOneChildSource
+                  state = InOneChildAfterDirective
                   break
                 } else {
                   if (!(cjr.newI === line.length || line[cjr.newI] === ' ')) {
-                    state = InOneChildSource
+                    state = InOneChildAfterDirective
                     break
                   } else {
                     Object.assign(currentChildFileInfo.metadata!, cjr.result)
                     i = cjr.newI
-                    state = InOneChildSource
+                    state = InOneChildAfterDirective
                     if (i < line.length) {
                       i++ // must be space " "
                     }
@@ -641,8 +661,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                 ongoingAssetGroupPrimaryUpdaters = []
                 
                 i += 2
-              } else if (char0 === '^' && char1 == '*' && (char2 === undefined || char2 === ' ')) {
+              } else if (char0 === '~' && char1 == '~' && (char2 === undefined || char2 === ' ')) {
                 ongoingAssetGroup = currentChildFileInfo.asset_locator
+                currentChildFileInfo.metadata!.isHoistedInGroup = true
                 if (ongoingAssetGroupPrimaryUpdaters !== undefined) {
                   ongoingAssetGroupPrimaryUpdaters.forEach(u => {
                     u(currentChildFileInfo.asset_locator)
@@ -660,11 +681,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                 if (char1 === '"') {
                   const cjr = consumeJson(line, i + 1)
                   if (cjr === undefined) {
-                    state = InOneChildSource
+                    state = InOneChildAfterDirective
                     break
                   } else {
                     if (!(cjr.newI === line.length || line[cjr.newI] === ' ')) {
-                      state = InOneChildSource
+                      state = InOneChildAfterDirective
                       break
                     } else {
                       if (currentChildFileInfo.metadata!.tags === undefined) {
@@ -686,7 +707,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                   }
 
                   if (currTag === '') {
-                    state = InOneChildSource
+                    state = InOneChildAfterDirective
                     break
                   } else {
                     if (currentChildFileInfo.metadata!.tags === undefined) {
@@ -703,7 +724,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                 if (/^[_a-zA-Z][_a-zA-Z0-9]{0,63}=/.test(lineSub)) {
                   const equalSignRelIndex = lineSub.indexOf("=")
                   if (equalSignRelIndex === -1) {
-                    state = InOneChildSource
+                    state = InOneChildAfterDirective
                     break
                   }
                   const keyName = lineSub.substring(0, equalSignRelIndex)
@@ -711,11 +732,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                   if (charAfterEqualSign === '"' || charAfterEqualSign === '[' || charAfterEqualSign === '{') {
                     const cjr = consumeJson(line, i + equalSignRelIndex + 1)
                     if (cjr === undefined) {
-                      state = InOneChildSource
+                      state = InOneChildAfterDirective
                       break
                     } else {
                       if (!(cjr.newI === line.length || line[cjr.newI] === ' ')) {
-                        state = InOneChildSource
+                        state = InOneChildAfterDirective
                         break
                       } else {
                         currentChildFileInfo.metadata![keyName] = cjr.result
@@ -733,19 +754,24 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                     }
                   }
                 } else {
-                  state = InOneChildSource
+                  state = InOneChildAfterDirective
                   break
                 }
               }
             } else {
-              state = InOneChildSource
+              state = InOneChildAfterDirective
               break
             }
           }
         }
 
-        if (state === InOneChildSource) {
+        if (state === InOneChildAfterDirective) {
           if (i < line.length) {
+            currentChildFileAccumulatedSourceLines.push(line.substring(i))
+          }
+          state = InOneChildSource
+        } else if (state === InOneChildSource) {
+          if (i <= line.length) {
             currentChildFileAccumulatedSourceLines.push(line.substring(i))
           }
         }
