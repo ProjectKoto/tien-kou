@@ -946,7 +946,7 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
 
       sqlFragmentList.push(`
         GROUP BY asset_locator
-      )
+      ) grouped_result
         WHERE 1 = 1
       `)
 

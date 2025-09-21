@@ -512,6 +512,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       let ongoingAssetGroup: string | undefined = undefined
       let ongoingAssetGroupPrimaryUpdaters: ((p: string) => void)[] | undefined = undefined
 
+      let childMaxPubTime: number | undefined = undefined
+
       const endOneChild = () => {
         // further removed in process.js:processFile
         currentChildFileInfo._sourceWithoutMatter = currentChildFileAccumulatedSourceLines.join('\n')
@@ -544,6 +546,10 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         currentChildFileInfo.asset_type = currentChildFileInfo.metadata?.type || null
         currentChildFileInfo.tags = (currentChildFileInfo.metadata?.tags || [])
         currentChildFileInfo.asset_size = currentChildFileInfo.asset_raw_bytes.byteLength
+
+        if (childMaxPubTime === undefined || childMaxPubTime < currentChildFileInfo.publish_time_by_metadata) {
+          childMaxPubTime = currentChildFileInfo.publish_time_by_metadata
+        }
       }
 
       const childPathSep = fileInfo.metadata?.derivedChildrenPathSep || '/'
@@ -595,7 +601,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               links: [],
               tasks: [],
               asset_size: undefined,
-              publish_time_by_metadata: childPublishDate,
+              publish_time_by_metadata: childPublishDate.getTime(),
               has_derived_children: false,
               deriving_parent_id: fileInfo._id,
               // deriving_parent: fileInfo.asset_path,
@@ -782,6 +788,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
       fileInfo.asset_raw_bytes = Buffer.from(parentSourceLines.join('\n') + '\n')
       fileInfo.asset_size = fileInfo.asset_raw_bytes.byteLength
+      if (childMaxPubTime !== undefined && fileInfo.publish_time_by_metadata === undefined) {
+        fileInfo.publish_time_by_metadata = childMaxPubTime
+      }
       return childFileInfoList.filter(f => !f.should_discard)
     }
   })()

@@ -132,6 +132,39 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
   const convertHonoCtxToTkCtx = async (honoCtx: hono.Context<HE>) => {
     // hono already done urldecode to this.
     const reqPath = honoCtx.req.path
+
+    const lazyVal = <T,>(loadVal: () => T) => {
+      let val: T | undefined = undefined
+      return () => {
+        if (val !== undefined) {
+          return val
+        }
+        val = loadVal()
+        return val
+      }
+    }
+
+    const urlGetter = lazyVal(() => new URL(honoCtx.req.url))
+
+    const queryRawGetter = lazyVal(() => urlGetter().search)
+
+    const queryGetter = lazyVal(() => {
+      return Object.fromEntries(urlGetter().searchParams.entries())
+    })
+
+    const queryMultiValueGetter = lazyVal(() => {
+      const result:{ [x: string]: string[] } = {}
+      for (const [k, v] of urlGetter().searchParams.entries()) {
+        let vArr = result[k]
+        if (vArr === undefined) {
+          vArr = []
+          result[k] = vArr
+        }
+        vArr.push(v)
+      }
+      return result
+    })
+
     l('reqPath', reqPath)
   
     if (!reqPath.startsWith('/')) {
@@ -144,6 +177,14 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       rgc: undefined as unknown as ResultGenContextHl<HE>,
       reqPath,
       reqPathTidy: reqPath.split('/').filter(x => x !== '').join('/'),
+      reqQuery: () => { return queryGetter() },
+      reqSearch: () => { return queryGetter() },
+      reqQueryRaw: () => { return queryRawGetter() },
+      reqSearchRaw: () => { return queryRawGetter() },
+      reqQueryStr: () => { return queryRawGetter() },
+      reqSearchStr: () => { return queryRawGetter() },
+      reqQueryMulti: () => { return queryMultiValueGetter() },
+      reqSearchMulti: () => { return queryMultiValueGetter() },
       mainTemplateRelPath: "main.tmpl.html",
       markdownExtNames,
       listableAssetExtNames,

@@ -292,7 +292,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   })
 
   LiquidHandler.registerFilterPostCreate("l", async function (...rest) {
-    l('liquidLog', ...rest)
+    let logArgs = rest
+    if (logArgs && logArgs.length >= 2) {
+      logArgs = [rest[1], rest[0], ...rest.slice(2)]
+    }
+    l('liquidLog', ...logArgs)
   })
 
   // - Liquid result gen related functions/filters
@@ -772,7 +776,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     const rgc = this.context.getSync(['rgc']) as ResultGenContext
       const assetLocators = a ?? this.context.getSync(['liveAssetLocators'])
 
-      if (typeof assetLocators !== 'object' || !Array.isArray(assetLocators)) {
+      if (assetLocators !== undefined && (typeof assetLocators !== 'object' || !Array.isArray(assetLocators))) {
         le('assetLocators is not an array', a, assetLocators)
         throw new TkErrorHttpAware('assetLocators is not an array')
       }
@@ -874,8 +878,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     return {}
   })
 
-  LiquidHandler.registerFilterPostCreate("gkeys", function (a) {
-    l('keys', a)
+  LiquidHandler.registerFilterPostCreate("keys", function (a) {
+    // l('keys', a)
     return Object.keys(a)
   })
 
@@ -883,8 +887,18 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     return Object.values(a)
   })
 
-  LiquidHandler.registerFilterPostCreate("newArr", function (a: undefined) {
-    return []
+  LiquidHandler.registerFilterPostCreate("newArr", function (repetition: number | undefined, el: any | undefined) {
+    if (repetition === undefined) {
+      return []
+    }
+    if (typeof el !== 'object') {
+      return Array(repetition).fill(el)
+    }
+    const result = Array(repetition)
+    for (let i = 0; i < repetition; i++) {
+      result[i] = { ...el }
+    }
+    return result
   })
 
   const arrayInplacePush: liquid.FilterImplOptions = function (a: AnyObj[], ...rest) {
