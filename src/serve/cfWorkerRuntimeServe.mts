@@ -58,7 +58,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
     fetchDataVersion: async (ctx) => {
       const we = cfwe(ctx)
       const fetchedKvDataVersion = await we.KV.get("dataVersion")
-      if (fetchedKvDataVersion !== null && fetchedKvDataVersion !== undefined) {
+      if (fetchedKvDataVersion !== null && fetchedKvDataVersion !== undefined && fetchedKvDataVersion !== "") {
         return fetchedKvDataVersion
       }
       return undefined
@@ -70,6 +70,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
     evictForNewDataVersion: async (ctx: TkContext, backstoreDataVersion: number) => {
       const we = cfwe(ctx)
       await we.KV.delete("dataVersion")
+      // await we.KV.put("dataVersion", "")
 
       const cacheKvList = []
       let currCursor = undefined
@@ -90,6 +91,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
         } catch (e) {
           le('KV.delete', e)
         }
+        // await we.kv.put(k.name, "undefined")
       }
 
       console.log("KvCache:evictForNewDataVersion:new", backstoreDataVersion)
@@ -118,8 +120,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
 
 const RoutedMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, CloudflareWorkerKvCacheHandler, NoMiddleCacheHandler }: KD<"TkFirstCtxProvideHandler", { CloudflareWorkerKvCacheHandler: MiddleCacheHandler, NoMiddleCacheHandler: MiddleCacheHandler }>) => {
 
-  // let cacheLevel = "kv"
-  let cacheLevel = "no"
+  let cacheLevel = "kv"
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (ctx0) => {
     cacheLevel = cfwe(ctx0).CACHE_LEVEL || cacheLevel
