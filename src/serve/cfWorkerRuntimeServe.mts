@@ -1,6 +1,6 @@
 
 import * as hono from 'hono'
-import { AnyObj, l, TkError } from '../lib/common.mts'
+import { AnyObj, l, le, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
 import { AbstractTkSqlLiquidHonoApp, hc, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
@@ -85,7 +85,11 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
         }
       }
       for (const k of cacheKvList) {
-        await we.KV.delete(k.name)
+        try {
+          await we.KV.delete(k.name)
+        } catch (e) {
+          le('KV.delete', e)
+        }
       }
 
       console.log("KvCache:evictForNewDataVersion:new", backstoreDataVersion)
@@ -114,7 +118,8 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
 
 const RoutedMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, CloudflareWorkerKvCacheHandler, NoMiddleCacheHandler }: KD<"TkFirstCtxProvideHandler", { CloudflareWorkerKvCacheHandler: MiddleCacheHandler, NoMiddleCacheHandler: MiddleCacheHandler }>) => {
 
-  let cacheLevel = "kv"
+  // let cacheLevel = "kv"
+  let cacheLevel = "no"
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (ctx0) => {
     cacheLevel = cfwe(ctx0).CACHE_LEVEL || cacheLevel
