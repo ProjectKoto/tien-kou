@@ -120,7 +120,8 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
 
 const RoutedMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, CloudflareWorkerKvCacheHandler, NoMiddleCacheHandler }: KD<"TkFirstCtxProvideHandler", { CloudflareWorkerKvCacheHandler: MiddleCacheHandler, NoMiddleCacheHandler: MiddleCacheHandler }>) => {
 
-  let cacheLevel = "kv"
+  // let cacheLevel = "kv"
+  let cacheLevel = "no"
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (ctx0) => {
     cacheLevel = cfwe(ctx0).CACHE_LEVEL || cacheLevel
