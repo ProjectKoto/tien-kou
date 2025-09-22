@@ -31,6 +31,14 @@ export const jsonPrettyStringify = (x: unknown) => {
   }, 2)
 }
 
+export const truncateStrByLen = (s: string, len: number) => {
+  if (s.length > len) {
+    // return s.substring(0, len) + ' .. ' + s.substring(s.length - len, s.length)
+    return s.substring(0, len) + ' ..'
+  }
+  return s
+}
+
 export const l = (...args: unknown[]) => {
   console.log("[" + new Date().toLocaleString( 'sv', { timeZoneName: 'short' } ) + "]", ...args)
 }
@@ -448,3 +456,45 @@ export const delayInitVal = <T,>() => {
     },
   }
 }
+
+// credit https://www.npmjs.com/package/lazy-value
+
+export type LazyVal<T> = {
+  (): T,
+  isCalled: boolean,
+  result: T | undefined,
+}
+
+export const lazyValue = function <T>(function_: () => T): LazyVal<T> {
+  const r = (() => {
+    if (!r.isCalled) {
+      r.isCalled = true
+      r.result = function_()
+    }
+
+    return r.result
+  }) as LazyVal<T>
+
+  r.isCalled = false
+  r.result = undefined
+
+  return r
+}
+
+// credit: https://github.com/bryc/code/blob/master/jshash/experimental/cyrb53.js
+export const cyrb53 = function (str: string, seed = 0) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i)
+    h1 = Math.imul(h1 ^ ch, 2654435761)
+    h2 = Math.imul(h2 ^ ch, 1597334677)
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507)
+  h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909)
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507)
+  h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909)
+  return 4294967296 * (2097151 & h2) + (h1 >>> 0)
+}
+
+export const quickStrHash = cyrb53
+

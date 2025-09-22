@@ -358,6 +358,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         'delete-after': true,
         'delete-excluded': true,
         'max-duration': '10m',
+        'copy-links': true,
         'filter': rcloneAssetFilter,
         abortSignal: AbortSignal.timeout(60 * 12 * 1000),
       }) as [number, number, Buffer, Buffer]

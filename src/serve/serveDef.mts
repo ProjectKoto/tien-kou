@@ -4,8 +4,9 @@ import Emittery from "emittery"
 import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
-import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext } from "../lib/common.mts"
+import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen } from "../lib/common.mts"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
+import replaceAll from 'string.prototype.replaceall'
 
 type KnownHandlerTypesMap0 = {
   MiddleCacheHandler: MiddleCacheHandler,
@@ -81,12 +82,14 @@ export interface TkFirstCtxProvideHandler {
 export interface TkEachCtxNotifyHandler {
 
   listenOnEachTkContextArrived(l: (ctx: TkContext) => Promise<void>): void
+  listenOnEachTkContextEnded(l: (ctx: TkContext) => Promise<void>): void
 
 }
 
 export interface TkCtxHandler extends TkFirstCtxProvideHandler, TkEachCtxNotifyHandler {
 
   triggerProcessTkCtx(ctx: TkContext): Promise<void>
+  triggerProcessTkCtxOnEnd(ctx: TkContext): Promise<void>
 
 }
 
@@ -134,6 +137,8 @@ export interface RuntimeCacheHandler extends CacheHandler {
   // note: only evicts for current runtime (Node.JS/Cloudflare Worker/...) process. May exists other instances that don't get evicted.
   evictForNewDataVersion(ctx: TkContext, backstoreDataVersion: number | undefined): Promise<void>
 
+  fetchDataVersion(ctx: TkContext): Promise<number | undefined>
+
 }
 
 
@@ -152,6 +157,7 @@ const AbstractRuntimeCacheHandler = AHT<RuntimeCacheHandler>()(async (_: KD<neve
     evictForNewDataVersion: null,
     getInCache: null,
     putInCache: null,
+    fetchDataVersion: null,
   }
 })
 
@@ -178,6 +184,8 @@ export interface TkDataPersistHandler {
 export interface IntegratedCachePolicyHandler {
 
   listenOnRuntimeCacheEvict(l: () => Promise<void>): void,
+
+  fetchDataVersion(ctx: TkContext): Promise<number>,
 
   checkAndDoEvictRuntimeCache(ctx: TkContext): Promise<boolean>
 
@@ -334,6 +342,7 @@ export const MainTkCtxHandler = HT<TkCtxHandler>()(async (_: KD<never>) => {
   const firstCtxArrivedEvent = new Emittery()
   const firstCtxFullyReadyEvent = new Emittery()
   const eachCtxArrivedEvent = new Emittery()
+  const eachCtxEndedEvent = new Emittery()
 
   let firstCtxInitedPromiseResolver: ((value: TkContext | PromiseLike<TkContext>) => void) | undefined = undefined
   const firstCtxInitedPromise = new Promise<TkContext>(r => {
@@ -382,10 +391,19 @@ export const MainTkCtxHandler = HT<TkCtxHandler>()(async (_: KD<never>) => {
         await l(ctx)
       })
     },
+    listenOnEachTkContextEnded: (l: (ctx: TkContext) => Promise<void>): void => {
+      eachCtxEndedEvent.on('eachCtxEnded', async (ctx) => {
+        await l(ctx)
+      })
+    },
 
     triggerProcessTkCtx: async (ctx: TkContext): Promise<void> => {
       await checkAndInitFirstCtx(ctx)
       await eachCtxArrivedEvent.emitSerial('eachCtxArrived', ctx)
+    },
+
+    triggerProcessTkCtxOnEnd: async (ctx: TkContext): Promise<void> => {
+      await eachCtxEndedEvent.emitSerial('eachCtxEnded', ctx)
     },
     
   }
@@ -421,6 +439,9 @@ export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFi
       evictEvent.on('evict', async () => {
         await listener()
       })
+    },
+    fetchDataVersion: async function (_ctx: TkContext): Promise<number | undefined> {
+      return jsRuntimeCacheVersion
     },
     checkIfShouldEvict: async (backstoreDataVersion: number | undefined): Promise<boolean> => {
       let result: boolean | undefined = undefined
@@ -503,6 +524,18 @@ export const MultiIntanceCachePolicyHandler = HT<IntegratedCachePolicyHandler>()
       RuntimeCacheHandler.listenOnEvict(l)
     },
 
+    fetchDataVersion: async function(ctx: TkContext): Promise<number> {
+      // TODO: lock
+      let cacheDataVersion = await RuntimeCacheHandler.fetchDataVersion(ctx)
+      if (cacheDataVersion === undefined) {
+        cacheDataVersion = await MiddleCacheHandler.fetchDataVersion(ctx)
+      }
+      if (cacheDataVersion === undefined) {
+        cacheDataVersion = await TkDataPersistHandler.fetchDataVersion(ctx)
+      }
+      return cacheDataVersion
+    },
+
     checkAndDoEvictRuntimeCache: async (ctx) => {
       // TODO: lock
       let cacheDataVersion = await MiddleCacheHandler.fetchDataVersion(ctx)
@@ -538,6 +571,18 @@ export const SingleInstanceCachePolicyHandler = HT<IntegratedCachePolicyHandler>
   return {
     listenOnRuntimeCacheEvict: (l: () => Promise<void>): void => {
       RuntimeCacheHandler.listenOnEvict(l)
+    },
+
+    fetchDataVersion: async function(ctx: TkContext): Promise<number> {
+      // TODO: lock
+      let cacheDataVersion = await RuntimeCacheHandler.fetchDataVersion(ctx)
+      if (cacheDataVersion === undefined) {
+        cacheDataVersion = await MiddleCacheHandler.fetchDataVersion(ctx)
+      }
+      if (cacheDataVersion === undefined) {
+        cacheDataVersion = await TkDataPersistHandler.fetchDataVersion(ctx)
+      }
+      return cacheDataVersion
     },
 
     checkAndDoEvictRuntimeCache: async (_ctx) => {
@@ -990,7 +1035,7 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
           ORDER BY asset_locator DESC, second_cond_index ASC, publish_time_by_metadata DESC, publish_time_by_metadata DESC, update_time_by_hoard DESC
         `)
       } else if (orderBy === '') {
-
+        // no order
       } else if (orderBy) {
         sqlFragmentList.push(`
           ORDER BY ${orderBy}
@@ -1016,6 +1061,7 @@ export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(as
         sqlArgs.push(pageSize, pageNum * pageSize)
       }
 
+      l("executing sql", truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60), truncateStrByLen(JSON.stringify(sqlArgs), 50))
       // l("executing sql", sqlFragmentList.join('\n'), sqlArgs)
 
       const sqlResult = await SqlDbHandler.sql({

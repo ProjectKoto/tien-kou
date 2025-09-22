@@ -33,9 +33,7 @@ export default tseslint.config([
       "prefer-const": ["error", {
         "destructuring": "all",
       }],
-      "@typescript-eslint/prefer-const": ["error", {
-        "destructuring": "all",
-      }],
+      
       "no-unused-vars": ["off" /* , {
         "vars": "all",
         "args": "after-used",

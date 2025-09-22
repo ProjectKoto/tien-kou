@@ -40,7 +40,7 @@ const makeRcloneJsWrapper = (tkCtx: TkContext) => {
 
   return async (...args: (string | AnyObj)[]) => {
     const argsEmpty = args.length === 0
-    let flags = args.pop();
+    let flags = args.pop()
 
     if (!!flags && typeof flags === 'object' && flags.constructor === Object && flags.constructor !== Number) {
       flags = {
@@ -115,7 +115,7 @@ function batchCallUrl(urlListStr: string, logStr: string) {
     })())
   }
 
-   return Promise.all(pList)
+  return Promise.all(pList)
 }
 
 main()

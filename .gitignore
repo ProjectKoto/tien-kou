@@ -184,3 +184,4 @@ dist
 /markdown.db
 **/nodeEnv.mjs
 /tg
+/data

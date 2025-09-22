@@ -5,7 +5,7 @@ import * as honoTypes from "hono/types"
 import * as liquid from "liquidjs"
 import mimeDbJson from 'mime-db/db.json'
 import mimeType from 'mime-types'
-import { dedicatedAssetExtNames, l, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
+import { dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
 import { AHT, EA, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
@@ -57,7 +57,16 @@ export const hc = <T extends hono.Env,>(ctx: TkContext | undefined): hono.Contex
   return hc_
 }
 
-export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(async <HE extends hono.Env, >({
+export type HonoEnvVariablesType<HE extends hono.Env> = {
+  tkCtx: TkContextHl<HE>
+}
+
+export type HonoEnvTypeWithTkCtx<B extends object> = {
+  Bindings?: B
+  Variables: HonoEnvVariablesType<HonoEnvTypeWithTkCtx<B>>
+}
+
+export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(async <HE extends HonoEnvTypeWithTkCtx<object>, >({
   TienKouAssetFetchHandler,
   LiquidHandler,
   TienKouAssetCategoryLogicHandler,
@@ -78,22 +87,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     IntegratedCachePolicyHandler,
     TkProvideCtxFromNothingHandler: {
       fetchTkCtxFromNothing: async () => {
-        // simulate one
-        const honoCtx = honoGetContext()
-        return {
-          tkEnv: honoCtx.env,
-          e: honoCtx.env,
-          honoCtx: honoCtx,
-          hc: honoCtx,
-          get resultGenContext(): ResultGenContextHl<hono.Env> {
-            // TODO: save rgc in AsyncLocalContext and get
-            throw new TkErrorHttpAware("getting resultGenContext from TkProvideCtxFromNothingHandler not implemented") 
-          },
-          get rgc(): ResultGenContextHl<hono.Env> {
-            // TODO: save rgc in AsyncLocalContext and get
-            throw new TkErrorHttpAware("getting resultGenContext from TkProvideCtxFromNothingHandler not implemented")
-          },
-        } as TkContextHl<hono.Env>
+        const honoCtx = honoGetContext<HE>()
+        return honoCtx.get("tkCtx")
       },
     }
   })
@@ -133,26 +128,15 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     // hono already done urldecode to this.
     const reqPath = honoCtx.req.path
 
-    const lazyVal = <T,>(loadVal: () => T) => {
-      let val: T | undefined = undefined
-      return () => {
-        if (val !== undefined) {
-          return val
-        }
-        val = loadVal()
-        return val
-      }
-    }
+    const urlGetter = lazyValue(() => new URL(honoCtx.req.url))
 
-    const urlGetter = lazyVal(() => new URL(honoCtx.req.url))
+    const queryRawGetter = lazyValue(() => urlGetter().search)
 
-    const queryRawGetter = lazyVal(() => urlGetter().search)
-
-    const queryGetter = lazyVal(() => {
+    const queryGetter = lazyValue(() => {
       return Object.fromEntries(urlGetter().searchParams.entries())
     })
 
-    const queryMultiValueGetter = lazyVal(() => {
+    const queryMultiValueGetter = lazyValue(() => {
       const result:{ [x: string]: string[] } = {}
       for (const [k, v] of urlGetter().searchParams.entries()) {
         let vArr = result[k]
@@ -163,6 +147,10 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
         vArr.push(v)
       }
       return result
+    })
+
+    const ifNoneMatchHeaderGetter = lazyValue(() => {
+      return honoCtx.req.header('If-None-Match')
     })
 
     l('reqPath', reqPath)
@@ -185,6 +173,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       reqSearchStr: () => { return queryRawGetter() },
       reqQueryMulti: () => { return queryMultiValueGetter() },
       reqSearchMulti: () => { return queryMultiValueGetter() },
+      dataVersion: async () => { return IntegratedCachePolicyHandler.fetchDataVersion(tkCtx) },
+      reqIfNoneMatchHeader: () => { return ifNoneMatchHeaderGetter() },
       mainTemplateRelPath: "main.tmpl.html",
       markdownExtNames,
       listableAssetExtNames,
@@ -208,6 +198,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       },
     }
 
+    honoCtx.set('tkCtx', tkCtx)
+
     return tkCtx
   }
 
@@ -217,6 +209,10 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     await TkCtxHandler.triggerProcessTkCtx(tkCtx)
 
     return { tkCtx, rgc: tkCtx.rgc, resultGenContext: tkCtx.resultGenContext }
+  }
+
+  const processTkCtxPostReqHandle = async (tkCtx: TkContextHl<HE>) => {
+    await TkCtxHandler.triggerProcessTkCtxOnEnd(tkCtx)
   }
 
   const serveGenericLocatableAsset = async <HE extends hono.Env>({ hc, rgc }: { hc: hono.Context, rgc: ResultGenContextHl<HE> }, subPath: string) => {
@@ -245,8 +241,11 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
 
   const handlerServeGenericLocatableAsset = async (c: hono.Context) => {
     const { tkCtx, rgc } = await processOnHonoCtxReceive(c)
-
-    return await serveGenericLocatableAsset(tkCtx, rgc.reqPathTidy)
+    try {
+      return await serveGenericLocatableAsset(tkCtx, rgc.reqPathTidy)
+    } finally {
+      await processTkCtxPostReqHandle(tkCtx)
+    }
   }
 
   honoApp.get('/favicon.ico', handlerServeGenericLocatableAsset)
@@ -259,37 +258,54 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
   
   honoApp.get('/admin/:op', async (c) => {
     const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
-    const rgc = resultGenContext
-    void(rgc)
-  
-    const op = c.req.param("op")
-  
-    if (op === "refreshSiteVersion") {
-      await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
-      return c.text("refreshed")
-    } else {
-      return c.text("invalid op", 404)
+    try {
+      const rgc = resultGenContext
+      void(rgc)
+    
+      const op = c.req.param("op")
+    
+      if (op === "refreshSiteVersion") {
+        await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
+        return c.text("refreshed")
+      } else {
+        return c.text("invalid op", 404)
+      }
+    } finally {
+      await processTkCtxPostReqHandle(tkCtx)
     }
   })
   
   honoApp.get('/*', async (c) => {
     const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
-    const rgc = resultGenContext
-  
-    await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
-  
-    const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
-      globals: { rgc, now: new Date().getTime() },
-    })
-  
-    // console.log(`renderResult: ${renderResult}`)
-    // l('rgc', rgc)
-  
-    if (rgc.respGenericLocatableAssetSubPath) {
-      return await serveGenericLocatableAsset(tkCtx, rgc.respGenericLocatableAssetSubPath)
+    try {
+      const rgc = resultGenContext
+    
+      await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
+    
+      const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
+        globals: { rgc, now: new Date().getTime() },
+      })
+    
+      // console.log(`renderResult: ${renderResult}`)
+      // l('rgc', rgc)
+    
+      if (rgc.respSend304) {
+        return c.body(null, 304)
+      }
+
+      if (rgc.respGenericLocatableAssetSubPath) {
+        return await serveGenericLocatableAsset(tkCtx, rgc.respGenericLocatableAssetSubPath)
+      }
+      
+      if (rgc.respETag) {
+        c.header('Cache-Control', 'max-age=0, must-revalidate')
+        c.header('ETag', rgc.respETag)
+      }
+
+      return c.html(renderResult, rgc.respStatusCode || 200)
+    } finally {
+      await processTkCtxPostReqHandle(tkCtx)
     }
-  
-    return c.html(renderResult, rgc.respStatusCode || 200)
   })
 
   return EA(super_, {

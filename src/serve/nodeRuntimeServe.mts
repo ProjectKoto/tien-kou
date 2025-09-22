@@ -5,7 +5,7 @@ import path from "node:path"
 import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
-import { AbstractTkSqlLiquidHonoApp, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
+import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHl, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
 import { AbstractTkSqlAssetFetchHandler, EA, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { TkContext } from '../lib/common.mts'
@@ -127,7 +127,7 @@ const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
 
   // applyTkEnvToProcessEnv(tkEnv)
 
-  const super_ = await AbstractTkSqlLiquidHonoApp<HonoWithErrorHandler<AnyObj>>()({
+  const super_ = await AbstractTkSqlLiquidHonoApp<HonoWithErrorHandler<HonoEnvTypeWithTkCtx<AnyObj>>>()({
     TienKouAssetFetchHandler,
     LiquidHandler,
     TienKouAssetCategoryLogicHandler,
@@ -139,7 +139,7 @@ const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
           ...tkEnv
         }
       },
-    } as TkContextHlGetTkEnvHandler<AnyObj>,
+    } as TkContextHlGetTkEnvHandler<HonoEnvTypeWithTkCtx<AnyObj>>,
     TkCtxHandler,
   })
 

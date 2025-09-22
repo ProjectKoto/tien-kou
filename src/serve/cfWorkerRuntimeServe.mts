@@ -1,8 +1,8 @@
 
 import * as hono from 'hono'
-import { AnyObj, l, le, TkError } from '../lib/common.mts'
+import { AnyObj, l, LazyVal, lazyValue, le, quickStrHash, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
-import { AbstractTkSqlLiquidHonoApp, hc, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
+import { AbstractTkSqlLiquidHonoApp, hc, HonoEnvTypeWithTkCtx, HonoEnvVariablesType, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
 import { AbstractTkSqlAssetFetchHandler, EA, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
@@ -12,7 +12,7 @@ import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
 import isArrayBuffer from 'is-array-buffer'
 
 type CfweBindings = AnyObj
-type Cfwe = { "Bindings": CfweBindings, "Variables": AnyObj }
+type Cfwe = HonoEnvTypeWithTkCtx<CfweBindings>
 
 // TkContext with Hono & Liquid & Cloudflare Worker Env
 export interface TkContextHlc extends TkContextHl<Cfwe> {
@@ -47,13 +47,15 @@ const cfwe = (ctx: TkContext | undefined): CfweBindings => {
   return we
 }
 
-const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
+const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, TkEachCtxNotifyHandler }: KD<"TkFirstCtxProvideHandler" | "TkEachCtxNotifyHandler">) => {
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (_ctx0) => {
 
   })
 
-  return {
+  const slotCount = 2
+
+  const r: MiddleCacheHandler = {
     // TODO: LOCK???
     fetchDataVersion: async (ctx) => {
       const we = cfwe(ctx)
@@ -69,59 +71,147 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
     },
     evictForNewDataVersion: async (ctx: TkContext, backstoreDataVersion: number) => {
       const we = cfwe(ctx)
-      await we.KV.delete("dataVersion")
-      // await we.KV.put("dataVersion", "")
 
-      const cacheKvList = []
-      let currCursor = undefined
-      while (true) {
-        // max 1000
-        const currPage = await we.KV.list({ prefix: "middleCacheVal:", cursor: currCursor }) as AnyObj
-        cacheKvList.push(...currPage.keys)
-        if (!currPage.list_complete && currPage.cursor) {
-          currCursor = currPage.cursor
-          continue
-        } else {
-          break
-        }
+      // all write could fail
+      try {
+        await we.KV.delete("dataVersion")
+        // await we.KV.put("dataVersion", "")
+      } catch (e) {
+        le('evictForNewDataVersion: KV.delete', e)
       }
-      for (const k of cacheKvList) {
-        try {
-          await we.KV.delete(k.name)
-        } catch (e) {
-          le('KV.delete', e)
+
+      const doDeleteMiddleCacheKvPairs = true
+
+      if (doDeleteMiddleCacheKvPairs) {
+        const cacheKvList = []
+        let currCursor = undefined
+        while (true) {
+          // max 1000
+          const currPage = await we.KV.list({ prefix: "middleCacheVal:", cursor: currCursor }) as AnyObj
+          cacheKvList.push(...currPage.keys)
+          if (!currPage.list_complete && currPage.cursor) {
+            currCursor = currPage.cursor
+            continue
+          } else {
+            break
+          }
         }
-        // await we.kv.put(k.name, "undefined")
+
+        for (const k of cacheKvList) {
+          try {
+            await we.KV.delete(k.name)
+          } catch (e) {
+            le('evictForNewDataVersion: KV.delete', e)
+          }
+          // await we.kv.put(k.name, "undefined")
+        }
       }
 
       console.log("KvCache:evictForNewDataVersion:new", backstoreDataVersion)
-      await we.KV.put("dataVersion", backstoreDataVersion)
+
+      try {
+        await we.KV.put("dataVersion", backstoreDataVersion)
+      } catch (e) {
+        le('evictForNewDataVersion: KV.put', e)
+      }
     },
     getInCache: async <T,>(ctx: TkContext, k: string): Promise<T | undefined> => {
-      // TODO: LOCK???
-      const we = cfwe(ctx)
-      return JSON.parse(await we.KV.get("middleCacheVal:" + k))
+      const cfkvCaches: (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean })[] = (ctx as AnyObj)['cfkvCaches']
+
+      const kHash = quickStrHash(k)
+      const kSlot = kHash % slotCount
+      const cache = await cfkvCaches[kSlot]()
+      if (cache === undefined) {
+        return undefined
+      }
+      return cache[k]
     },
     putInCache: async <T,>(ctx: TkContext, k: string, v: T | undefined): Promise<void> => {
-      // TODO: LOCK???
-      const we = cfwe(ctx)
-      await we.KV.put("middleCacheVal:" + k, JSON.stringify(v, function (k, v) {
-        if (isArrayBuffer(v)) {
-          return {
-            type: 'Buffer',
-            data: [...new Uint8Array(v)]
-          }
-        }
-        return v
-      }))
+      const cfkvCaches: (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean })[] = (ctx as AnyObj)['cfkvCaches']
+
+      const kHash = quickStrHash(k)
+      const kSlot = kHash % slotCount
+      const cacheLazy = cfkvCaches[kSlot]
+      const cache = await cacheLazy()
+      if (cache === undefined) {
+        return
+      }
+      cache[k] = v
+      cacheLazy.isModified = true
     },
   }
+
+  TkEachCtxNotifyHandler.listenOnEachTkContextArrived(async (ctx) => {
+    // TODO: LOCK???
+    const cfkvCaches: (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean })[] = []
+    ;(ctx as AnyObj)['cfkvCaches'] = cfkvCaches
+
+    const we = cfwe(ctx)
+
+    const dataVersion = lazyValue(() => {
+      return r.fetchDataVersion(ctx)
+    })
+
+    ;(ctx as AnyObj)['dataVersionForCfkvCaches'] = dataVersion
+
+    for (let i = 0; i < slotCount; i++) {
+      const fixedI = i
+      cfkvCaches.push(lazyValue(() => {
+        return (async (): Promise<AnyObj | undefined> => {
+          const dv = await dataVersion()
+          if (dv !== undefined) {
+            const cacheValStr: string | null = await we.KV.get("middleCacheVal:" + dv.toString() + ":s" + fixedI.toString())
+            if (cacheValStr == null) {
+              return {} as AnyObj
+            } else {
+              return JSON.parse(cacheValStr) as AnyObj
+            }
+          } else {
+            return undefined
+          }
+        })()
+      }) as (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean }))
+    }
+
+  })
+
+  TkEachCtxNotifyHandler.listenOnEachTkContextEnded(async (ctx) => {
+    // TODO: LOCK???
+    const cfkvCaches: (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean })[] = (ctx as AnyObj)['cfkvCaches']
+    const we = cfwe(ctx)
+
+    const dataVersion = (ctx as AnyObj)['dataVersionForCfkvCaches'] as LazyVal<Promise<number | undefined>>
+
+    for (let i = 0; i < slotCount; i++) {
+      const fixedI = i
+      const currCacheLazy = cfkvCaches[i]
+      if (currCacheLazy.isCalled && currCacheLazy.isModified) {
+        const dv = await dataVersion()
+        if (dv !== undefined) {
+          const currCacheUnlazy = await currCacheLazy()
+          if (currCacheUnlazy !== undefined) {
+            await we.KV.put("middleCacheVal:" + dv.toString() + ":s" + fixedI.toString(), JSON.stringify(currCacheUnlazy, function (k, v) {
+              if (isArrayBuffer(v)) {
+                return {
+                  type: 'Buffer',
+                  data: [...new Uint8Array(v)]
+                }
+              }
+              return v
+            }))
+          }
+        }
+      }
+    }
+  })
+
+  return r
 })
 
 const RoutedMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, CloudflareWorkerKvCacheHandler, NoMiddleCacheHandler }: KD<"TkFirstCtxProvideHandler", { CloudflareWorkerKvCacheHandler: MiddleCacheHandler, NoMiddleCacheHandler: MiddleCacheHandler }>) => {
 
-  // let cacheLevel = "kv"
-  let cacheLevel = "no"
+  let cacheLevel = "kv"
+  // let cacheLevel = "no"
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (ctx0) => {
     cacheLevel = cfwe(ctx0).CACHE_LEVEL || cacheLevel
@@ -213,6 +303,7 @@ const appExportedObjPromise = (async () => {
 
   const TkCtxHandler = await MainTkCtxHandler({})
   const TkFirstCtxProvideHandler = TkCtxHandler
+  const TkEachCtxNotifyHandler = TkCtxHandler
 
   const SqlDbHandler = await TursoSqlDbHandler({
     TkFirstCtxProvideHandler,
@@ -227,6 +318,7 @@ const appExportedObjPromise = (async () => {
     TkFirstCtxProvideHandler,
     CloudflareWorkerKvCacheHandler: await CloudflareWorkerKvCacheHandler({
       TkFirstCtxProvideHandler,
+      TkEachCtxNotifyHandler,
     }),
     NoMiddleCacheHandler: await NoMiddleCacheHandler({
       TkFirstCtxProvideHandler,

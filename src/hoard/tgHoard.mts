@@ -260,7 +260,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
             if (repliedMsgMinId < 0) {
               repliedMsgMinId = 0
             }
-            let repliedMsgMaxId = repliedMsgId + 10
+            const repliedMsgMaxId = repliedMsgId + 10
             try {
               const repliedMessageSurroundList = (await client.getMessages(inputPeer, {
                 minId: repliedMsgMinId,
@@ -475,7 +475,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       await d()
     }
 
-    let messagesToFetchMedia = [message, extInvolvedMessage, extInvolvedMessageLv2, extInvolvedMessageLv3, extInvolvedMessageLv4]
+    const messagesToFetchMedia = [message, extInvolvedMessage, extInvolvedMessageLv2, extInvolvedMessageLv3, extInvolvedMessageLv4]
     messagesToFetchMedia.push(...messagesToFetchMedia.flatMap(m => (m as AnyObj)?.sameGroupedMessages || []))
     for (const currM of messagesToFetchMedia) {
       if (currM) {

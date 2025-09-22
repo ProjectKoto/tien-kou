@@ -5,7 +5,7 @@ import { LiquidCache } from "liquidjs/dist/cache"
 import { default as markdownit } from 'markdown-it'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le } from "../lib/common.mts"
+import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash } from "../lib/common.mts"
 import { AHT, EA, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
@@ -160,7 +160,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     for (const p of liquidShapeParams) {
       if (p !== undefined && p !== null && Array.isArray(p) && p.length >= 2) {
         let k = p[0]
-        let kMapped = aliasMap[k]
+        const kMapped = aliasMap[k]
         if (kMapped) {
           k = kMapped
         }
@@ -774,24 +774,24 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
   LiquidHandler.registerFilterPostCreate("queryLiveAssetByRawLocators", async function (a, ...rest) {
     const rgc = this.context.getSync(['rgc']) as ResultGenContext
-      const assetLocators = a ?? this.context.getSync(['liveAssetLocators'])
+    const assetLocators = a ?? this.context.getSync(['liveAssetLocators'])
 
-      if (assetLocators !== undefined && (typeof assetLocators !== 'object' || !Array.isArray(assetLocators))) {
-        le('assetLocators is not an array', a, assetLocators)
-        throw new TkErrorHttpAware('assetLocators is not an array')
-      }
+    if (assetLocators !== undefined && (typeof assetLocators !== 'object' || !Array.isArray(assetLocators))) {
+      le('assetLocators is not an array', a, assetLocators)
+      throw new TkErrorHttpAware('assetLocators is not an array')
+    }
 
-      const extraOpt = parseExtraOptFromLiquidShapeParams<WrapperOpt<QueryLiveAssetCommonParam>>({
-        tkCtx: rgc.tkCtx(),
-        locatorSubPaths: assetLocators,
-        locatorTopDirs: [''],
-        shouldIncludeDerivingParent: true,
-        shouldFetchRawBytes: true,
-        shouldThrowIfNotFound: false,
-        shouldConvertToString: true,
-      }, rest, {
-        locatorPaths: 'locatorSubPaths',
-      })
+    const extraOpt = parseExtraOptFromLiquidShapeParams<WrapperOpt<QueryLiveAssetCommonParam>>({
+      tkCtx: rgc.tkCtx(),
+      locatorSubPaths: assetLocators,
+      locatorTopDirs: [''],
+      shouldIncludeDerivingParent: true,
+      shouldFetchRawBytes: true,
+      shouldThrowIfNotFound: false,
+      shouldConvertToString: true,
+    }, rest, {
+      locatorPaths: 'locatorSubPaths',
+    })
 
 
     const result = await TienKouAssetFetchHandler.queryLiveAsset(extraOpt)
@@ -1021,6 +1021,14 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       return false
     }
     return s.endsWith(s1)
+  })
+
+  LiquidHandler.registerFilterPostCreate("toString", async function (a) {
+    return a.toString()
+  })
+
+  LiquidHandler.registerFilterPostCreate("quickStrHash", async function (...rest) {
+    return quickStrHash(rest.join(''))
   })
 
   LiquidHandler.registerFilterPostCreate("btos", bytesLikeToString)
