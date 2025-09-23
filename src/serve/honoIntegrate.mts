@@ -153,6 +153,18 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       return honoCtx.req.header('If-None-Match')
     })
 
+    const serverDeployVersionGetter = lazyValue(() => {
+      const he = honoCtx?.env
+      if (he) {
+        const cfVerMetadata = (he as AnyObj)["CF_VERSION_METADATA"]
+        if (cfVerMetadata) {
+          const { tag: versionTag } =  cfVerMetadata
+          return (versionTag || "cfUnknown").toString()
+        }
+      }
+      return "otherUnknown"
+    })
+
     l('reqPath', reqPath)
   
     if (!reqPath.startsWith('/')) {
@@ -173,6 +185,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       reqSearchStr: () => { return queryRawGetter() },
       reqQueryMulti: () => { return queryMultiValueGetter() },
       reqSearchMulti: () => { return queryMultiValueGetter() },
+      serverDeployVersion: () => { return serverDeployVersionGetter() },
       dataVersion: async () => { return IntegratedCachePolicyHandler.fetchDataVersion(tkCtx) },
       reqIfNoneMatchHeader: () => { return ifNoneMatchHeaderGetter() },
       mainTemplateRelPath: "main.tmpl.html",
