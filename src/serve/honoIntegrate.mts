@@ -268,7 +268,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     
       if (op === "refreshSiteVersion") {
         await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
-        return c.text("refreshed")
+        return c.text("refreshed " + (await IntegratedCachePolicyHandler.fetchDataVersion(tkCtx)).toString())
       } else {
         return c.text("invalid op", 404)
       }
