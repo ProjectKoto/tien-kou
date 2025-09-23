@@ -158,8 +158,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       if (he) {
         const cfVerMetadata = (he as AnyObj)["CF_VERSION_METADATA"]
         if (cfVerMetadata) {
-          const { tag: versionTag } =  cfVerMetadata
-          return (versionTag || "cfUnknown").toString()
+          const { id: versionId } =  cfVerMetadata
+          return (versionId || "cfUnknown").toString()
         }
       }
       return "otherUnknown"
