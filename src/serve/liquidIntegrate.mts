@@ -1124,7 +1124,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       let closed = false
       while(remainingTokens.length) {
         const token = remainingTokens.shift()
-        if (token && ((token as AnyObj).name === 'endqw' || (token as AnyObj).name === 'wq')) {
+        if (token && liquid.TypeGuards.isTagToken(token) && ((token as AnyObj).name === 'endqw' || (token as AnyObj).name === 'wq')) {
           closed = true
           break
         }
@@ -1186,7 +1186,6 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     },
   })
 
-  // Quickmacro
   LiquidHandler.registerTagPostCreate("backpatch", class BackpatchTag extends liquid.Tag {
     
     identifier: IdentifierToken | QuotedToken
@@ -1194,11 +1193,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
 
     constructor(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[], liquid: Liquid) {
       super(tagToken, remainingTokens, liquid)
-      this.identifier = this.readVariable()
+      this.identifier = this.readBackpatchName()
       this.backpatchName = this.identifier.content
     }
-    // From Liquid.js capture tag
-    private readVariable (): IdentifierToken | QuotedToken {
+    // modified from Liquid.js capture tag
+    private readBackpatchName (): IdentifierToken | QuotedToken {
       let ident = this.tokenizer.readIdentifier() as IdentifierToken | undefined
       if (ident?.content) return ident
       ident = this.tokenizer.readQuoted()
@@ -1218,6 +1217,58 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     }
     
   })
+
+  // modified from Liquid.js capture tag
+  const backpatchValTagClass = class BackpatchValTag extends liquid.Tag {
+    identifier: IdentifierToken | QuotedToken
+    backpatchName: string
+    templates: liquid.Template[] = []
+    constructor (tagToken: liquid.TagToken, remainTokens: liquid.TopLevelToken[], liqInst: Liquid, parser: liquid.Parser) {
+      super(tagToken, remainTokens, liqInst)
+      this.identifier = this.readBackpatchName()
+      this.backpatchName = this.identifier.content
+
+      while (remainTokens.length) {
+        const token = remainTokens.shift()!
+        if (token && liquid.TypeGuards.isTagToken(token)) {
+          const tokenTagNameLower = ((token as AnyObj).name as string).toLowerCase()
+          if (tokenTagNameLower === 'endbackpatchval' || tokenTagNameLower === 'endbackpatchvalue' || tokenTagNameLower === 'endbpval' || tokenTagNameLower === 'endbpvalue') {
+            return
+          }
+        }
+        this.templates.push(parser.parseToken(token, remainTokens))
+      }
+      throw new Error(`tag ${tagToken.getText()} not closed`)
+    }
+
+    private readBackpatchName (): IdentifierToken | QuotedToken {
+      let ident: IdentifierToken | QuotedToken | undefined = this.tokenizer.readIdentifier()
+      if (ident.content) return ident
+      ident = this.tokenizer.readQuoted()
+      if (ident) return ident
+      throw this.tokenizer.error('invalid capture name')
+    }
+
+    * render (ctx: liquid.Context): Generator<unknown, void, string> {
+      const r = this.liquid.renderer
+      const html = yield r.renderTemplates(this.templates, ctx)
+      const rgc = ctx.getSync(['rgc']) as ResultGenContext
+      if (rgc['backpatchValueMap'] === undefined) {
+        rgc['backpatchValueMap'] = {}
+      }
+      rgc['backpatchValueMap'][this.backpatchName] = html
+    }
+
+    public children (): liquid.Template[] {
+      return this.templates
+    }
+
+    public * localScope (): Iterable<string | IdentifierToken | QuotedToken> {
+      yield this.identifier
+    }
+  }
+  LiquidHandler.registerTagPostCreate("backpatchVal", backpatchValTagClass)
+  LiquidHandler.registerTagPostCreate("backpatchValue", backpatchValTagClass)
 
   if (LiquidFilterRegisterHandlerList && LiquidFilterRegisterHandlerList.length > 0) {
     for (const frh of LiquidFilterRegisterHandlerList) {
