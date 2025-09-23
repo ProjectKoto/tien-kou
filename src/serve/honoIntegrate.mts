@@ -5,7 +5,7 @@ import * as honoTypes from "hono/types"
 import * as liquid from "liquidjs"
 import mimeDbJson from 'mime-db/db.json'
 import mimeType from 'mime-types'
-import { dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
+import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
 import { AHT, EA, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
@@ -179,6 +179,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       markdownExtNames,
       listableAssetExtNames,
       dedicatedAssetExtNames,
+      backpatches: {} as AnyObj,
+      backpatchValueMap: {} as AnyObj,
     }
 
     resultGenContext.rgc = resultGenContext
@@ -282,9 +284,43 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     
       await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
     
-      const renderResult = await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
+      let renderResult = (await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
         globals: { rgc, now: new Date().getTime() },
-      })
+      })) as string
+
+      l('backpatches', rgc['backpatches'])
+      l('backpatchValueMap', rgc['backpatchValueMap'])
+      if (rgc['backpatches'] && Object.keys(rgc['backpatches']).length && rgc['backpatchValueMap']) {
+        const backpatches = [ ... Object.values(rgc['backpatches']) ] as {
+          name: string,
+          outputOffset: number,
+        }[]
+
+        const backpatchValueMap = rgc['backpatchValueMap'] as AnyObj
+        
+        backpatches.sort((a, b) => {
+          return a.outputOffset - b.outputOffset
+        })
+
+        const segments: string[] = []
+        let cursor = 0
+        for (const backpatch of backpatches) {
+          if (cursor >= renderResult.length) {
+            break
+          }
+          if (cursor >= backpatch.outputOffset) {
+            continue
+          }
+          segments.push(renderResult.substring(cursor, backpatch.outputOffset))
+          const backpatchValue = (backpatchValueMap[backpatch.name] ?? '_').toString()
+          segments.push(backpatchValue)
+          cursor = backpatch.outputOffset + 1
+        }
+        if (cursor < renderResult.length) {
+          segments.push(renderResult.substring(cursor, renderResult.length))
+        }
+        renderResult = segments.join('')
+      }
     
       // console.log(`renderResult: ${renderResult}`)
       // l('rgc', rgc)

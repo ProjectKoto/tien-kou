@@ -10,6 +10,7 @@ import { AHT, EA, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLo
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
 import { FilterHandler, FilterOptions, TagClass, TagImplOptions } from "liquidjs/dist/template"
+import { IdentifierToken, QuotedToken } from "liquidjs/dist/tokens"
 
 export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
@@ -1183,6 +1184,39 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     * arguments () {
       yield * (this as AnyObj).renderTag.arguments()
     },
+  })
+
+  // Quickmacro
+  LiquidHandler.registerTagPostCreate("backpatch", class BackpatchTag extends liquid.Tag {
+    
+    identifier: IdentifierToken | QuotedToken
+    backpatchName: string
+
+    constructor(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[], liquid: Liquid) {
+      super(tagToken, remainingTokens, liquid)
+      this.identifier = this.readVariable()
+      this.backpatchName = this.identifier.content
+    }
+    // From Liquid.js capture tag
+    private readVariable (): IdentifierToken | QuotedToken {
+      let ident = this.tokenizer.readIdentifier() as IdentifierToken | undefined
+      if (ident?.content) return ident
+      ident = this.tokenizer.readQuoted()
+      if (ident) return ident
+      throw this.tokenizer.error('invalid backpatch name')
+    }
+    render(context: liquid.Context, emitter: liquid.Emitter) {
+      const rgc = context.getSync(['rgc']) as ResultGenContext
+      if (rgc['backpatches'] === undefined) {
+        rgc['backpatches'] = {}
+      }
+      rgc['backpatches'][this.backpatchName] = {
+        name: this.backpatchName,
+        outputOffset: emitter.buffer.length,
+      }
+      emitter.write('@')
+    }
+    
   })
 
   if (LiquidFilterRegisterHandlerList && LiquidFilterRegisterHandlerList.length > 0) {
