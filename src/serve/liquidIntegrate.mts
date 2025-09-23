@@ -749,6 +749,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   })
 
   LiquidHandler.registerFilterPostCreate("toBoolean", function (a) { return !!a })
+  LiquidHandler.registerFilterPostCreate("not", function (a) { return !a })
   LiquidHandler.registerFilterPostCreate("forceFalse", function (a) { return false })
   LiquidHandler.registerFilterPostCreate("forceTrue", function (a) { return true })
   LiquidHandler.registerFilterPostCreate("sqlLikePatternEscape", sqlLikePatternEscape)
@@ -1114,6 +1115,15 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     }
   }
 
+  LiquidHandler.registerTagPostCreate("preloadTmpl", {
+    parse(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[]) {
+      ;(this as liquid.Tag & TagImplOptions).renderTag = new liquid.RenderTag(tagToken, remainingTokens, this.liquid, this.liquid.parser)
+    },
+    * render(_context, _emitter) {
+      yield this.liquid.options.fs.readFile(this.renderTag.file as string)
+    },
+  })
+  
   LiquidHandler.registerTagPostCreate("qw", {
     parse(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[]) {
       ;(this as liquid.Tag & TagImplOptions).renderTag = new liquid.RenderTag(tagToken, remainingTokens, this.liquid, this.liquid.parser)
