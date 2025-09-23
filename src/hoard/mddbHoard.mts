@@ -251,7 +251,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
         }
         // reimportSqlDataList
-        l('reimportSqlDdlList')
+        l('reimportSqlDataList')
         {
           await tursoBatchWrapper(tursoc, reimportSqlDataList)
           // const transaction = await tursoc.transaction("write");
@@ -264,6 +264,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           //   transaction.close();
           // }
         }
+        l('reimportSql done')
       }, {
         onFailedAttempt: error => {
           le(error.message)
