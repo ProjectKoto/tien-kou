@@ -251,7 +251,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     },
     parseLimit: 1e8, // 100M?
     // renderLimit: 3000, // limit each render to be completed in
-    renderLimit: 10000, // limit each render to be completed in
+    renderLimit: 17000, // limit each render to be completed in
     // memoryLimit: 32e6, // 32M,
     memoryLimit: 320e6,
     relativeReference: false,
@@ -889,7 +889,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     return Object.values(a)
   })
 
-  LiquidHandler.registerFilterPostCreate("newArr", function (repetition: number | undefined, el: any | undefined) {
+  LiquidHandler.registerFilterPostCreate("newArr", function (repetition: number | undefined, el: unknown | undefined) {
     if (repetition === undefined) {
       return []
     }
@@ -909,7 +909,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     }
     return a
   }
-  const arrayInplacePushTo: liquid.FilterImplOptions = function (a, b: any[]) {
+  const arrayInplacePushTo: liquid.FilterImplOptions = function (a, b: unknown[]) {
     b.push(a)
     return b
   }
@@ -919,7 +919,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   LiquidHandler.registerFilterPostCreate("inplacePushTo", arrayInplacePushTo)
   LiquidHandler.registerFilterPostCreate("inplace_push_to", arrayInplacePushTo)
 
-  LiquidHandler.registerFilterPostCreate("applyFilters", async function(a, b: [string, ...any][] | undefined) {
+  LiquidHandler.registerFilterPostCreate("applyFilters", async function(a, b: [string, ...unknown[]][] | undefined) {
     if (b === undefined) {
       return a
     }

@@ -47,6 +47,9 @@ const cfwe = (ctx: TkContext | undefined): CfweBindings => {
   return we
 }
 
+// Middle Cache value
+const kvCacheKeyPrefix = 'mc:'
+
 const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, TkEachCtxNotifyHandler }: KD<"TkFirstCtxProvideHandler" | "TkEachCtxNotifyHandler">) => {
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (_ctx0) => {
@@ -54,6 +57,16 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
   })
 
   const slotCount = 2
+  const decideSlotForCacheKey = (k: string) => {
+    // const kHash = quickStrHash(k)
+    // const kSlot = kHash % slotCount
+    // return kSlot
+
+    // if (k.startsWith('slot1:')) {
+    //   return 1
+    // }
+    return 0
+  }
 
   const r: MiddleCacheHandler = {
     // TODO: LOCK???
@@ -73,11 +86,21 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
       const we = cfwe(ctx)
 
       // all write could fail
+      // try {
+      //   l('KV.delete dataVersion')
+      //   await we.KV.delete("dataVersion")
+      //   // await we.KV.put("dataVersion", "")
+      // } catch (e) {
+      //   le('evictForNewDataVersion: KV.delete', e)
+      // }
+
+      l("KvCache:evictForNewDataVersion:new", backstoreDataVersion)
+
       try {
-        await we.KV.delete("dataVersion")
-        // await we.KV.put("dataVersion", "")
+        l('KV.put dataVersion', backstoreDataVersion)
+        await we.KV.put("dataVersion", backstoreDataVersion)
       } catch (e) {
-        le('evictForNewDataVersion: KV.delete', e)
+        le('evictForNewDataVersion: KV.put', e)
       }
 
       const doDeleteMiddleCacheKvPairs = true
@@ -87,7 +110,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
         let currCursor = undefined
         while (true) {
           // max 1000
-          const currPage = await we.KV.list({ prefix: "middleCacheVal:", cursor: currCursor }) as AnyObj
+          const currPage = await we.KV.list({ prefix: kvCacheKeyPrefix, cursor: currCursor }) as AnyObj
           cacheKvList.push(...currPage.keys)
           if (!currPage.list_complete && currPage.cursor) {
             currCursor = currPage.cursor
@@ -99,6 +122,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
 
         for (const k of cacheKvList) {
           try {
+            l('KV.delete', k.name)
             await we.KV.delete(k.name)
           } catch (e) {
             le('evictForNewDataVersion: KV.delete', e)
@@ -106,31 +130,23 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
           // await we.kv.put(k.name, "undefined")
         }
       }
-
-      console.log("KvCache:evictForNewDataVersion:new", backstoreDataVersion)
-
-      try {
-        await we.KV.put("dataVersion", backstoreDataVersion)
-      } catch (e) {
-        le('evictForNewDataVersion: KV.put', e)
-      }
     },
     getInCache: async <T,>(ctx: TkContext, k: string): Promise<T | undefined> => {
       const cfkvCaches: (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean })[] = (ctx as AnyObj)['cfkvCaches']
 
-      const kHash = quickStrHash(k)
-      const kSlot = kHash % slotCount
+      const kSlot = decideSlotForCacheKey(k)
       const cache = await cfkvCaches[kSlot]()
       if (cache === undefined) {
         return undefined
       }
       return cache[k]
+
+      
     },
     putInCache: async <T,>(ctx: TkContext, k: string, v: T | undefined): Promise<void> => {
       const cfkvCaches: (LazyVal<Promise<AnyObj | undefined>> & { isModified: undefined | boolean })[] = (ctx as AnyObj)['cfkvCaches']
 
-      const kHash = quickStrHash(k)
-      const kSlot = kHash % slotCount
+      const kSlot = decideSlotForCacheKey(k)
       const cacheLazy = cfkvCaches[kSlot]
       const cache = await cacheLazy()
       if (cache === undefined) {
@@ -160,7 +176,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
         return (async (): Promise<AnyObj | undefined> => {
           const dv = await dataVersion()
           if (dv !== undefined) {
-            const cacheValStr: string | null = await we.KV.get("middleCacheVal:" + dv.toString() + ":s" + fixedI.toString())
+            const cacheValStr: string | null = await we.KV.get(kvCacheKeyPrefix + dv.toString() + ":s" + fixedI.toString())
             if (cacheValStr == null) {
               return {} as AnyObj
             } else {
@@ -190,7 +206,9 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
         if (dv !== undefined) {
           const currCacheUnlazy = await currCacheLazy()
           if (currCacheUnlazy !== undefined) {
-            await we.KV.put("middleCacheVal:" + dv.toString() + ":s" + fixedI.toString(), JSON.stringify(currCacheUnlazy, function (k, v) {
+            const k = kvCacheKeyPrefix + dv.toString() + ":s" + fixedI.toString()
+            l('KV.put', k)
+            await we.KV.put(k, JSON.stringify(currCacheUnlazy, function (k, v) {
               if (isArrayBuffer(v)) {
                 return {
                   type: 'Buffer',

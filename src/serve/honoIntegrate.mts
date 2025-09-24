@@ -24,6 +24,7 @@ export interface ResultGenContextHl<HE extends hono.Env,> extends ResultGenConte
   markdownExtNames: Iterable<string>,
   listableAssetExtNames: Iterable<string>,
   dedicatedAssetExtNames: Iterable<string>,
+  serverDeployVersion: () => string,
 }
 
 // TkContext with Hono & Liquid <HonoEnv>
@@ -153,7 +154,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       return honoCtx.req.header('If-None-Match')
     })
 
-    const serverDeployVersionGetter = lazyValue(() => {
+    const serverDeployVersionGetter = lazyValue<string>(() => {
       const he = honoCtx?.env
       if (he) {
         const cfVerMetadata = (he as AnyObj)["CF_VERSION_METADATA"]
@@ -281,7 +282,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
     
       if (op === "refreshSiteVersion") {
         await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
-        return c.text("refreshed " + (await IntegratedCachePolicyHandler.fetchDataVersion(tkCtx)).toString())
+        return c.text("refreshed " + (await IntegratedCachePolicyHandler.fetchDataVersion(tkCtx)).toString() + " " + rgc.serverDeployVersion())
       } else {
         return c.text("invalid op", 404)
       }

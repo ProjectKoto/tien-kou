@@ -82,12 +82,12 @@ const main = async () => {
   const onUpdate = async () => {
     const dataUpdateCbUrlStr = tkEnv.HOARD_DATA_UPDATE_CALLBACK_URL_LIST
     if (dataUpdateCbUrlStr) {
-      await batchCallUrl(dataUpdateCbUrlStr, 'dataUpdateCbUrl')
+      await batchCallUrl(dataUpdateCbUrlStr, 6000, 'dataUpdateCbUrl')
     }
 
     const dataUpdateRecacheUrlStr = tkEnv.HOARD_DATA_UPDATE_RECACHE_URL_LIST
     if (dataUpdateRecacheUrlStr) {
-      batchCallUrl(dataUpdateRecacheUrlStr, 'dataUpdateRecacheUrl')
+      batchCallUrl(dataUpdateRecacheUrlStr, 17000, 'dataUpdateRecacheUrl')
     }
   }
       
@@ -97,8 +97,8 @@ const main = async () => {
 }
 
 
-function batchCallUrl(urlListStr: string, logStr: string) {
-  const timeoutSignal = AbortSignal.timeout(6000)
+function batchCallUrl(urlListStr: string, timeoutMs: number, logStr: string) {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs)
   const urls = urlListStr.split(';')
   const pList = [] as Promise<unknown>[]
   for (let url of urls) {
