@@ -1066,7 +1066,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     if (inc === undefined || typeof inc !== 'string') {
       return
     }
-    const parts = inc.split('?', 2)
+    let parts = inc.split('?')
+    if (parts.length > 1) {
+      parts = [parts[0], parts.slice(1).join('?')]
+    }
     
     let subMacro: string | undefined
 
@@ -1074,7 +1077,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
       inc = parts[0]
       subMacro = parts[1]
     } else {
-      const parts = inc.split('#', 2)
+      let parts = inc.split('#')
+      if (parts.length > 1) {
+        parts = [parts[0], parts.slice(1).join('#')]
+      }
       if (parts.length === 2) {
         inc = parts[0]
         subMacro = parts[1]

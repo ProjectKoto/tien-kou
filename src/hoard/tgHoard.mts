@@ -445,9 +445,9 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     let jsonMessageToBeSaved
     let extraOneChildDirectiveOrSource = ""
     if (message.message && ( message.message === 'pub' || message.message.startsWith("pub ")) && m.extInvolvedMessage) {
-      const msgParts = message.message.split(' ', 2)
+      const msgParts = message.message.split(' ')
       if (msgParts.length >= 2) {
-        extraOneChildDirectiveOrSource = msgParts[1]
+        extraOneChildDirectiveOrSource = msgParts.slice(1).join(' ')
       }
       currDest = tgPubDest
       currMediaDest = tgPubMediaDest
