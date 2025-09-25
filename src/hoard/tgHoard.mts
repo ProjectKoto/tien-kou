@@ -443,11 +443,11 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     let currDest
     let currMediaDest
     let jsonMessageToBeSaved
-    let extraOneChildDirective = ""
+    let extraOneChildDirectiveOrSource = ""
     if (message.message && ( message.message === 'pub' || message.message.startsWith("pub ")) && m.extInvolvedMessage) {
       const msgParts = message.message.split(' ', 2)
       if (msgParts.length >= 2) {
-        extraOneChildDirective = msgParts[1]
+        extraOneChildDirectiveOrSource = msgParts[1]
       }
       currDest = tgPubDest
       currMediaDest = tgPubMediaDest
@@ -542,14 +542,14 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
           flush: true,
         })
       }
-      await fs.promises.appendFile(tgFilePath, `\n${genTimestampString(now)} tg=${jsonString} ${extraOneChildDirective}\n\n`, {
+      await fs.promises.appendFile(tgFilePath, `\n${genTimestampString(now)} tg=${jsonString} ${extraOneChildDirectiveOrSource}\n\n`, {
         encoding: 'utf-8',
         flush: true,
       })
-      await fs.promises.appendFile(tgFilePath, `\n${await tgMessageToHtml(jsonMessageToBeSaved as TgMessageLike)}\n`, {
-        encoding: 'utf-8',
-        flush: true,
-      })
+      // await fs.promises.appendFile(tgFilePath, `\n${await tgMessageToHtml(jsonMessageToBeSaved as TgMessageLike)}\n`, {
+      //   encoding: 'utf-8',
+      //   flush: true,
+      // })
     })
 
     await onUpdate()
