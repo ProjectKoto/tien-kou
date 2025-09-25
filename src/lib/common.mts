@@ -48,6 +48,11 @@ export const le = (...args: unknown[]) => {
 }
 
 
+// export const l = (..._args: unknown[]) => {}
+
+// export const le = (..._args: unknown[]) => {}
+
+
 
 export const sqlLikePatternEscape = (a: string) => {
   a = replaceAll(a, '\\', '\\\\')

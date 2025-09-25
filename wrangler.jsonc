@@ -26,5 +26,7 @@
   },
   "dev": {
     "port": 8568
-  }
+  },
+  "keep_names": false,
+  "minify": true
 }
