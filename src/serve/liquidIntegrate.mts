@@ -718,14 +718,28 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     xhtmlOut: true,
     linkify: true,
   })
-    .use(markdownItHashtag)
+    .use(markdownItHashtag, {
+      hashtagRegExp: "[^#\"'\\s]+"
+    })
+
+  md.renderer.rules.hashtag_open = function(tokens, idx) {
+    const tagName = tokens[idx].content
+    return '<a href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
+  }
 
   const mdSafe = markdownit({
     html: false,
     xhtmlOut: true,
     linkify: true,
   })
-    .use(markdownItHashtag)
+    .use(markdownItHashtag, {
+      hashtagRegExp: "[^#\"'\\s]+"
+    })
+
+  md.renderer.rules.hashtag_open = function(tokens, idx) {
+    const tagName = tokens[idx].content
+    return '<a href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
+  }
 
   LiquidHandler.registerFilterPostCreate("md", async function (a) {
     const result = md.render(bytesLikeToString(a))
