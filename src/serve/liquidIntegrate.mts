@@ -3,6 +3,7 @@ import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { LiquidCache } from "liquidjs/dist/cache"
 import { default as markdownit } from 'markdown-it'
+import { default as markdownItHashtag } from 'markdown-it-hashtag'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash } from "../lib/common.mts"
@@ -717,12 +718,14 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     xhtmlOut: true,
     linkify: true,
   })
+    .use(markdownItHashtag)
 
   const mdSafe = markdownit({
     html: false,
     xhtmlOut: true,
     linkify: true,
   })
+    .use(markdownItHashtag)
 
   LiquidHandler.registerFilterPostCreate("md", async function (a) {
     const result = md.render(bytesLikeToString(a))

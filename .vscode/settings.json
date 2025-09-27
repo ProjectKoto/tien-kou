@@ -12,8 +12,10 @@
 		// "thirdparty/**": true,
 		"thirdparty/markdowndb/**": false,
 		"thirdparty/cloudflare*/**": true,
+		"thirdparty/telegram/**": true,
 		"*Dist/**": true,
 		"*.wrangler/**": true,
+		"**/package-lock.json": true,
 	},
 	"search.useIgnoreFiles": false,
 }
