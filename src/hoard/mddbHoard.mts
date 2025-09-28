@@ -294,6 +294,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       }
 
       {
+        l(`syncToTursoLastTime`, syncToTursoLastTime)
         const currTableNewData = (await mddb.db.raw(`SELECT * FROM files WHERE update_time_by_hoard >= ?;`, syncToTursoLastTime ?? 0)) as AnyObj[]
         if (currTableNewData.length > 0) {
           const batchSize = 3
@@ -394,7 +395,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     origClient["saveDataToDiskIncr"] = async function(...args: unknown[]) {
       try {
         l("change detected, start updating")
-        const ret = await origSaveDataToDiskIncr.apply(this, args as [])
+        const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
         await doSyncToTursoIncr()
         l('scheduling rcloneHeavy...')
         rcloneHeavy()
@@ -548,7 +549,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
         }
         currentChildFileInfo.asset_type = currentChildFileInfo.metadata?.type || null
-        currentChildFileInfo.tags = (currentChildFileInfo.metadata?.tags || [])
+        currentChildFileInfo.declaredTags = (currentChildFileInfo.metadata?.tags || [])
         currentChildFileInfo.asset_size = currentChildFileInfo.asset_raw_bytes.byteLength
 
         if (childMaxPubTime === undefined || childMaxPubTime < currentChildFileInfo.publish_time_by_metadata) {
@@ -601,7 +602,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               asset_type: undefined,
               metadata: structuredClone(fileInfo.metadata) || {},
               // will assign later
-              tags: [],
+              referencedTags: [],
+              declaredTags: [],
               links: [],
               tasks: [],
               asset_size: undefined,
@@ -790,12 +792,17 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
       endOneChild()
 
-      fileInfo.asset_raw_bytes = Buffer.from(parentSourceLines.join('\n') + '\n')
+      fileInfo._sourceWithoutMatter = parentSourceLines.join('\n') + '\n'
+      fileInfo.asset_raw_bytes = Buffer.from(fileInfo._sourceWithoutMatter)
       fileInfo.asset_size = fileInfo.asset_raw_bytes.byteLength
       if (childMaxPubTime !== undefined && fileInfo.publish_time_by_metadata === undefined) {
         fileInfo.publish_time_by_metadata = childMaxPubTime
       }
-      return childFileInfoList.filter(f => !f.should_discard)
+      const filtered = childFileInfoList.filter(f => !f.should_discard)
+      filtered.forEach(x => {
+        delete x.should_discard
+      })
+      return filtered
     }
   })()
 

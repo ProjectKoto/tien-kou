@@ -15,7 +15,6 @@ import '../nodeEnv.mts'
 import { AnyObj, datePath, genTimestampString, l, le } from '../lib/common.mts'
 import { ensureParentDirExists, ensurePathDirExists, pathExists } from "../lib/nodeCommon.mts"
 import { TkContext } from '../lib/common.mts'
-import { TgMessageLike, tgMessageToHtml } from '../lib/tgCommon.mts'
 
 export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<void>) => {
   const tkEnv = tkCtx.e
@@ -319,9 +318,13 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       } else if (isFwd) {
         let fwdMessage = undefined as telegram.Api.Message | undefined
         
-        l("theMessage?.fwdFrom?.fromId", theMessage?.fwdFrom?.fromId)
+        let isFwdToSave: boolean | undefined = undefined
         let inputPeer
-        if (theMessage?.fwdFrom?.fromId) {
+        if (theMessage?.fwdFrom?.savedFromId) {
+          isFwdToSave = true
+          inputPeer = await client.getInputEntity(theMessage?.fwdFrom?.savedFromId as telegram.Api.TypePeer)
+        } else if (theMessage?.fwdFrom?.fromId) {
+          isFwdToSave = false
           inputPeer = await client.getInputEntity(theMessage?.fwdFrom?.fromId as telegram.Api.TypePeer)
         } else {
           inputPeer = undefined
@@ -331,7 +334,15 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
         //   id: (theMessage?.fwdFrom?.fromId as telegram.Api.PeerChannel).channelId
         // } as telegram.Api.Channel))
 
-        const origMsgId = theMessage?.fwdFrom?.savedFromMsgId || theMessage?.fwdFrom?.channelPost
+        const origMsgId = (() => {
+          if (isFwdToSave === true) {
+            return theMessage?.fwdFrom?.savedFromMsgId
+          } else if (isFwdToSave === false) {
+            return theMessage?.fwdFrom?.channelPost
+          } else {
+            return undefined
+          }
+        })()
         if (origMsgId && inputPeer) {
           try {
             fwdMessage = (await client.getMessages(inputPeer, {

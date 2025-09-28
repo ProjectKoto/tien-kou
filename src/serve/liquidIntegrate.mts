@@ -713,13 +713,16 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
   LiquidHandler.registerFilterPostCreate("isAssetExtensionInList", isAssetExtensionInList)
   LiquidHandler.registerFilterPostCreate("isAssetExtension", isAssetExtensionInList)
 
+
   const md = markdownit({
     html: true,
     xhtmlOut: true,
     linkify: true,
   })
+    // See mddb parseFile.ts extractTags
     .use(markdownItHashtag, {
-      hashtagRegExp: "[^#\"'\\s]+"
+      hashtagRegExp: /(?:[^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source,
+      preceding:     /^|\s+|\n+|\r+/.source,
     })
 
   md.renderer.rules.hashtag_open = function(tokens, idx) {
@@ -732,8 +735,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
     xhtmlOut: true,
     linkify: true,
   })
+    // See mddb parseFile.ts extractTags
     .use(markdownItHashtag, {
-      hashtagRegExp: "[^#\"'\\s]+"
+      hashtagRegExp: /(?:[^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source,
+      preceding:     /^|\s+|\n+|\r+/.source,
     })
 
   md.renderer.rules.hashtag_open = function(tokens, idx) {
