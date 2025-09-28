@@ -4,7 +4,13 @@ import dotenv from 'dotenv'
 import fs from 'node:fs'
 
 export const tkEnvFromDevVarsFile = async (): Promise<Record<string, string | undefined>> => {
-  return dotenv.parse(await fs.promises.readFile(".dev.vars", { encoding: 'utf-8' }))
+  const e = dotenv.parse(await fs.promises.readFile(".dev.vars", { encoding: 'utf-8' }))
+  for (const k of Object.keys(e)) {
+    if (k.startsWith('PROCESS_')) {
+      process.env[k] = e[k]
+    }
+  }
+  return e
 }
 
 export const applyTkEnvToProcessEnv = (tkEnv: Record<string, string | undefined>) => {
