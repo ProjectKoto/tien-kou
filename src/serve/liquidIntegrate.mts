@@ -180,6 +180,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     cache: true,
     outputEscape: "escape",
     extname: liquidExtName,
+    strictFilters: true,
     fs: {
       sep: '/',
   
@@ -1307,6 +1308,24 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   }
   LiquidHandler.registerTagPostCreate("backpatchVal", backpatchValTagClass)
   LiquidHandler.registerTagPostCreate("backpatchValue", backpatchValTagClass)
+
+  // eXecute value processing / filtering
+  LiquidHandler.registerTagPostCreate("x", class TagX extends liquid.Tag {
+    private value: liquid.Value
+
+    constructor (token: liquid.TagToken, remainTokens: liquid.TopLevelToken[], liquidInst: Liquid) {
+      super(token, remainTokens, liquidInst)
+      this.value = new liquid.Value(this.tokenizer.readFilteredValue(), this.liquid)
+    }
+    * render (ctx: liquid.Context): Generator<unknown, void, unknown> {
+      yield this.value.value(ctx, this.liquid.options.lenientIf)
+    }
+
+    public * arguments (): liquid.Arguments {
+      yield this.value
+    }
+
+  })
 
   if (LiquidFilterRegisterHandlerList && LiquidFilterRegisterHandlerList.length > 0) {
     for (const frh of LiquidFilterRegisterHandlerList) {

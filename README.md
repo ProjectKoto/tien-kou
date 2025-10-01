@@ -24,3 +24,8 @@ https://dev.to/marcogrcr/nodejs-and-esbuild-beware-of-mixing-cjs-and-esm-493n
 > **When using --packages=external, set --format to esm**.
 > If you're wondering about the difference between cjs and esm, take a look at Node.js: A brief history of cjs, bundlers, and esm.
 
+# Cloudflare Workers monitoring request CPU time
+
+```
+npx wrangler tail --format json | grep -vE '^Proxy' --line-buffered | jq -r '("   " + (.cpuTime | tostring) + "    " + (.event.response.status | tostring) + "     " + .event.request.url)'
+```

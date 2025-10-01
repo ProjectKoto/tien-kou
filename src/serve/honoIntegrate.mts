@@ -195,6 +195,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       dedicatedAssetExtNames,
       backpatches: {} as AnyObj,
       backpatchValueMap: {} as AnyObj,
+      now: new Date().getTime(),
     }
 
     resultGenContext.rgc = resultGenContext
@@ -303,7 +304,11 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       }
     
       let renderResult = (await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
-        globals: { rgc, now: new Date().getTime() },
+        globals: {
+          c: rgc,
+          ...rgc,
+          rgc,
+        },
       })) as string
 
       // l('backpatches', rgc['backpatches'])

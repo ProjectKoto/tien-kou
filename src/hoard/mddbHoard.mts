@@ -100,8 +100,6 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   type SqlLike = (string | { sql: string; args: string[]; })
 
   const doSyncToTurso = async () => {
-    await doRefreshMetaMetaInfo()
-
     if (tursoc !== undefined) {
       let tursoBatchWrapper
       if (tkEnv.HOARD_DB_BATCH_DEBUG_MODE === "1") {
@@ -274,8 +272,6 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   }
 
   const doSyncToTursoIncr = async () => {
-    await doRefreshMetaMetaInfo()
-
     if (tursoc !== undefined) {
       const syncSqlList: SqlLike[] = []
       {
@@ -378,6 +374,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       try {
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
+        await doRefreshMetaMetaInfo()
         await doSyncToTurso()
         l('scheduling rcloneHeavy...')
         rcloneHeavy()
@@ -395,6 +392,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       try {
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
+        await doRefreshMetaMetaInfo()
         await doSyncToTursoIncr()
         l('scheduling rcloneHeavy...')
         rcloneHeavy()
@@ -808,7 +806,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const metadataFieldAliases = await (async () => {
     let aliasStr = tkCtx.e.HOARD_METADATA_FIELD_ALIAS_LIST
     if (!aliasStr) {
-      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;reft:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specialLocator'
+      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator'
     }
     const aliasSplit = aliasStr.split(';').map(x => x.trim()).filter(x => x)
     const aliasMap: Record<string, {
