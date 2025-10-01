@@ -29,42 +29,44 @@ type KnownHandlerTypesMap = KnownHandlerTypesMap0 & {
   [K in keyof KnownHandlerTypesMap0 as `${(K & string)}List`]: Array<KnownHandlerTypesMap0[K]>
 }
 
-// Known-handler-type destructuring without Return Type
-
-// Known-handler-type destructuring
+// Known-handler-type Dependencies object
 export type KD<T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj = AnyObj> = Pick<KnownHandlerTypesMap, T> & OtherParam
 export type KD2<T extends Partial<{ [K in keyof KnownHandlerTypesMap]: unknown }>, OtherParam extends AnyObj> = Pick<KnownHandlerTypesMap, keyof T & keyof KnownHandlerTypesMap> & OtherParam
 export type KD3<T extends (keyof KnownHandlerTypesMap)[]> = { [P in keyof T as T[P] & string]: KnownHandlerTypesMap[T[P] & (keyof KnownHandlerTypesMap)]; }
 
+export type KDNoDep = KD<never>
 
-// Handler Type
-type HTHelperTypeConforming<RTSatisfy> = {
+
+// Handler Constructor Types
+type HandlerConstructorCurryFuncReturnTypeConforming<RTSatisfy> = {
 
   <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RTSatisfy>
-  
+
 }
 
-type HTHelperTypeOriginal<RTSatisfy> = {
+type HandlerConstructorCurryFuncReturnTypeAsIs<RTSatisfy> = {
 
   <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RT>
 
   // <RT extends RTSatisfy>(f: () => Promise<RT>): () => Promise<RT>
 }
 
-export const HT = <RTSatisfy,>() => ((f: unknown) => {
+// Handler Constructor
+export const HC = <ReturnTypeShouldSatisfy,>() => ((f: unknown) => {
   return f
-}) as HTHelperTypeConforming<RTSatisfy>
+}) as HandlerConstructorCurryFuncReturnTypeConforming<ReturnTypeShouldSatisfy>
 
-export const HTO = <RTSatisfy,>() => ((f: unknown) => {
+// Handler Constructor keep-Original-return-type
+export const HCO = <RTSatisfy,>() => ((f: unknown) => {
   return f
-}) as HTHelperTypeOriginal<RTSatisfy>
+}) as HandlerConstructorCurryFuncReturnTypeAsIs<RTSatisfy>
 
 export type PartialWithNull<T> = {
   [P in keyof T]: T[P] | null;
 }
 
-// Abstract Handler Type
-export const AHT = <RTSatisfy,>() => HTO<PartialWithNull<RTSatisfy>>()
+// Abstract Handler Constructor
+export const AHC = <RTSatisfy,>() => HCO<PartialWithNull<RTSatisfy>>()
 // export const AHT = <RTSatisfy,>() => <T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<PartialWithNull<RTSatisfy>>): (param: KD<T, OtherParam>) => Promise<PartialWithNull<RTSatisfy>> => {
 //   return f
 // }
@@ -72,8 +74,8 @@ export const AHT = <RTSatisfy,>() => HTO<PartialWithNull<RTSatisfy>>()
 // canNot-be-Promise This
 export const NPT = <T,>(this_: T | PromiseLike<T>) => this_ as T
 
-// Extends Abstract
-export const EA = <ST extends AnyObj, DT extends AnyObj,>(super_: ST, subImpl: DT) => {
+// Extends Abstract Handler
+export const EAH = <ST extends AnyObj, DT extends AnyObj,>(super_: ST, subImpl: DT) => {
   return Object.assign(super_, subImpl) as Omit<ST, keyof DT> & DT
 }
 
@@ -154,7 +156,7 @@ export interface RuntimeCacheHandler extends CacheHandler {
 }
 
 
-const AbstractRuntimeCacheHandler = AHT<RuntimeCacheHandler>()(async (_: KD<never>) => {
+const AbstractRuntimeCacheHandler = AHC<RuntimeCacheHandler>()(async (_: KD<never>) => {
   return {
     listenOnEvict: null,
     checkIfShouldEvict: null,
@@ -345,7 +347,7 @@ export class TkInvalidReqError extends TkReqError {
   }
 }
 
-export const MainTkCtxHandler = HT<TkCtxHandler>()(async (_: KD<never>) => {
+export const MainTkCtxHandler = HC<TkCtxHandler>()(async (_: KD<never>) => {
   
   let firstCtx: TkContext | undefined = undefined
 
@@ -430,7 +432,7 @@ export const MainTkCtxHandler = HT<TkCtxHandler>()(async (_: KD<never>) => {
  * 
  */
 
-export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
+export const MainJsRuntimeCacheHandler = HC<RuntimeCacheHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   const super_ = await AbstractRuntimeCacheHandler({})
 
@@ -446,7 +448,7 @@ export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFi
 
   const lock = new AsyncLock()
 
-  return EA(super_, {
+  return EAH(super_, {
     listenOnEvict: (listener: () => Promise<void>): void => {
       evictEvent.on('evict', async () => {
         await listener()
@@ -487,7 +489,7 @@ export const MainJsRuntimeCacheHandler = HT<RuntimeCacheHandler>()(async ({ TkFi
 })
 
 
-export const NoMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler" >) => {
+export const NoMiddleCacheHandler = HC<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler" >) => {
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (_ctx0) => {
 
@@ -526,7 +528,7 @@ export const getAndFillCachedValOneLayer = async <T,> (ctx: TkContext, cacheLaye
 }
 
 // checks MiddleCache each time to ensure RuntimeCache is evicted if outdated.
-export const MultiIntanceCachePolicyHandler = HT<IntegratedCachePolicyHandler>()(async ({
+export const MultiIntanceCachePolicyHandler = HC<IntegratedCachePolicyHandler>()(async ({
   RuntimeCacheHandler,
   MiddleCacheHandler,
   TkDataPersistHandler,
@@ -575,7 +577,7 @@ export const MultiIntanceCachePolicyHandler = HT<IntegratedCachePolicyHandler>()
 })
 
 // won't check MiddleCache each time, because evictForNewDataVersion already evicts both cache, and nothing need to be synced because it is single instance.
-export const SingleInstanceCachePolicyHandler = HT<IntegratedCachePolicyHandler>()(async ({
+export const SingleInstanceCachePolicyHandler = HC<IntegratedCachePolicyHandler>()(async ({
   RuntimeCacheHandler,
   MiddleCacheHandler,
   TkDataPersistHandler,
@@ -617,7 +619,7 @@ export const SingleInstanceCachePolicyHandler = HT<IntegratedCachePolicyHandler>
   }
 })
 
-export const WebRedirHeavyAssetHandler = HT<HeavyAssetHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
+export const WebRedirHeavyAssetHandler = HC<HeavyAssetHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   let heavyAssetPrefix: string
 
@@ -632,7 +634,7 @@ export const WebRedirHeavyAssetHandler = HT<HeavyAssetHandler>()(async ({ TkFirs
   }
 })
 
-export const StubHeavyAssetHandler = HT<HeavyAssetHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
+export const StubHeavyAssetHandler = HC<HeavyAssetHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (_ctx0: TkContext) => {
   })
@@ -667,7 +669,7 @@ export interface QueryLiveAssetSqlCommonParam extends QueryLiveAssetCommonParam 
   customSqlArgs?: SqlArgValue[],
 }
 
-export const AbstractTkSqlAssetFetchHandler = AHT<TienKouAssetFetchHandler>()(async ({ SqlDbHandler } : KD<"SqlDbHandler">) => {
+export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(async ({ SqlDbHandler } : KD<"SqlDbHandler">) => {
   return {
 
     fetchLiveHeavyAssetBytes: null,

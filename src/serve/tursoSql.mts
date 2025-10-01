@@ -1,7 +1,7 @@
 import * as turso from "@libsql/client"
-import { HT, KD, SqlArgValue, SqlDbHandler } from './serveDef.mts'
+import { HC, KD, SqlArgValue, SqlDbHandler } from './serveDef.mts'
 
-export const TursoSqlDbHandler = HT<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">): Promise<SqlDbHandler> => {
+export const TursoSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">): Promise<SqlDbHandler> => {
 
   let tursoc: turso.Client | undefined = undefined
 

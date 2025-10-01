@@ -1,11 +1,11 @@
 import { allKnownAssetExtNames, dedicatedAssetExtNames, isEndWithExtensionList, isInExtensionList, stripExtensionList, strippedInLocatorExtNames, TkError } from "../lib/common.mts"
-import { FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidFilterRegisterHandler, TienKouAssetCategoryLogicHandler, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError, TkDataPersistHandler } from "./serveDef.mts"
+import { FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HC, KD, LiquidFilterRegisterHandler, TienKouAssetCategoryLogicHandler, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError, TkDataPersistHandler } from "./serveDef.mts"
 
 export const isDedicatedAsset = (subPath: string) => {
   return isEndWithExtensionList(subPath, dedicatedAssetExtNames, allKnownAssetExtNames)
 }
 
-export const SqlTkDataPersistHandler = HT<TkDataPersistHandler>()(async({ TkFirstCtxProvideHandler, SqlDbHandler, }: KD<"TkFirstCtxProvideHandler" | "SqlDbHandler">): Promise<TkDataPersistHandler> => {
+export const SqlTkDataPersistHandler = HC<TkDataPersistHandler>()(async({ TkFirstCtxProvideHandler, SqlDbHandler, }: KD<"TkFirstCtxProvideHandler" | "SqlDbHandler">): Promise<TkDataPersistHandler> => {
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async _ctx0 => {
   })
@@ -64,7 +64,7 @@ export const SqlTkDataPersistHandler = HT<TkDataPersistHandler>()(async({ TkFirs
 })
 
 
-export const LiquidSqlFilterRegHandler = HT<LiquidFilterRegisterHandler>()(async ({ SqlDbHandler } : KD<"SqlDbHandler">) => {
+export const LiquidSqlFilterRegHandler = HC<LiquidFilterRegisterHandler>()(async ({ SqlDbHandler } : KD<"SqlDbHandler">) => {
   return {
     doRegister: (reg) => {
       reg("sql", async function (sql, ...args) {
@@ -74,7 +74,7 @@ export const LiquidSqlFilterRegHandler = HT<LiquidFilterRegisterHandler>()(async
   }
 })
 
-export const TkSqlAssetCategoryLogicHandler = HT<TienKouAssetCategoryLogicHandler>()(async ({ TienKouAssetFetchHandler }: KD<"TienKouAssetFetchHandler">) => {
+export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandler>()(async ({ TienKouAssetFetchHandler }: KD<"TienKouAssetFetchHandler">) => {
   return {
 
     // throws: TkAssetNotDedicatedError TkAssetNotFoundError TkAssetIsHeavyError

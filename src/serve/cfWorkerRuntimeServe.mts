@@ -4,7 +4,7 @@ import { AnyObj, l, LazyVal, lazyValue, le, quickStrHash, TkError } from '../lib
 import { HonoWithErrorHandler } from '../lib/hack.mts'
 import { AbstractTkSqlLiquidHonoApp, hc, HonoEnvTypeWithTkCtx, HonoEnvVariablesType, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
-import { AbstractTkSqlAssetFetchHandler, EA, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from './serveDef.mts'
+import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from './tkAssetCategoryLogic.mts'
 import { TursoSqlDbHandler } from './tursoSql.mts'
@@ -50,7 +50,7 @@ const cfwe = (ctx: TkContext | undefined): CfweBindings => {
 // Middle Cache value
 const kvCacheKeyPrefix = 'mc:'
 
-const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, TkEachCtxNotifyHandler }: KD<"TkFirstCtxProvideHandler" | "TkEachCtxNotifyHandler">) => {
+const CloudflareWorkerKvCacheHandler = HC<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, TkEachCtxNotifyHandler }: KD<"TkFirstCtxProvideHandler" | "TkEachCtxNotifyHandler">) => {
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async (_ctx0) => {
 
@@ -226,7 +226,7 @@ const CloudflareWorkerKvCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirst
   return r
 })
 
-const RoutedMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, CloudflareWorkerKvCacheHandler, NoMiddleCacheHandler }: KD<"TkFirstCtxProvideHandler", { CloudflareWorkerKvCacheHandler: MiddleCacheHandler, NoMiddleCacheHandler: MiddleCacheHandler }>) => {
+const RoutedMiddleCacheHandler = HC<MiddleCacheHandler>()(async ({ TkFirstCtxProvideHandler, CloudflareWorkerKvCacheHandler, NoMiddleCacheHandler }: KD<"TkFirstCtxProvideHandler", { CloudflareWorkerKvCacheHandler: MiddleCacheHandler, NoMiddleCacheHandler: MiddleCacheHandler }>) => {
 
   let cacheLevel = "kv"
   // let cacheLevel = "no"
@@ -256,11 +256,11 @@ const RoutedMiddleCacheHandler = HT<MiddleCacheHandler>()(async ({ TkFirstCtxPro
   }
 })
 
-const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(async ({ HeavyAssetHandler, SqlDbHandler }: KD<"HeavyAssetHandler" | "SqlDbHandler">): Promise<TienKouAssetFetchHandler> => {
+const CloudflareWorkerTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ HeavyAssetHandler, SqlDbHandler }: KD<"HeavyAssetHandler" | "SqlDbHandler">): Promise<TienKouAssetFetchHandler> => {
 
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
-  return EA(super_, {
+  return EAH(super_, {
     fetchLiveHeavyAssetBytes: async (_: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer }> => {
       throw new TkAssetNotFoundError('fetchLiveHeavyAsset not implemented').shouldLog()
     },
@@ -284,7 +284,7 @@ const CloudflareWorkerTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(
 })
 
 
-const TienKouCloudflareWorkerApp = HT<TienKouApp<HonoWithErrorHandler<Cfwe>
+const TienKouCloudflareWorkerApp = HC<TienKouApp<HonoWithErrorHandler<Cfwe>
 >>()(async ({
   TienKouAssetFetchHandler,
   LiquidHandler,
@@ -308,7 +308,7 @@ const TienKouCloudflareWorkerApp = HT<TienKouApp<HonoWithErrorHandler<Cfwe>
     TkCtxHandler,
   })
 
-  return EA(super_, {
+  return EAH(super_, {
     start: async (): Promise<TkAppStartInfo<HonoWithErrorHandler<Cfwe>>> => {
       return {
         defaultExportObject: super_.honoApp

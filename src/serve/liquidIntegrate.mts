@@ -7,7 +7,7 @@ import { default as markdownItHashtag } from 'markdown-it-hashtag'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash } from "../lib/common.mts"
-import { AHT, EA, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HT, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
+import { AHC, EAH, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HC, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
 import { FilterHandler, FilterOptions, TagClass, TagImplOptions } from "liquidjs/dist/template"
@@ -17,7 +17,7 @@ export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
 }
 
-export const MainLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
+export const MainLiquidHandler = HC<LiquidHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   let liquid: Liquid | undefined = undefined
   let liquidOptions: LiquidOptions | undefined = undefined
@@ -106,7 +106,7 @@ export const MainLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCtxProvideH
   return r
 })
 
-export const RuntimeCachedLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCtxProvideHandler, RuntimeCacheHandler }: KD<"TkFirstCtxProvideHandler" | "RuntimeCacheHandler">): Promise<LiquidHandler> => {
+export const RuntimeCachedLiquidHandler = HC<LiquidHandler>()(async ({ TkFirstCtxProvideHandler, RuntimeCacheHandler }: KD<"TkFirstCtxProvideHandler" | "RuntimeCacheHandler">): Promise<LiquidHandler> => {
 
   const super_ = await MainLiquidHandler({ TkFirstCtxProvideHandler })
 
@@ -126,7 +126,7 @@ export const RuntimeCachedLiquidHandler = HT<LiquidHandler>()(async ({ TkFirstCt
     }
   })
 
-  return EA(super_, {
+  return EAH(super_, {
     mandatoryCustomizeLiquidOpt: async (opt: LiquidOptions): Promise<void> => {
       opt.cache = true
     },
@@ -146,7 +146,7 @@ export type WrapperOpt<T> = T & TkSqlLiquidAssetQueryCommonParam
 
 export type ResultGenContext = AnyObj
 
-export const AbstractTkSqlLiquidApp = <EO,> () => AHT<TienKouApp<EO>>()(async ({
+export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   TienKouAssetFetchHandler,
   LiquidHandler,
   TienKouAssetCategoryLogicHandler,

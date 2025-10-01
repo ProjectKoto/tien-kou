@@ -7,7 +7,7 @@ import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHl, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
-import { AbstractTkSqlAssetFetchHandler, EA, HT, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
+import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { nodeResolvePath } from '../lib/nodeCommon.mts'
@@ -19,7 +19,7 @@ if (process.platform === "freebsd") {
   process.exit(1)
 }
 
-const MddbSqliteSqlDbHandler = HT<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
+const MddbSqliteSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   let mddb: MarkdownDB | undefined = undefined
 
@@ -50,7 +50,7 @@ const isPath2InDir1 = (path1: string, path2: string) => {
   return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
 }
 
-const NodeJsTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(async ({ SqlDbHandler,  TkFirstCtxProvideHandler }: KD<"SqlDbHandler" | "TkFirstCtxProvideHandler">) => {
+const NodeJsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ SqlDbHandler,  TkFirstCtxProvideHandler }: KD<"SqlDbHandler" | "TkFirstCtxProvideHandler">) => {
 
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
@@ -114,7 +114,7 @@ const NodeJsTienKouAssetFetchHandler = HT<TienKouAssetFetchHandler>()(async ({ S
   return r as TienKouAssetFetchHandler
 })
 
-const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
+const TienKouNodeJsHonoApp = HC<TienKouApp<undefined>>()(async ({
   TienKouAssetFetchHandler,
   LiquidHandler,
   TienKouAssetCategoryLogicHandler,
@@ -143,7 +143,7 @@ const TienKouNodeJsHonoApp = HT<TienKouApp<undefined>>()(async ({
     TkCtxHandler,
   })
 
-  return EA(super_, {
+  return EAH(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
 
       (super_.honoApp as AnyObj)['port'] = 8569
