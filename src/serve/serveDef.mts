@@ -6,7 +6,6 @@ import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen } from "../lib/common.mts"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
-import replaceAll from 'string.prototype.replaceall'
 
 type KnownHandlerTypesMap0 = {
   MiddleCacheHandler: MiddleCacheHandler,
@@ -78,12 +77,14 @@ export const AHC = <ReturnTypeShouldSatisfy,>() => HCO<PartialWithNull<ReturnTyp
 export const NPT = <T,>(this_: T | PromiseLike<T>) => this_ as T
 
 // Extends Abstract Handler
-export type Unpromise<T> = T extends PromiseLike<infer R> ? never : T
+export type Unpromise<T> = T extends PromiseLike<infer _R> ? never : T
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const EAH = <SuperHandlerType extends Record<string, any>, DerivedType extends Record<string, any>>(super_: SuperHandlerType, subImpl: Omit<Unpromise<DerivedType>, { [MethodName in keyof SuperHandlerType]: SuperHandlerType[MethodName] extends null ? never: MethodName }[keyof SuperHandlerType]>) => {
   return Object.assign(super_, subImpl) as Unpromise<DerivedType>
 }
 
 // Abstract Extends Abstract Handler
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const AEAH = <SuperHandlerType extends Record<string, any>, SubImpl extends Record<string, any>>(super_: SuperHandlerType, subImpl: SubImpl) => {
   return Object.assign(super_, subImpl) as Omit<SuperHandlerType, keyof SubImpl> & SubImpl
 }

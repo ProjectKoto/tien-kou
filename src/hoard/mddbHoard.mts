@@ -5,7 +5,6 @@ import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
 import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
 import { nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
-import { TkContext } from '../lib/common.mjs'
 
 export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Promise<void>) => {
   const shouldRun = true
@@ -355,7 +354,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
   const rcloneHeavy = async () => {
     try {
-      const [exitStatus, exitSignal, stdout, stderr] = await tkCtx.rcloneW('sync', tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_SOURCE_DIR!, 'TK_HOARD_HEAVY_SYNC:' + (tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR || ''), {
+      const [exitStatus, _exitSignal, stdout, stderr] = await tkCtx.rcloneW('sync', tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_SOURCE_DIR!, 'TK_HOARD_HEAVY_SYNC:' + (tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR || ''), {
         'verbose': true,
         'ignore-case': true,
         'ignore-errors': true,

@@ -5,13 +5,13 @@ import path from "node:path"
 import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
-import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHl, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
+import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
 import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { nodeResolvePath } from '../lib/nodeCommon.mts'
-import { applyTkEnvToProcessEnv, tkEnvFromDevVarsFile } from '../nodeEnv.mts'
+import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
 
 if (process.platform === "freebsd") {
