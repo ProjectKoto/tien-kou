@@ -297,13 +297,17 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHT<TienKouApp<EO>>()(asyn
       const rgc = resultGenContext
     
       await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
+
+      if (rgc.reqPathTidy === 'hello') {
+        return c.text(await (await LiquidHandler.liquidReadyPromise).parseAndRender('{%- echo "Hello world\\n" -%}'))
+      }
     
       let renderResult = (await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.mainTemplateRelPath, rgc, {
         globals: { rgc, now: new Date().getTime() },
       })) as string
 
-      l('backpatches', rgc['backpatches'])
-      l('backpatchValueMap', rgc['backpatchValueMap'])
+      // l('backpatches', rgc['backpatches'])
+      // l('backpatchValueMap', rgc['backpatchValueMap'])
       if (rgc['backpatches'] && Object.keys(rgc['backpatches']).length && rgc['backpatchValueMap']) {
         const backpatches = [ ... Object.values(rgc['backpatches']) ] as {
           name: string,

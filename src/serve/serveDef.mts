@@ -38,21 +38,33 @@ export type KD3<T extends (keyof KnownHandlerTypesMap)[]> = { [P in keyof T as T
 
 
 // Handler Type
-type HTHelperType1<RTSatisfy> = {
-  <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RT>
+type HTHelperTypeConforming<RTSatisfy> = {
+
+  <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RTSatisfy>
   
+}
+
+type HTHelperTypeOriginal<RTSatisfy> = {
+
+  <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RT>
+
   // <RT extends RTSatisfy>(f: () => Promise<RT>): () => Promise<RT>
 }
+
 export const HT = <RTSatisfy,>() => ((f: unknown) => {
   return f
-}) as HTHelperType1<RTSatisfy>
+}) as HTHelperTypeConforming<RTSatisfy>
+
+export const HTO = <RTSatisfy,>() => ((f: unknown) => {
+  return f
+}) as HTHelperTypeOriginal<RTSatisfy>
 
 export type PartialWithNull<T> = {
   [P in keyof T]: T[P] | null;
 }
 
 // Abstract Handler Type
-export const AHT = <RTSatisfy,>() => HT<PartialWithNull<RTSatisfy>>()
+export const AHT = <RTSatisfy,>() => HTO<PartialWithNull<RTSatisfy>>()
 // export const AHT = <RTSatisfy,>() => <T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<PartialWithNull<RTSatisfy>>): (param: KD<T, OtherParam>) => Promise<PartialWithNull<RTSatisfy>> => {
 //   return f
 // }

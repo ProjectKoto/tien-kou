@@ -806,6 +806,54 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     }
   })()
 
+  const metadataFieldAliases = await (async () => {
+    let aliasStr = tkCtx.e.HOARD_METADATA_FIELD_ALIAS_LIST
+    if (!aliasStr) {
+      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;reft:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specialLocator'
+    }
+    const aliasSplit = aliasStr.split(';').map(x => x.trim()).filter(x => x)
+    const aliasMap: Record<string, {
+      aliasName: string;
+      defs: {
+        targetFieldName: string;
+        targetFieldFixedVal: string | undefined;
+      }[];
+    }> = {}
+    for (const part of aliasSplit) {
+      const partPart = part.split(':')
+      if (partPart.length < 2) {
+        continue
+      }
+      const aliasName = partPart[0]
+      const aliasDefStr = partPart.slice(1).join(':')
+      const aliasDefSplits = aliasDefStr.split('&').filter(x => x).map(x => x.split('='))
+      const currAliasDefs: {
+        targetFieldName: string;
+        targetFieldFixedVal: string | undefined;
+      }[] = []
+      for (const aliasDefRaw of aliasDefSplits) {
+        const targetFieldName = aliasDefRaw[0]
+        let targetFieldFixedVal
+        if (aliasDefRaw.length < 2) {
+          targetFieldFixedVal = undefined
+        } else {
+          targetFieldFixedVal = aliasDefRaw.slice(1).join('=')
+        }
+        const def = {
+          targetFieldName,
+          targetFieldFixedVal
+        }
+        currAliasDefs.push(def)
+      }
+      const alias = {
+        aliasName,
+        defs: currAliasDefs,
+      }
+      aliasMap[aliasName] = alias
+    }
+    return aliasMap
+  })()
+
   // have background parts
   await mddb.indexFolder({
     folderPath: nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!),
@@ -840,7 +888,20 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       markdownExtraHandler: async (filePath, getSourceFunc, fileInfo, fileInfoList, { ast, metadata, links, tags }) => {
-        // l("ast", JSON.stringify(ast, null, 2))
+        if (metadata) {
+          for (const alias of Object.values(metadataFieldAliases)) {
+            const aliasVal = metadata[alias.aliasName]
+            if (aliasVal !== undefined) {
+              for (const def of alias.defs) {
+                if (def.targetFieldFixedVal === undefined) {
+                  metadata[def.targetFieldName] = aliasVal
+                } else {
+                  metadata[def.targetFieldName] = def.targetFieldFixedVal
+                }
+              }
+            }
+          }
+        }
       },
       otherHandlers: [
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
