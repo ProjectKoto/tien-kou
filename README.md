@@ -27,5 +27,9 @@ https://dev.to/marcogrcr/nodejs-and-esbuild-beware-of-mixing-cjs-and-esm-493n
 # Cloudflare Workers monitoring request CPU time
 
 ```
+
 npx wrangler tail --format json | grep -vE '^Proxy' --line-buffered | jq -r '("   " + (.cpuTime | tostring) + "    " + (.event.response.status | tostring) + "     " + .event.request.url)'
+
+npx wrangler tail --format json | grep --line-buffered -E '_parse|cpuTime|"url"' -C1
+
 ```

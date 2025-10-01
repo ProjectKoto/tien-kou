@@ -392,11 +392,21 @@ const appExportedObjPromise = (async () => {
 
 export type ExportFetchOnlyHandler<CfweT> = { fetch: Exclude<ExportedHandler<CfweT>["fetch"], undefined> }
 
+const cfCache = caches.default
+
 const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandler<CfweT>>): ExportFetchOnlyHandler<CfweT> => {
   return {
     async fetch(request, env, ctx): Promise<Response> {
+      const tryMatch = await cfCache.match(request, { ignoreMethod: false })
+      // const tryMatch = await cfCache.match(request.url, { ignoreMethod: false })
+      if (tryMatch) {
+        return tryMatch
+      }
       const fh = await a
-      return await fh.fetch(request, env, ctx)
+      const resp = await fh.fetch(request, env, ctx)
+      await cfCache.put(request, resp.clone())
+      // await cfCache.put(request.url, resp.clone())
+      return resp
     },
   }
 }
