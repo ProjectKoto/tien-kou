@@ -16,6 +16,7 @@
 		"*Dist/**": true,
 		"*.wrangler/**": true,
 		"**/package-lock.json": true,
+		"worker-configuration.d.ts": true,
 	},
 	"search.useIgnoreFiles": false,
 }

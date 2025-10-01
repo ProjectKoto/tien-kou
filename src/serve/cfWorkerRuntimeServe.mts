@@ -261,10 +261,10 @@ const CloudflareWorkerTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
   return EAH(super_, {
-    fetchLiveHeavyAssetBytes: async (_: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer }> => {
+    fetchLiveHeavyAssetBytes: async (_: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer | Buffer<ArrayBufferLike> }> => {
       throw new TkAssetNotFoundError('fetchLiveHeavyAsset not implemented').shouldLog()
     },
-    fetchStaticAsset: async ({ tkCtx, locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer> => {
+    fetchStaticAsset: async ({ tkCtx, locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer | Buffer<ArrayBufferLike>> => {
       return await (await (cfwe(tkCtx).ASSETS.fetch as typeof fetch)(new Request(new URL("/static/" + locatorTopDir + locatorSubPath, hc(tkCtx).req.url)))).arrayBuffer()
     },
 

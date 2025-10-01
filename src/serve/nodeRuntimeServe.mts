@@ -75,13 +75,13 @@ const NodeJsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ S
   }
 
   const r = {
-    fetchLiveHeavyAssetBytes: async ({ originFilePath }: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer }> => {
+    fetchLiveHeavyAssetBytes: async ({ originFilePath }: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer | Buffer<ArrayBufferLike> }> => {
       const fileSystemPath = calcValidateFileSystemPathSync(liveAssetFileSystemRootPath.val, originFilePath)
       return {
         asset_raw_bytes: await fs.promises.readFile(fileSystemPath),
       }
     },
-    fetchStaticAsset: async ({ locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer> => {
+    fetchStaticAsset: async ({ locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer | Buffer<ArrayBufferLike>> => {
       const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath.val, makeConcatenatablePath(locatorTopDir) + makeConcatenatablePath(locatorSubPath))
      
       try {
@@ -143,7 +143,7 @@ const TienKouNodeJsHonoApp = HC<TienKouApp<undefined>>()(async ({
     TkCtxHandler,
   })
 
-  return EAH(super_, {
+  return EAH<typeof super_, TienKouApp<undefined>>(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
 
       (super_.honoApp as AnyObj)['port'] = 8569

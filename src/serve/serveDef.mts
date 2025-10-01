@@ -38,17 +38,19 @@ export type KDNoDep = KD<never>
 
 
 // Handler Constructor Types
-type HandlerConstructorCurryFuncReturnTypeConforming<RTSatisfy> = {
+type HandlerConstructorCurryFuncReturnTypeConforming<ReturnTypeShouldSatisfy> = {
 
-  <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RTSatisfy>
+  // <RT extends ReturnTypeShouldSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<ReturnTypeShouldSatisfy>
+
+  <T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<ReturnTypeShouldSatisfy>): (param: KD<T, OtherParam>) => Promise<ReturnTypeShouldSatisfy>
 
 }
 
-type HandlerConstructorCurryFuncReturnTypeAsIs<RTSatisfy> = {
+type HandlerConstructorCurryFuncReturnTypeAsIs<ReturnTypeShouldSatisfy> = {
 
-  <RT extends RTSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RT>
+  <RT extends ReturnTypeShouldSatisfy, T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<RT>): (param: KD<T, OtherParam>) => Promise<RT>
 
-  // <RT extends RTSatisfy>(f: () => Promise<RT>): () => Promise<RT>
+  // <RT extends ReturnTypeShouldSatisfy>(f: () => Promise<RT>): () => Promise<RT>
 }
 
 // Handler Constructor
@@ -57,17 +59,18 @@ export const HC = <ReturnTypeShouldSatisfy,>() => ((f: unknown) => {
 }) as HandlerConstructorCurryFuncReturnTypeConforming<ReturnTypeShouldSatisfy>
 
 // Handler Constructor keep-Original-return-type
-export const HCO = <RTSatisfy,>() => ((f: unknown) => {
+export const HCO = <ReturnTypeShouldSatisfy,>() => ((f: unknown) => {
   return f
-}) as HandlerConstructorCurryFuncReturnTypeAsIs<RTSatisfy>
+}) as HandlerConstructorCurryFuncReturnTypeAsIs<ReturnTypeShouldSatisfy>
 
 export type PartialWithNull<T> = {
   [P in keyof T]: T[P] | null;
 }
 
 // Abstract Handler Constructor
-export const AHC = <RTSatisfy,>() => HCO<PartialWithNull<RTSatisfy>>()
-// export const AHT = <RTSatisfy,>() => <T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<PartialWithNull<RTSatisfy>>): (param: KD<T, OtherParam>) => Promise<PartialWithNull<RTSatisfy>> => {
+export const AHC = <ReturnTypeShouldSatisfy,>() => HCO<PartialWithNull<ReturnTypeShouldSatisfy>>()
+
+// export const AHT = <ReturnTypeShouldSatisfy,>() => <T extends keyof KnownHandlerTypesMap, OtherParam extends AnyObj>(f: (param: KD<T, OtherParam>) => Promise<PartialWithNull<ReturnTypeShouldSatisfy>>): (param: KD<T, OtherParam>) => Promise<PartialWithNull<ReturnTypeShouldSatisfy>> => {
 //   return f
 // }
 
@@ -75,9 +78,16 @@ export const AHC = <RTSatisfy,>() => HCO<PartialWithNull<RTSatisfy>>()
 export const NPT = <T,>(this_: T | PromiseLike<T>) => this_ as T
 
 // Extends Abstract Handler
-export const EAH = <ST extends AnyObj, DT extends AnyObj,>(super_: ST, subImpl: DT) => {
-  return Object.assign(super_, subImpl) as Omit<ST, keyof DT> & DT
+export type Unpromise<T> = T extends PromiseLike<infer R> ? never : T
+export const EAH = <SuperHandlerType extends Record<string, any>, DerivedType extends Record<string, any>>(super_: SuperHandlerType, subImpl: Omit<Unpromise<DerivedType>, { [MethodName in keyof SuperHandlerType]: SuperHandlerType[MethodName] extends null ? never: MethodName }[keyof SuperHandlerType]>) => {
+  return Object.assign(super_, subImpl) as Unpromise<DerivedType>
 }
+
+// Abstract Extends Abstract Handler
+export const AEAH = <SuperHandlerType extends Record<string, any>, SubImpl extends Record<string, any>>(super_: SuperHandlerType, subImpl: SubImpl) => {
+  return Object.assign(super_, subImpl) as Omit<SuperHandlerType, keyof SubImpl> & SubImpl
+}
+
 
 export interface TkFirstCtxProvideHandler {
 
@@ -273,8 +283,8 @@ export interface HeavyAssetHandler {
 export type TkAssetInfo = Ao
 
 export interface TienKouAssetFetchHandler {
-  fetchLiveHeavyAssetBytes(_: { tkCtx?: TkContext, originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer }>
-  fetchStaticAsset(_: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer>
+  fetchLiveHeavyAssetBytes(_: { tkCtx?: TkContext, originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer | Buffer<ArrayBufferLike> }>
+  fetchStaticAsset(_: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer | Buffer<ArrayBufferLike>>
   queryLiveAsset<P extends QueryLiveAssetCommonParam>(param: P): Promise<TkAssetInfo[]>
 }
 

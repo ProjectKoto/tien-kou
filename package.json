@@ -54,6 +54,8 @@
     "3u": "npm run upgradeBuiltThirdpartyForkDep",
     "b3u3": "npm run buildThirdpartyForkDep && npm run upgradeBuiltThirdpartyForkDep",
     "3b3u": "npm run buildThirdpartyForkDep && npm run upgradeBuiltThirdpartyForkDep",
+    "typeCheck": "tsc -noEmit",
+    "t": "tsc -noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
