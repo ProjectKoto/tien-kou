@@ -663,6 +663,7 @@ export interface QueryLiveAssetCommonParam {
   locatorSubPaths?: string[],
   locatorSubAncestors?: string[],
   locatorSubParents?: string[],
+  shouldIncludeWithoutPubTime?: boolean,
   // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
   shouldIncludeDirectories?: boolean | Boolean,
   // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
@@ -709,6 +710,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         shouldFetchRawBytes,
         pageNum,
         pageSize,
+        shouldIncludeWithoutPubTime,
       }: QueryLiveAssetSqlCommonParam) => {
       // l("queryLiveAssetSqlCommon", {
       //   tkCtx,
@@ -991,6 +993,10 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         WHERE 1=1
       `)
 
+      if (shouldIncludeWithoutPubTime !== undefined && shouldIncludeWithoutPubTime === false) {
+        sqlFragmentList.push(`AND publish_time_by_metadata IS NOT NULL`)
+      }
+
       if (shouldIncludeDerivingParent === true || shouldIncludeDerivingParent && shouldIncludeDerivingParent.valueOf() === true) {
         // sqlFragmentList.push(`
         //   AND (has_derived_children)
@@ -1012,15 +1018,16 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
       }
 
       if (extensions) {
-        if (extensions.length === 0) {
+        const extensionList = [...extensions]
+        if (extensionList.length === 0) {
           sqlFragmentList.push(`
             AND (is_directory OR has_derived_children OR 1=0)
           `)
         } else {
           sqlFragmentList.push(`
-            AND (is_directory OR has_derived_children OR origin_file_extension IN ( ${extensions.map(_ => '?').join(', ')} ))
+            AND (is_directory OR has_derived_children OR origin_file_extension IN ( ${extensionList.map(_ => '?').join(', ')} ))
           `)
-          sqlArgs.push(...extensions)
+          sqlArgs.push(...extensionList)
         }
       }
 
@@ -1096,7 +1103,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         sqlArgs.push(pageSize, pageNum * pageSize)
       }
 
-      l("executing sql", truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60), truncateStrByLen(JSON.stringify(sqlArgs), 50))
+      l("executing sql", truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60), truncateStrByLen(JSON.stringify(sqlArgs), 180))
       // l("executing sql", sqlFragmentList.join('\n'), sqlArgs)
 
       const sqlResult = await SqlDbHandler.sql({

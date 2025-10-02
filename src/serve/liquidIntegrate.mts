@@ -253,7 +253,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     },
     parseLimit: 1e8, // 100M?
     // renderLimit: 3000, // limit each render to be completed in
-    renderLimit: 17000, // limit each render to be completed in
+    // renderLimit: 17000, // limit each render to be completed in
     // memoryLimit: 32e6, // 32M,
     memoryLimit: 320e6,
     relativeReference: false,
@@ -785,6 +785,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       locatorSubParents: [parent],
       shouldIncludeDirectories,
       shouldIncludeDerivingParent,
+      shouldIncludeWithoutPubTime: true,
       extensions: [...extensionListStrToSet(extensionListStr)],
       shouldFetchRawBytes: true,
       orderBy,
@@ -809,11 +810,12 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     const extraOpt = parseExtraOptFromLiquidShapeParams<WrapperOpt<QueryLiveAssetCommonParam>>({
       tkCtx: rgc.tkCtx(),
       locatorSubPaths: assetLocators,
-      locatorTopDirs: [''],
+      locatorTopDirs: ["guarded/", "open/"],
       shouldIncludeDerivingParent: true,
       shouldFetchRawBytes: true,
       shouldThrowIfNotFound: false,
       shouldConvertToString: true,
+      shouldIncludeWithoutPubTime: true,
     }, rest, {
       locatorPaths: 'locatorSubPaths',
     })
@@ -1001,6 +1003,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       locatorSubAncestors: [ancestor],
       shouldIncludeDerivingParent,
       shouldFetchRawBytes: true,
+      shouldIncludeWithoutPubTime: false,
       orderBy,
       pageNum,
       pageSize,

@@ -97,6 +97,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorSubPaths: (subPathTryStrippedExt !== subPath && isInExtensionList(ext, strippedInLocatorExtNames)) ? [subPath, subPathTryStrippedExt] : [subPath],
         shouldIncludeDerivingParent: true,
         shouldFetchRawBytes: true,
+        shouldIncludeWithoutPubTime: true,
       })
 
       if (queryResultList.length === 0) {
@@ -127,6 +128,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorSubPaths: [subPath],
         shouldIncludeDerivingParent: true,
         shouldFetchRawBytes: true,
+        shouldIncludeWithoutPubTime: true,
       })
 
       let asset: TkAssetInfo
@@ -175,6 +177,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorSubPaths: [subPath],
         shouldIncludeDerivingParent: false,
         shouldFetchRawBytes: true,
+        shouldIncludeWithoutPubTime: true,
       })
 
       let asset: TkAssetInfo

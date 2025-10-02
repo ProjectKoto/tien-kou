@@ -394,21 +394,66 @@ export type ExportFetchOnlyHandler<CfweT> = { fetch: Exclude<ExportedHandler<Cfw
 
 const cfCache = caches.default
 
+// https://developers.cloudflare.com/cache/how-to/cache-keys/
+// const cachedReqHeaders = ['Origin', 'x-http-method-override', 'x-http-method', 'x-method-override', 'x-forwarded-host', 'x-host', 'x-original-url', 'x-rewrite-url', 'forwarded']
+const cachedReqHeaders: string[] = []
+
+function cfMakeReqCacheKey(request: Request<unknown, IncomingRequestCfProperties<unknown>>) {
+  const requestCacheKeyHeaders = {} as Record<string, string>
+  for (const reqCacheHeader of cachedReqHeaders) {
+    const hValue = request.headers.get(reqCacheHeader)
+    if (hValue) {
+      requestCacheKeyHeaders[reqCacheHeader] = hValue
+    }
+  }
+
+  const requestCacheKey = new Request(request.url, {
+    method: request.method,
+    headers: requestCacheKeyHeaders,
+  })
+  return requestCacheKey
+}
+
+
 const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandler<CfweT>>): ExportFetchOnlyHandler<CfweT> => {
   return {
     async fetch(request, env, ctx): Promise<Response> {
-      const tryMatch = await cfCache.match(request, { ignoreMethod: false })
-      // const tryMatch = await cfCache.match(request.url, { ignoreMethod: false })
+      let requestToPass = request
+      const requestCacheKey = cfMakeReqCacheKey(request)
+      const tryMatch = await cfCache.match(requestCacheKey, { ignoreMethod: false })
+      let eTagHeaderManipulated = false
       if (tryMatch) {
-        return tryMatch
+        l('cf req cache hit', request.url)
+        const cachedETag = tryMatch.headers.get('ETag')
+        if (cachedETag) {
+          l('cf req cache hit has valid etag', request.url, cachedETag)
+          if (!request.headers.get('If-None-Match')) {
+            l('cf orig req has no If-None-Match, add it', request.url, cachedETag)
+            eTagHeaderManipulated = true
+            requestToPass = new Request(request.url, request)
+            requestToPass.headers.set('If-None-Match', cachedETag)
+          }
+        }
       }
       const fh = await a
-      const resp = await fh.fetch(request, env, ctx)
-      await cfCache.put(request, resp.clone())
-      // await cfCache.put(request.url, resp.clone())
+      const resp = await fh.fetch(requestToPass, env, ctx)
+      if (resp.status == 304 && tryMatch && eTagHeaderManipulated) {
+        l('cf etag test resp is 304, return cached resp')
+        return tryMatch
+      }
+      if (resp.status == 200) {
+        l('cf put resp in cache')
+        const respClone = resp.clone()
+        const respToCache = new Response(respClone.body, respClone)
+        respToCache.headers.delete('Cache-Control')
+        respToCache.headers.delete('Expires')
+        respToCache.headers.delete('Last-Modified')
+        await cfCache.put(requestCacheKey, respToCache)
+      }
       return resp
     },
   }
 }
 
 export default proxyPromiseFetchHandlerAsSync(appExportedObjPromise)
+
