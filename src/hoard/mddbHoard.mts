@@ -754,13 +754,22 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                     }
                   } else {
                     const spaceIndex = line.indexOf(" ", i + equalSignRelIndex + 1)
+                    let val
                     if (spaceIndex === -1) {
-                      currentChildFileInfo.metadata![keyName] = line.substring(i + equalSignRelIndex + 1)
+                      val = line.substring(i + equalSignRelIndex + 1)
                       i = line.length
                     } else {
-                      currentChildFileInfo.metadata![keyName] = line.substring(i + equalSignRelIndex + 1, spaceIndex)
+                      val = line.substring(i + equalSignRelIndex + 1, spaceIndex)
                       i = spaceIndex
                     }
+                    if (/^-?\d+$/.test(val)) {
+                      val = Number.parseInt(val)
+                    } else if (val === 'true') {
+                      val = true
+                    } else if (val === 'false') {
+                      val = false
+                    }
+                    currentChildFileInfo.metadata![keyName] = val
                   }
                 } else {
                   state = InOneChildAfterDirective
