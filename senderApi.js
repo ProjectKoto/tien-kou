@@ -85,7 +85,7 @@ async function handlePostSubmission(req, res) {
         const content = formData.content;
         const appendMode = formData.appendMode === 'true';
         
-        if (!mdPath || !attachPathPattern || !content) {
+        if (!mdPath || !content) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ message: 'Missing required fields' }));
@@ -244,6 +244,9 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, ap
 
 // Process placeholders in paths
 function processPath(now, pathPattern, attachmentIndex = null, attachmentFile = null) {
+    if (!pathPattern) {
+        throw new Error('No pathPattern');
+    }
     
     // Format date components
     const yyyy = now.getFullYear();
