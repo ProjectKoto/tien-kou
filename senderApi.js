@@ -57,10 +57,20 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ message: 'Not found' }));
         }
     } catch (error) {
-        console.error('Server error:', error);
-        res.statusCode = 500;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ message: 'Internal server error' }));
+        try {
+            console.error('Server error:', error);
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ message: 'Internal server error' }));
+        } catch (e2) {
+
+        } finally {
+            try {
+                res.end();
+            } catch (e3) {
+
+            }
+        }
     }
 });
 
