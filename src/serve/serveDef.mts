@@ -676,6 +676,8 @@ export interface QueryLiveAssetCommonParam {
 }
 
 export interface QueryLiveAssetSqlCommonParam extends QueryLiveAssetCommonParam {
+  extraColumnSqlSegment?: string,
+  extraColumnSqlSegmentArgs?: SqlArgValue[],
   customSql?: string,
   customSqlArgs?: SqlArgValue[],
 }
@@ -701,6 +703,8 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         extensions,
         customSql,
         customSqlArgs,
+        extraColumnSqlSegment,
+        extraColumnSqlSegmentArgs,
         orderBy,
         shouldFetchRawBytes,
         pageNum,
@@ -748,9 +752,15 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
       }
 
       sqlFragmentList.push(`
-      SELECT * FROM (
+      SELECT *${extraColumnSqlSegment ?? ''} FROM (
         SELECT *, MIN(top_dir_index) FROM (
       `)
+
+      if (extraColumnSqlSegment) {
+        if (extraColumnSqlSegmentArgs !== undefined) {
+          sqlArgs.push(...extraColumnSqlSegmentArgs)
+        }
+      }
 
       const multipleConditionsSqlFragments: string[] = []
 

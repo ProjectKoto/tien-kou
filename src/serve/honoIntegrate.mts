@@ -361,7 +361,13 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
         c.header('ETag', rgc.respETag)
       }
 
-      return c.html(renderResult, rgc.respStatusCode || 200)
+      if (rgc.respContentType) {
+        c.header('Content-Type', rgc.respContentType)
+      } else {
+        c.header('Content-Type', 'text/html; charset=UTF-8')
+      }
+
+      return c.body(renderResult, rgc.respStatusCode || 200)
     } finally {
       await processTkCtxPostReqHandle(tkCtx)
     }
