@@ -6,7 +6,7 @@ import fs from 'node:fs'
 export const tkEnvFromDevVarsFile = async (): Promise<Record<string, string | undefined>> => {
   const e = dotenv.parse(await fs.promises.readFile(".dev.vars", { encoding: 'utf-8' }))
   for (const k of Object.keys(e)) {
-    if (k.startsWith('PROCESS_')) {
+    if (k.startsWith('PROCENV_')) {
       process.env[k] = e[k]
     }
   }

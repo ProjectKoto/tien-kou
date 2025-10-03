@@ -40,4 +40,7 @@ HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR = 'path/to/xxx'
 HOARD_RCLONE_EXECUTABLE = 'path/to/rclone'
 
 # UTC+8
-PROCESS_HOARD_METADATA_DATE_TIMEZONE_OFFSET_MINUTE = '480'
+PROCENV_HOARD_METADATA_DATE_TIMEZONE_OFFSET_MINUTE = '480'
+
+# HOARD_METADATA_FIELD_ALIAS_LIST = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags'
+

@@ -546,7 +546,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
         }
         currentChildFileInfo.asset_type = currentChildFileInfo.metadata?.type || null
-        currentChildFileInfo.declaredTags = (currentChildFileInfo.metadata?.tags || [])
+        currentChildFileInfo.declaredTags = (currentChildFileInfo.metadata?.declaredTags || [])
         currentChildFileInfo.asset_size = currentChildFileInfo.asset_raw_bytes.byteLength
 
         if (childMaxPubTime === undefined || childMaxPubTime < currentChildFileInfo.publish_time_by_metadata) {
@@ -697,11 +697,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                       state = InOneChildAfterDirective
                       break
                     } else {
-                      if (currentChildFileInfo.metadata!.tags === undefined) {
-                        currentChildFileInfo.metadata!.tags = []
+                      if (currentChildFileInfo.metadata!.declaredTags === undefined) {
+                        currentChildFileInfo.metadata!.declaredTags = []
                       }
-                      if (Array.isArray(currentChildFileInfo.metadata!.tags)) {
-                        currentChildFileInfo.metadata!.tags.push(cjr.result.toString())
+                      if (Array.isArray(currentChildFileInfo.metadata!.declaredTags)) {
+                        currentChildFileInfo.metadata!.declaredTags.push(cjr.result.toString())
                       }
                       i = cjr.newI
                     }
@@ -719,11 +719,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                     state = InOneChildAfterDirective
                     break
                   } else {
-                    if (currentChildFileInfo.metadata!.tags === undefined) {
-                      currentChildFileInfo.metadata!.tags = []
+                    if (currentChildFileInfo.metadata!.declaredTags === undefined) {
+                      currentChildFileInfo.metadata!.declaredTags = []
                     }
-                    if (Array.isArray(currentChildFileInfo.metadata!.tags)) {
-                      currentChildFileInfo.metadata!.tags.push(currTag)
+                    if (Array.isArray(currentChildFileInfo.metadata!.declaredTags)) {
+                      currentChildFileInfo.metadata!.declaredTags.push(currTag)
                     }
                     i = i + 1 + currTag.length
                   }
@@ -815,7 +815,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const metadataFieldAliases = await (async () => {
     let aliasStr = tkCtx.e.HOARD_METADATA_FIELD_ALIAS_LIST
     if (!aliasStr) {
-      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator'
+      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags'
     }
     const aliasSplit = aliasStr.split(';').map(x => x.trim()).filter(x => x)
     const aliasMap: Record<string, {
