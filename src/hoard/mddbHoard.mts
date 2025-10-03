@@ -863,7 +863,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   // have background parts
   await mddb.indexFolder({
     folderPath: nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!),
-    ignorePatterns: [/Excalidraw/, /\.obsidian/, /DS_Store/],
+    ignorePatterns: [/Excalidraw/, /\.obsidian/, /DS_Store/, /\.sync-conflict-/],
     customConfig: {
       handleDedicated: async (filePath) => {
         const [_, pathStrippedExt, extension] = stripExtensionList(filePath, allKnownAssetExtNames)
