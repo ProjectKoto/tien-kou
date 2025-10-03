@@ -85,7 +85,7 @@ async function handlePostSubmission(req, res) {
         const content = formData.content;
         const appendMode = formData.appendMode === 'true';
         
-        if (!mdPath || !content) {
+        if (!mdPath) {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({ message: 'Missing required fields' }));
@@ -172,7 +172,8 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, ap
             // Process attachment path
             const processedAttachPath = processPath(
                 now,
-                attachPathPattern, 
+                attachPathPattern,
+		processedMdPath,
                 i, 
                 { name: file.filename }
             );
@@ -222,10 +223,10 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, ap
         const mm = String(now.getMinutes()).padStart(2, '0');
         const ss = String(now.getSeconds()).padStart(2, '0');
         const formattedDate = `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`;
-        mdContent += `\n\n${formattedDate} ${content}\n\n${attachmentHtmls.join('\n')}\n`;
+        mdContent += `\n\n${formattedDate} ${content}\n\n${attachmentHtmls.join('\n\n')}\n`;
     } else {
         // In overwrite mode, just use the new content
-        mdContent = `${content}\n\n${attachmentHtmls.join('\n')}\n`;
+        mdContent = `${content}\n\n${attachmentHtmls.join('\n\n')}\n`;
     }
     
     // Save markdown file
@@ -243,7 +244,7 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, ap
 }
 
 // Process placeholders in paths
-function processPath(now, pathPattern, attachmentIndex = null, attachmentFile = null) {
+function processPath(now, pathPattern, processedMdPath, attachmentIndex = null, attachmentFile = null) {
     if (!pathPattern) {
         throw new Error('No pathPattern');
     }
@@ -268,10 +269,9 @@ function processPath(now, pathPattern, attachmentIndex = null, attachmentFile = 
     
     // For attachment paths, handle additional placeholders
     if (attachmentFile && attachmentIndex !== null) {
-        const mdBasename = path.basename(pathPattern, path.extname(pathPattern));
+        const mdBasename = path.basename(processedMdPath, path.extname(processedMdPath));
         const fileExt = path.extname(attachmentFile.name);
         const fileBasename = path.basename(attachmentFile.name, fileExt);
-        
         result = result
             .replace(/\$md/g, mdBasename)
             .replace(/\$aorig/g, fileBasename)
@@ -374,7 +374,7 @@ async function parseMultipartForm(req) {
                     
                     // Parse headers
                     const headersBuffer = buffer.slice(partStart, headersEnd);
-                    const headersString = headersBuffer.toString('ascii');
+                    const headersString = headersBuffer.toString('utf8');
                     
                     // Find Content-Disposition header
                     const contentDispositionMatch = headersString.match(/Content-Disposition:\s*form-data;\s*name="([^"]+)"(?:;\s*filename="([^"]+)")?/i);
