@@ -223,10 +223,13 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, ap
         const mm = String(now.getMinutes()).padStart(2, '0');
         const ss = String(now.getSeconds()).padStart(2, '0');
         const formattedDate = `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`;
-        mdContent += `\n\n${formattedDate} ${content}\n\n${attachmentHtmls.join('\n\n')}\n`;
+        if (!mdContent.endsWith('\n') {
+            mdContent += '\n';
+        }
+        mdContent += `\n${formattedDate} ${content}${attachmentHtmls.map(x => '\n\n' + x).join('')}\n`;
     } else {
         // In overwrite mode, just use the new content
-        mdContent = `${content}\n\n${attachmentHtmls.join('\n\n')}\n`;
+        mdContent = `${content}${attachmentHtmls.map(x => '\n\n' + x).join('\n\n')}\n`;
     }
     
     // Save markdown file
