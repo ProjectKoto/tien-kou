@@ -128,8 +128,8 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
   return EAH<typeof super_, TienKouApp<undefined>>(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
 
-      (super_.honoApp as AnyObj)['hostname'] = '127.0.0.1'
-      ;(super_.honoApp as AnyObj)['port'] = 8569
+      (super_.honoApp as AnyObj)['hostname'] = tkEnv.NODE_LOCAL_FS_RT_LISTEN_HOST || '127.0.0.1'
+      ;(super_.honoApp as AnyObj)['port'] = Number.parseInt(tkEnv.NODE_LOCAL_FS_RT_LISTEN_PORT || "8569")
 
       const nodeServer = nodeServe(super_.honoApp, (info) => {
         l(`Listening on http://${info.address}:${info.port}`)
