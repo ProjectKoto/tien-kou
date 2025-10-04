@@ -668,7 +668,7 @@ export interface QueryLiveAssetCommonParam {
   // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
   shouldIncludeDerivingParent?: boolean | Boolean,
   extensions?: string[],
-  orderBy?: "condTimeDesc" | "condTimeAsc" | "condLocatorAsc" | "condLocatorDesc" | "timeDesc" | "timeAsc" | "locatorAsc" | "locatorDesc" | string,
+  orderBy?: "condTimeDesc" | "condTimeAsc" | "condLocatorAsc" | "condLocatorDesc" | "timeDesc" | "timeAsc" | "locatorAsc" | "locatorDesc" | string | string[],
   // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
   shouldFetchRawBytes?: boolean | Boolean,
   pageNum?: number,
@@ -1108,10 +1108,29 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         `)
       } else if (orderBy === '') {
         // no order
-      } else if (orderBy) {
+      } else if (orderBy && (typeof orderBy === 'string' || Array.isArray(orderBy))) {
+        // caution: sql injection
+        let assetBaseOrderConds: string[]
+        if (typeof orderBy === 'string') {
+          assetBaseOrderConds = orderBy.split(',')
+        } else {
+          assetBaseOrderConds = orderBy
+        }
+        assetBaseOrderConds = assetBaseOrderConds.map(x => x.trim()).filter(x => x)
+        const condSize = assetBaseOrderConds.length
         sqlFragmentList.push(`
-          ORDER BY ${orderBy}
+          ORDER BY (
+            CASE
+            ${assetBaseOrderConds.map((_x, i) => '  WHEN asset_locator GLOB ? OR asset_locator GLOB ? THEN ' + (condSize - i).toString()).join('\n')}
+              ELSE 0
+            END
+          ) DESC
         `)
+        assetBaseOrderConds.forEach(x => {
+          const assetBaseNameGlobEscape = sqlGlobPatternEscape(x)
+          sqlArgs.push('*/' + assetBaseNameGlobEscape)
+          sqlArgs.push(assetBaseNameGlobEscape)
+        })
       } else {
         sqlFragmentList.push(`
           ORDER BY second_cond_index ASC, publish_time_by_metadata DESC, update_time_by_hoard DESC, asset_locator ASC
