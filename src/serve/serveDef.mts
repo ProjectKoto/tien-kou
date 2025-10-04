@@ -1153,7 +1153,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
       }
 
       l("executing sql", truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60), truncateStrByLen(JSON.stringify(sqlArgs), 180))
-      l("executing sql", sqlFormatForDisp(sqlFragmentList, sqlArgs))
+      // l("executing sql", sqlFormatForDisp(sqlFragmentList, sqlArgs))
 
       const sqlResult = await SqlDbHandler.sql({
         tkCtx,
