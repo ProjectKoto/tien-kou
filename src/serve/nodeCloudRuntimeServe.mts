@@ -6,80 +6,34 @@ import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
-import { MainLiquidHandler } from "./liquidIntegrate.mts"
-import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
+import { MainLiquidHandler, RuntimeCachedLiquidHandler } from "./liquidIntegrate.mts"
+import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from "./serveDef.mts"
 import { TkContext } from '../lib/common.mts'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
-import { nodeResolvePath } from '../lib/nodeCommon.mts'
+import { calcValidateFileSystemPathSync, nodeResolvePath } from '../lib/nodeCommon.mts'
 import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
+import { TursoSqlDbHandler } from './tursoSql.mts'
 
 if (process.platform === "freebsd") {
   console.error("freebsd not supported, readFile not returing EISDIR")
   process.exit(1)
 }
 
-const MddbSqliteSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
-  let mddb: MarkdownDB | undefined = undefined
-
-  let mddbReadyResolver: ((value: MarkdownDB) => void)
-  const mddbReadyPromise = new Promise<MarkdownDB>(r => { mddbReadyResolver = r })
-
-  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async _ctx0 => {
-    mddb = await new MarkdownDB({
-      client: "sqlite3",
-      connection: {
-        filename: "markdown.db",
-      },
-    }).init()
-    if (mddbReadyResolver) {
-      mddbReadyResolver(mddb)
-    }
-  })
-
-  return {
-    sql: async ({ sql, args }: { sql: string, args: string[] }) => {
-      return (await (await mddbReadyPromise).db.raw(sql, args))
-    },
-  }
-})
-
-const isPath2InDir1 = (path1: string, path2: string) => {
-  const relative = path.relative(path1, path2)
-  return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
-}
-
-const NodeJsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ SqlDbHandler,  TkFirstCtxProvideHandler }: KD<"SqlDbHandler" | "TkFirstCtxProvideHandler">) => {
+const NodeJsCloudTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ SqlDbHandler,  TkFirstCtxProvideHandler, HeavyAssetHandler }: KD<"SqlDbHandler" | "TkFirstCtxProvideHandler" | "HeavyAssetHandler">) => {
 
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
-  const liveAssetFileSystemRootPath = delayInitVal<string>()
   const staticAssetFileSystemRootPath = delayInitVal<string>()
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
-    liveAssetFileSystemRootPath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!))
     staticAssetFileSystemRootPath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_STATIC_ASSET_ROOT_PATH!))
   })
   
-  const calcValidateFileSystemPathSync = (rootPath: string, assetOriginFilePath: string) => {
-    const fileSystemPath = path.normalize(path.join(rootPath, assetOriginFilePath))
-    const topDirPath = path.normalize(path.join(rootPath, (replaceAll(assetOriginFilePath, '\\', '/') as string).split('/').filter(x => x)[0]))
-    if (!isPath2InDir1(rootPath, topDirPath)) {
-      throw new TkError("bad path")
-    }
-    if (!isPath2InDir1(topDirPath, fileSystemPath)) {
-      throw new TkError("bad path")
-    }
-    return fileSystemPath
-  }
-
-  const r = {
-    fetchLiveHeavyAssetBytes: async ({ originFilePath }: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer | Buffer<ArrayBufferLike> }> => {
-      const fileSystemPath = calcValidateFileSystemPathSync(liveAssetFileSystemRootPath.val, originFilePath)
-      return {
-        asset_raw_bytes: await fs.promises.readFile(fileSystemPath),
-      }
+  return EAH(super_, {
+    fetchLiveHeavyAssetBytes: async (_: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer | Buffer<ArrayBufferLike> }> => {
+      throw new TkAssetNotFoundError('fetchLiveHeavyAsset not implemented').shouldLog()
     },
     fetchStaticAsset: async ({ locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer | Buffer<ArrayBufferLike>> => {
       const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath.val, makeConcatenatablePath(locatorTopDir) + makeConcatenatablePath(locatorSubPath))
@@ -96,25 +50,22 @@ const NodeJsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ S
       }
     },
 
-    queryLiveAsset: async (param: QueryLiveAssetSqlCommonParam): Promise<TkAssetInfo> => {
+    queryLiveAsset: async (param: QueryLiveAssetSqlCommonParam): Promise<TkAssetInfo[]> => {
       const sqlResult = await super_.queryLiveAssetSqlCommon(param)
-      
+
       for (const x of sqlResult) {
         if (x.is_asset_heavy === 1) {
-          if (param.shouldFetchRawBytes && (x.asset_raw_bytes === undefined || x.asset_raw_bytes === null)) {
-            x.asset_raw_bytes = (await r.fetchLiveHeavyAssetBytes({ originFilePath: x.origin_file_path })).asset_raw_bytes
-          }
+          x.redirect_url = await HeavyAssetHandler.makeHeavyAssetUrl(x as TkAssetInfo)
         }
       }
-    
+
       // l("final sqlResult", sqlResult)
       return sqlResult
     },
-  }
-  return r as TienKouAssetFetchHandler
+  })
 })
 
-const TienKouNodeJsHonoApp = HC<TienKouApp<undefined>>()(async ({
+const TienKouNodeJsCloudHonoApp = HC<TienKouApp<undefined>>()(async ({
   TienKouAssetFetchHandler,
   LiquidHandler,
   TienKouAssetCategoryLogicHandler,
@@ -124,8 +75,6 @@ const TienKouNodeJsHonoApp = HC<TienKouApp<undefined>>()(async ({
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler">) => {
 
   const tkEnv = await tkEnvFromDevVarsFile()
-
-  // applyTkEnvToProcessEnv(tkEnv)
 
   const super_ = await AbstractTkSqlLiquidHonoApp<HonoWithErrorHandler<HonoEnvTypeWithTkCtx<AnyObj>>>()({
     TienKouAssetFetchHandler,
@@ -146,7 +95,7 @@ const TienKouNodeJsHonoApp = HC<TienKouApp<undefined>>()(async ({
   return EAH<typeof super_, TienKouApp<undefined>>(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
 
-      (super_.honoApp as AnyObj)['port'] = 8569
+      (super_.honoApp as AnyObj)['port'] = 8571
 
       const nodeServer = nodeServe(super_.honoApp, (info) => {
         l(`Listening on http://localhost:${info.port}`)
@@ -168,7 +117,7 @@ const nodeMain = async () => {
   const TkCtxHandler = await MainTkCtxHandler({})
   const TkFirstCtxProvideHandler = TkCtxHandler
 
-  const SqlDbHandler = await MddbSqliteSqlDbHandler({
+  const SqlDbHandler = await TursoSqlDbHandler({
     TkFirstCtxProvideHandler,
   })
 
@@ -191,18 +140,19 @@ const nodeMain = async () => {
     TkDataPersistHandler,
   })
 
-  const HeavyAssetHandler = await StubHeavyAssetHandler({
+  const HeavyAssetHandler = await WebRedirHeavyAssetHandler({
     TkFirstCtxProvideHandler,
   })
 
-  const TienKouAssetFetchHandler = await NodeJsTienKouAssetFetchHandler({
+  const TienKouAssetFetchHandler = await NodeJsCloudTienKouAssetFetchHandler({
     TkFirstCtxProvideHandler,
     SqlDbHandler,
     HeavyAssetHandler,
   })
 
-  const LiquidHandler = await MainLiquidHandler({
+  const LiquidHandler = await RuntimeCachedLiquidHandler({
     TkFirstCtxProvideHandler,
+    RuntimeCacheHandler,
   })
   
   const LiquidFilterRegisterHandlerList = [
@@ -216,7 +166,7 @@ const nodeMain = async () => {
     TienKouAssetFetchHandler,
   })
 
-  const app = await TienKouNodeJsHonoApp({
+  const app = await TienKouNodeJsCloudHonoApp({
     TienKouAssetFetchHandler,
     IntegratedCachePolicyHandler,
     LiquidHandler,

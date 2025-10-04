@@ -1,0 +1,31 @@
+# fly.toml app configuration file generated for tien-kou on 2025-10-04T17:06:54+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'tien-kou'
+primary_region = 'lax'
+
+[build]
+  dockerfile = 'Dockerfile.fly'
+
+[env]
+  PORT = '8571'
+
+[http_service]
+  internal_port = 8571
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[files]]
+  guest_path = "/app/.dev.vars"
+  # fly secrets set DEV_VARS_FILE=$(cat .dev.vars | base64 | tr -d '\r\n')
+  secret_name = "DEV_VARS_FILE"

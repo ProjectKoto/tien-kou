@@ -70,14 +70,31 @@ export const hoardBuildCfg = ({
   },
 })
 
-esbuildConfig = await makeEsbuildConfig('nodeRtServe')
+esbuildConfig = await makeEsbuildConfig('nodeLocalFsRtServe')
 
 // dump esbuild options by adding log to wrangler bundleWorker() then imitate it
-export const nodeRtServeBuildCfg = ({
+export const nodeLocalFsRtServeBuildCfg = ({
   ...esbuildConfig,
   external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
   // external: [ '__STATIC_CONTENT_MANIFEST' ],
-  entryPoints: ['src/serve/nodeRuntimeServe.mts'],
+  entryPoints: ['src/serve/nodeLocalFsRuntimeServe.mts'],
+  format: 'cjs',
+  platform: 'node',
+  outdir: 'nodeDist/',
+  sourceRoot: 'nodeDist',
+  outExtension: {
+    // ".js": ".mjs",
+    ".js": ".cjs",
+  },
+})
+
+esbuildConfig = await makeEsbuildConfig('nodeCloudRtServe')
+
+export const nodeCloudRtServeBuildCfg = ({
+  ...esbuildConfig,
+  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
+  // external: [ '__STATIC_CONTENT_MANIFEST' ],
+  entryPoints: ['src/serve/nodeCloudRuntimeServe.mts'],
   format: 'cjs',
   platform: 'node',
   outdir: 'nodeDist/',
@@ -112,12 +129,14 @@ export const main = async () => {
   let configList
   if (which === 'hoard') {
     configList = [hoardBuildCfg]
-  } else if (which === 'nodeRtServe') {
-    configList = [nodeRtServeBuildCfg]
+  } else if (which === 'nodeLocalFsRtServe') {
+    configList = [nodeLocalFsRtServeBuildCfg]
+  } else if (which === 'nodeCloudRtServe') {
+    configList = [nodeCloudRtServeBuildCfg]
   } else if (which === 'webExt') {
     configList = [webExtBuildCfg]
   } else if (which === 'all') {
-    configList = [hoardBuildCfg, nodeRtServeBuildCfg, webExtBuildCfg]
+    configList = [hoardBuildCfg, nodeLocalFsRtServeBuildCfg, nodeCloudRtServeBuildCfg, webExtBuildCfg]
   } else {
     throw new Error('unrecognized arg: ' + which)
   }

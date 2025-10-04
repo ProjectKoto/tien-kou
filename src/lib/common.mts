@@ -31,6 +31,20 @@ export const jsonPrettyStringify = (x: unknown) => {
   }, 2)
 }
 
+export const sqlFormatForDisp = (sqlSegments: string[], sqlArgs: SqlArgValue[]): string => {
+  let i = 0
+  return sqlSegments.join('\n').replace(/\?/g, (a) => {
+    const av = sqlArgs[i++]
+    if (typeof av === 'number') {
+      return av.toString()
+    } else if (av === undefined || av === null) {
+      return 'NULL'
+    } else {
+      return JSON.stringify(av.toString()).replace(/(^"|"$)/g, "'")
+    }
+  })
+}
+
 export const truncateStrByLen = (s: string, len: number) => {
   if (s.length > len) {
     // return s.substring(0, len) + ' .. ' + s.substring(s.length - len, s.length)
@@ -150,7 +164,8 @@ export const isInExtensionList = (lowerCaseExtNameWithoutPrefixDot: string, exte
 }
 
 export const markdownExtNames = extensionListStrToSet(".md,.markdown")
-export const dedicatedAssetExtNames = extensionListStrToSet([...markdownExtNames, liquidExtName, ".liquidjs"].join(","))
+export const configAssetExtNames = extensionListStrToSet(".cfg")
+export const dedicatedAssetExtNames = extensionListStrToSet([...markdownExtNames, ...configAssetExtNames, liquidExtName, ".liquidjs"].join(","))
 export const allKnownAssetExtNames = extensionListStrToSet([...dedicatedAssetExtNames, ".pug.html", ".ejs.html"].join(","))
 export const listableAssetExtNames = extensionListStrToSet([...markdownExtNames, "html"].join(","))
 export const strippedInLocatorExtNames = extensionListStrToSet([...markdownExtNames, "html"].join(","))
@@ -502,4 +517,5 @@ export const cyrb53 = function (str: string, seed = 0) {
 }
 
 export const quickStrHash = cyrb53
+export type SqlArgValue = null | string | number | bigint | ArrayBuffer | boolean | Uint8Array | Date
 

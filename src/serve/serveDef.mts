@@ -4,7 +4,7 @@ import Emittery from "emittery"
 import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
-import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen } from "../lib/common.mts"
+import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen, SqlArgValue, sqlFormatForDisp } from "../lib/common.mts"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
 
 type KnownHandlerTypesMap0 = {
@@ -124,7 +124,6 @@ export interface TkProvideCtxFromNothingHandler {
 
 }
 
-export type SqlArgValue = null | string | number | bigint | ArrayBuffer | boolean | Uint8Array | Date
 export interface SqlDbHandler {
   
   sql({ tkCtx, sql, args }: { tkCtx?: TkContext, sql: string, args: SqlArgValue[] }): Promise<Ao[]>
@@ -823,7 +822,22 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   NULL AS asset_raw_bytes,
                   NULL AS origin_file_path,
                   NULL AS origin_file_extension,
-                  NULL AS metadata,
+                  (
+                    SELECT
+                      metadata
+                    FROM
+                      files f_dirmeta
+                    WHERE
+                      LOWER(f_dirmeta.asset_locator) = LOWER(?)
+                        AND
+                      (
+                        f_dirmeta.is_deleted_by_hoard IS NULL
+                          OR
+                        f_dirmeta.is_deleted_by_hoard != 1
+                      )
+                    ORDER BY update_time_by_hoard DESC
+                    LIMIT 1
+                  ) AS metadata,
                   NULL AS links,
                   NULL AS publish_time_by_metadata,
                   is_deleted_by_hoard AS is_deleted_by_hoard,
@@ -838,6 +852,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
             sqlArgs.push(
               locatorTopDirs[i] + currSubPath,
+              locatorTopDirs[i] + makeConcatenatablePath(currSubPath) + 'DirMeta.cfg',
               sqlGlobPatternEscape(locatorTopDirs[i] + makeConcatenatablePath(currSubPath)) + '*',
             )
           }
@@ -945,7 +960,22 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
                   CASE slash_index
                   WHEN 0 THEN metadata
-                  ELSE NULL
+                  ELSE (
+                    SELECT
+                      metadata
+                    FROM
+                      files f_dirmeta
+                    WHERE
+                      LOWER(f_dirmeta.asset_locator) = LOWER((parent_concat_locator || SUBSTR(following_locator, 1, slash_index - 1) || '/DirMeta.cfg'))
+                        AND
+                      (
+                        f_dirmeta.is_deleted_by_hoard IS NULL
+                          OR
+                        f_dirmeta.is_deleted_by_hoard != 1
+                      )
+                    ORDER BY update_time_by_hoard DESC
+                    LIMIT 1
+                  )
                   END AS metadata,
 
                   CASE slash_index
@@ -1104,7 +1134,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
       }
 
       l("executing sql", truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60), truncateStrByLen(JSON.stringify(sqlArgs), 180))
-      // l("executing sql", sqlFragmentList.join('\n'), sqlArgs)
+      l("executing sql", sqlFormatForDisp(sqlFragmentList, sqlArgs))
 
       const sqlResult = await SqlDbHandler.sql({
         tkCtx,

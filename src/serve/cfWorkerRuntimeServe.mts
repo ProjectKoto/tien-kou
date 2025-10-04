@@ -449,6 +449,8 @@ const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandle
         respToCache.headers.delete('Expires')
         respToCache.headers.delete('Last-Modified')
         await cfCache.put(requestCacheKey, respToCache)
+      } else {
+        l('resp.status', resp.status)
       }
       return resp
     },

@@ -182,6 +182,5 @@ dist
 /static/staticAsset
 
 /markdown.db
-**/nodeEnv.mjs
 /tg
 /data
