@@ -93,7 +93,7 @@ async function handlePostSubmission(req, res) {
         }
         
         // Process paths and save files
-        const result = await saveSubmission(new Date(), mdPath, attachPathPattern, content, files, appendMode);
+        const result = await saveSubmission(new Date(), mdPath, attachPathPattern, content, files, formData, appendMode);
         
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -145,7 +145,7 @@ async function handleConfiguration(req, res) {
 }
 
 // Save submission files
-async function saveSubmission(now, mdPath, attachPathPattern, content, files, appendMode) {
+async function saveSubmission(now, mdPath, attachPathPattern, content, files, formData, appendMode) {
     // Process placeholders in paths
     const processedMdPath = processPath(now, mdPath);
     const fullMdPath = path.join(rootDirectory, processedMdPath);
@@ -167,7 +167,7 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, ap
         
         if (files[fileKey]) {
             const file = files[fileKey];
-            const description = files[descKey] ? files[descKey].toString() : '';
+            const description = formData[descKey] ? formData[descKey].toString() : '';
             
             // Process attachment path
             const processedAttachPath = processPath(
@@ -298,7 +298,7 @@ function generateAttachmentHtml(attachmentPath, attachmentFile, description) {
     } else if (isVideo) {
         return `<video controls src="/${attachmentPath}" class="md-attach md-attach-video" title="${description}" alt="${description}" style="max-width: 20rem; max-height: 40rem;"></video>`;
     } else {
-        return `<a href="/${attachmentPath}" class="md-attach md-attach-file-link" target="_blank">${fileName}</a>`;
+        return `<a href="/${attachmentPath}" class="md-attach md-attach-file-link" target="_blank">${description ? description : fileName}</a>`;
     }
 }
 
