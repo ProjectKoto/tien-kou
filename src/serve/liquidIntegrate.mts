@@ -934,6 +934,13 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     }
     return a
   }
+  const arrayInplacePop: liquid.FilterImplOptions = function (a: AnyObj[]) {
+    return a.pop()
+  }
+  const arrayInplaceRemoveLast: liquid.FilterImplOptions = function (a: AnyObj[]) {
+    a.pop()
+    return a
+  }
   const arrayInplacePushTo: liquid.FilterImplOptions = function (a, b: unknown[]) {
     b.push(a)
     return b
@@ -943,6 +950,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   LiquidHandler.registerFilterPostCreate("inplace_push", arrayInplacePush)
   LiquidHandler.registerFilterPostCreate("inplacePushTo", arrayInplacePushTo)
   LiquidHandler.registerFilterPostCreate("inplace_push_to", arrayInplacePushTo)
+  LiquidHandler.registerFilterPostCreate("inplacePop", arrayInplacePop)
+  LiquidHandler.registerFilterPostCreate("inplaceRemoveLast", arrayInplaceRemoveLast)
 
   LiquidHandler.registerFilterPostCreate("applyFilters", async function(a, b: [string, ...unknown[]][] | undefined) {
     if (b === undefined) {

@@ -352,6 +352,10 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
         return c.body(null, 304)
       }
 
+      if (rgc.respSend302) {
+        return c.redirect(rgc.respSend302, 302)
+      }
+
       if (rgc.respGenericLocatableAssetSubPath) {
         return await serveGenericLocatableAsset(tkCtx, rgc.respGenericLocatableAssetSubPath)
       }
