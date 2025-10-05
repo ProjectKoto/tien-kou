@@ -285,6 +285,15 @@ function processPath(now, pathPattern, processedMdPath, attachmentIndex = null, 
     return result;
 }
 
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Generate HTML for attachment references
 function generateAttachmentHtml(attachmentPath, attachmentFile, description) {
     const fileName = path.basename(attachmentPath);
@@ -292,13 +301,13 @@ function generateAttachmentHtml(attachmentPath, attachmentFile, description) {
     const isVideo = /\.(mp4|webm|ogg|mov|avi)$/i.test(attachmentFile.name);
     
     if (isImage) {
-        return `<a href="/${attachmentPath}" class="md-attach md-attach-img-link" target="_blank">
-            <img src="/${attachmentPath}" class="md-attach md-attach-img" alt="${description}" title="${description}" style="max-width: 20rem; max-height: 40rem;">
+        return `<a href="/${escapeHtml(attachmentPath)}" class="md-attach md-attach-img-link" target="_blank">
+            <img src="/${escapeHtml(attachmentPath)}" class="md-attach md-attach-img" alt="${escapeHtml(description)}" title="${escapeHtml(description)}" style="max-width: 20rem; max-height: 40rem;">
         </a>`;
     } else if (isVideo) {
-        return `<video controls src="/${attachmentPath}" class="md-attach md-attach-video" title="${description}" alt="${description}" style="max-width: 20rem; max-height: 40rem;"></video>`;
+        return `<video controls src="/${escapeHtml(attachmentPath)}" class="md-attach md-attach-video" title="${escapeHtml(description)}" alt="${escapeHtml(description)}" style="max-width: 20rem; max-height: 40rem;"></video>`;
     } else {
-        return `<a href="/${attachmentPath}" class="md-attach md-attach-file-link" target="_blank">${description ? description : fileName}</a>`;
+        return `<a href="/${escapeHtml(attachmentPath)}" class="md-attach md-attach-file-link" target="_blank">${escapeHtml(description ? description : fileName)}</a>`;
     }
 }
 
