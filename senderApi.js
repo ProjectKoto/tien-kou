@@ -414,7 +414,7 @@ async function parseMultipartForm(req) {
                         };
                     } else {
                         // For form fields, convert to string
-                        formData[name] = contentBuffer.toString('utf8').trim();
+                        formData[name] = contentBuffer.toString('utf8').replace(/\r\n/g, '\n').trim();
                     }
                     
                     // Move to the next part
