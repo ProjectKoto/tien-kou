@@ -13,3 +13,6 @@
 [submodule "thirdparty/rclone.js"]
 	path = thirdparty/rclone.js
 	url = git@github.com:ProjectKoto/rclone.js.git
+[submodule "thirdparty/git-sync"]
+	path = thirdparty/git-sync
+	url = git@github.com:ProjectKoto/git-sync.git
