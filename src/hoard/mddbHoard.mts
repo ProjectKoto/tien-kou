@@ -375,9 +375,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
         await doRefreshMetaMetaInfo()
-        await doSyncToTurso()
-        l('scheduling rcloneHeavy...')
-        rcloneHeavy()
+        if ((process.env.PROCENV_HOARD_LOCAL_ONLY || '').toString() !== '1') {
+          await doSyncToTurso()
+          l('scheduling rcloneHeavy...')
+          rcloneHeavy()
+        }
         l('running update hook...')
         await onUpdate()
         l("updated")
@@ -393,9 +395,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
         await doRefreshMetaMetaInfo()
-        await doSyncToTursoIncr()
-        l('scheduling rcloneHeavy...')
-        rcloneHeavy()
+        if ((process.env.PROCENV_HOARD_LOCAL_ONLY || '').toString() !== '1') {
+          await doSyncToTursoIncr()
+          l('scheduling rcloneHeavy...')
+          rcloneHeavy()
+        }
         l('running update hook...')
         await onUpdate()
         l("updated")
