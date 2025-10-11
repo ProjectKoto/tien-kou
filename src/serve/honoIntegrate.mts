@@ -94,6 +94,9 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     }
   })
 
+  const option = Object.assign(super_.option, {
+  })
+
   const honoApp = new Hono<HE>() as HonoWithErrorHandler<HE>
 
   honoApp.use(honoContextStorage())
@@ -190,6 +193,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       dataVersion: async () => { return IntegratedCachePolicyHandler.fetchDataVersion(tkCtx) },
       reqIfNoneMatchHeader: () => { return ifNoneMatchHeaderGetter() },
       mainTemplateRelPath: "main.tmpl.html",
+      genStaticTemplateRelPath: "genStatic.tmpl.html",
       markdownExtNames,
       listableAssetExtNames,
       dedicatedAssetExtNames,
@@ -272,6 +276,10 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   honoApp.on("ALL", ['/.well-known', '/.well-known/*'], async c => {
     return c.text(".well-known not found", 404)
   })
+
+  
+
+  
   
   honoApp.get('/admin/:op', async (c) => {
     const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
@@ -284,6 +292,23 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       if (op === "refreshSiteVersion") {
         await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
         return c.text("refreshed " + (await IntegratedCachePolicyHandler.fetchDataVersion(tkCtx)).toString() + " " + rgc.serverDeployVersion())
+      } else if (op === 'genStatic' && option.isStaticGenFeatureEnabled) {
+        const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
+        const rgc = resultGenContext
+      
+        await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
+
+        rgc.isDoingStaticGen = true
+
+        ;(await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.genStaticTemplateRelPath, rgc, {
+          globals: {
+            c: rgc,
+            ...rgc,
+            rgc,
+          },
+        })) as string
+
+        return c.body('operation ends', 200)
       } else {
         return c.text("invalid op", 404)
       }
@@ -379,6 +404,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
   return AEAH(super_, {
     honoApp,
+    option,
   })
 
 })

@@ -154,6 +154,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   IntegratedCachePolicyHandler,
   TkProvideCtxFromNothingHandler,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkProvideCtxFromNothingHandler">) => {
+  
+  const option = {
+    isStaticGenFeatureEnabled: false,
+  }
 
   const parseExtraOptFromLiquidShapeParams = <T extends AnyObj,>(optDefault: T, liquidShapeParams: unknown[], aliasMap: ({[x: string]: string}) = {}) => {
     const opt: T = {
@@ -204,7 +208,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
               locatorTopDirs: ['backstage/'],
               locatorSubPaths: [fileRelPath],
               shouldIncludeDerivingParent: false,
-              shouldFetchRawBytes: true,
+              shouldFetchRawBytesIfLight: true,
             })
       
             if (queryResultList.length === 0) {
@@ -787,7 +791,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       shouldIncludeDerivingParent,
       shouldIncludeWithoutPubTime: true,
       extensions: [...extensionListStrToSet(extensionListStr)],
-      shouldFetchRawBytes: true,
+      shouldFetchRawBytesIfLight: true,
       orderBy,
       pageNum,
       pageSize,
@@ -812,7 +816,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       locatorSubPaths: assetLocators,
       locatorTopDirs: ["guarded/", "open/"],
       shouldIncludeDerivingParent: true,
-      shouldFetchRawBytes: true,
+      shouldFetchRawBytesIfLight: true,
       shouldThrowIfNotFound: false,
       shouldConvertToString: true,
       shouldIncludeWithoutPubTime: true,
@@ -1011,7 +1015,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       locatorTopDirs: ["guarded/", "open/"],
       locatorSubAncestors: [ancestor],
       shouldIncludeDerivingParent,
-      shouldFetchRawBytes: true,
+      shouldFetchRawBytesIfLight: true,
       shouldIncludeWithoutPubTime: false,
       orderBy,
       pageNum,
@@ -1353,5 +1357,6 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     fetchBackstageAssetWrapper,
     fetchGenericLocatableAssetWrapper,
     fetchTemplateWrapper: fetchTemplateCallInfo.func,
+    option,
   }
 })

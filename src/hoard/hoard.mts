@@ -110,7 +110,7 @@ function batchCallUrl(urlListStr: string, timeoutMs: number, logStr: string) {
         })
         l(`http callback ${logStr} success: ${url}`)
       } catch (e) {
-        le(`http callback ${logStr} err: ${url}`, e)
+        le(`http callback ${logStr} err: ${url}`, e?.constructor?.name || 'UnknownTypeError', ((e as Error)?.message || 'no message'))
       }
     })())
   }

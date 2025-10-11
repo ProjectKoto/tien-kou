@@ -4,7 +4,7 @@ import Emittery from "emittery"
 import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
-import { Ao, AnyObj, l, makeConcatenatablePath, makeConcatenatablePathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen, SqlArgValue, sqlFormatForDisp } from "../lib/common.mts"
+import { Ao, AnyObj, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen, SqlArgValue, sqlFormatForDisp } from "../lib/common.mts"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
 
 type KnownHandlerTypesMap0 = {
@@ -670,7 +670,7 @@ export interface QueryLiveAssetCommonParam {
   extensions?: string[],
   orderBy?: "condTimeDesc" | "condTimeAsc" | "condLocatorAsc" | "condLocatorDesc" | "timeDesc" | "timeAsc" | "locatorAsc" | "locatorDesc" | string | string[],
   // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
-  shouldFetchRawBytes?: boolean | Boolean,
+  shouldFetchRawBytesIfLight?: boolean | Boolean,
   pageNum?: number,
   pageSize?: number,
 }
@@ -706,7 +706,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         extraColumnSqlSegment,
         extraColumnSqlSegmentArgs,
         orderBy,
-        shouldFetchRawBytes,
+        shouldFetchRawBytesIfLight,
         pageNum,
         pageSize,
         shouldIncludeWithoutPubTime,
@@ -723,12 +723,12 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
       //   customSql,
       //   customSqlArgs,
       //   orderBy,
-      //   shouldFetchRawBytes,
+      //   shouldFetchRawBytesIfLight,
       //   pageNum,
       //   pageSize,
       // })
 
-      locatorTopDirs = makeConcatenatablePathList(locatorTopDirs)
+      locatorTopDirs = makeConcatenatableRelPathList(locatorTopDirs)
 
       const sqlFragmentList: string[] = []
       const sqlArgs: SqlArgValue[] = []
@@ -786,7 +786,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   is_asset_heavy AS is_asset_heavy,
                   has_derived_children AS has_derived_children,
                   deriving_parent_id AS deriving_parent_id,
-                  ${shouldFetchRawBytes ? 'asset_raw_bytes' : 'NULL'} AS asset_raw_bytes,
+                  ${shouldFetchRawBytesIfLight ? 'asset_raw_bytes' : 'NULL'} AS asset_raw_bytes,
                   origin_file_path AS origin_file_path,
                   origin_file_extension AS origin_file_extension,
                   metadata AS metadata,
@@ -852,14 +852,14 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
             sqlArgs.push(
               locatorTopDirs[i] + currSubPath,
-              locatorTopDirs[i] + makeConcatenatablePath(currSubPath) + 'DirMeta.cfg',
-              sqlGlobPatternEscape(locatorTopDirs[i] + makeConcatenatablePath(currSubPath)) + '*',
+              locatorTopDirs[i] + makeConcatenatableRelPath(currSubPath) + 'DirMeta.cfg',
+              sqlGlobPatternEscape(locatorTopDirs[i] + makeConcatenatableRelPath(currSubPath)) + '*',
             )
           }
         }
         
         if (locatorSubAncestors) {
-          locatorSubAncestors = makeConcatenatablePathList(locatorSubAncestors)
+          locatorSubAncestors = makeConcatenatableRelPathList(locatorSubAncestors)
           for (let j = 0; j < locatorSubAncestors.length; j++) {
             multipleConditionsSqlFragments.push(`
               SELECT * FROM
@@ -874,7 +874,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   is_asset_heavy AS is_asset_heavy,
                   has_derived_children AS has_derived_children,
                   deriving_parent_id AS deriving_parent_id,
-                  ${shouldFetchRawBytes ? 'asset_raw_bytes' : 'NULL'} AS asset_raw_bytes,
+                  ${shouldFetchRawBytesIfLight ? 'asset_raw_bytes' : 'NULL'} AS asset_raw_bytes,
                   origin_file_path AS origin_file_path,
                   origin_file_extension AS origin_file_extension,
                   metadata AS metadata,
@@ -895,7 +895,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         }
 
         if (locatorSubParents) {
-          locatorSubParents = makeConcatenatablePathList(locatorSubParents)
+          locatorSubParents = makeConcatenatableRelPathList(locatorSubParents)
           for (let j = 0; j < locatorSubParents.length; j++) {
             multipleConditionsSqlFragments.push(`
               SELECT * FROM
@@ -944,7 +944,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   END AS deriving_parent_id,
 
                   CASE slash_index
-                  WHEN 0 THEN ${shouldFetchRawBytes ? 'asset_raw_bytes' : 'NULL'}
+                  WHEN 0 THEN ${shouldFetchRawBytesIfLight ? 'asset_raw_bytes' : 'NULL'}
                   ELSE NULL
                   END AS asset_raw_bytes,
 

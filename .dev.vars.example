@@ -30,6 +30,8 @@ NODE_LOCAL_FS_RT_LISTEN_PORT = '8569'
 
 HEAVY_ASSET_WEB_REDIR_URL_PREFIX = "https://my.static.asset.site/sub/path/"
 
+HOARD_MULTI_TARGET_SYNC_BASE_DIR = 'path/to/xxx'
+
 HOARD_RCLONE_CONFIG_TK_HOARD_HEAVY_SYNC_TYPE = 'xxx'
 HOARD_RCLONE_CONFIG_TK_HOARD_HEAVY_SYNC_PROVIDER = 'xxx'
 HOARD_RCLONE_CONFIG_TK_HOARD_HEAVY_SYNC_ENV_AUTH = 'xxx'
@@ -39,7 +41,6 @@ HOARD_RCLONE_CONFIG_TK_HOARD_HEAVY_SYNC_ENDPOINT = 'https://xxx'
 HOARD_RCLONE_CONFIG_TK_HOARD_HEAVY_SYNC_LOCATION_CONSTRAINT = 'xxx'
 HOARD_RCLONE_CONFIG_TK_HOARD_HEAVY_SYNC_ACL = 'xxx'
 
-HOARD_RCLONE_TK_HOARD_HEAVY_SOURCE_DIR = 'path/to/xxx'
 HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR = 'path/to/xxx'
 
 HOARD_RCLONE_EXECUTABLE = 'path/to/rclone'
@@ -49,3 +50,7 @@ PROCENV_HOARD_METADATA_DATE_TIMEZONE_OFFSET_MINUTE = '480'
 
 # HOARD_METADATA_FIELD_ALIAS_LIST = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags'
 
+
+HOARD_GIT_LOCAL_BARE_REPO_PATH = '/path/to/repo.git'
+
+HOARD_GIT_REMOTE = 'ssh://xxx'

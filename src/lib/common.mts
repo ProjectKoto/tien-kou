@@ -451,13 +451,14 @@ export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | { t
   throw new TkErrorHttpAware(`bytesLikeToString: invalid input: ${bytesLike === null ? "<null>" : JSON.stringify(bytesLike)}`)
 }
 
-export const makeConcatenatablePath = (x: string) => (!x || x === '/') ? '' : (x[x.length - 1] !== '/' ? (x + '/') : x)
+// ''; 'a/'; 'a/b/'
+export const makeConcatenatableRelPath = (x: string) => (!x || x === '/') ? '' : (x[x.length - 1] !== '/' ? (x + '/') : x)
 
-export const makeConcatenatablePathList = (l: string[]) => {
+export const makeConcatenatableRelPathList = (l: string[]) => {
   if (!l || l.length === 0) {
     l = ['']
   } else {
-    l = l.map(makeConcatenatablePath)
+    l = l.map(makeConcatenatableRelPath)
   }
   return l
 }

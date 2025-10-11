@@ -45,3 +45,39 @@ export const calcValidateFileSystemPathSync = (rootPath: string, assetOriginFile
   return fileSystemPath
 }
 
+export const staticGenBaseDir = './staticGen'
+
+// credit: deno authors MIT https://jsr.io/@std/streams/1.0.13/to_array_buffer.ts
+function bufferConcat(buffers: readonly Uint8Array[]): Uint8Array {
+  let length = 0
+  for (const buffer of buffers) {
+    length += buffer.length
+  }
+  const output = new Uint8Array(length)
+  let index = 0
+  for (const buffer of buffers) {
+    output.set(buffer, index)
+    index += buffer.length
+  }
+
+  return output
+}
+
+export async function toArrayBuffer(
+  readableStream: ReadableStream<Uint8Array>,
+): Promise<ArrayBuffer> {
+  const reader = readableStream.getReader()
+  const chunks: Uint8Array[] = []
+
+  while (true) {
+    const { done, value } = await reader.read()
+
+    if (done) {
+      break
+    }
+
+    chunks.push(value)
+  }
+
+  return bufferConcat(chunks).buffer as ArrayBuffer
+}

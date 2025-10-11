@@ -2,7 +2,7 @@ import { serve as nodeServe } from '@hono/node-server'
 import { MarkdownDB } from "mddb"
 import fs from "node:fs"
 import path from "node:path"
-import { AnyObj, delayInitVal, l, makeConcatenatablePath, TkError } from "../lib/common.mts"
+import { AnyObj, delayInitVal, l, makeConcatenatableRelPath, TkError } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
@@ -12,6 +12,8 @@ import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryL
 import { calcValidateFileSystemPathSync, nodeResolvePath } from '../lib/nodeCommon.mts'
 import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
+import { Hono } from 'hono'
+import { LiquidStaticGenFilterRegHandler } from './nodeStaticGen'
 
 if (process.platform === "freebsd") {
   console.error("freebsd not supported, readFile not returing EISDIR")
@@ -65,7 +67,7 @@ const NodeJsLocalFsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(asy
       }
     },
     fetchStaticAsset: async ({ locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer | Buffer<ArrayBufferLike>> => {
-      const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath.val, makeConcatenatablePath(locatorTopDir) + makeConcatenatablePath(locatorSubPath))
+      const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath.val, makeConcatenatableRelPath(locatorTopDir) + makeConcatenatableRelPath(locatorSubPath))
      
       try {
         const fileBytes = await fs.promises.readFile(fileSystemPath)
@@ -84,7 +86,7 @@ const NodeJsLocalFsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(asy
       
       for (const x of sqlResult) {
         if (x.is_asset_heavy === 1) {
-          if (param.shouldFetchRawBytes && (x.asset_raw_bytes === undefined || x.asset_raw_bytes === null)) {
+          if (param.shouldFetchRawBytesIfLight && (x.asset_raw_bytes === undefined || x.asset_raw_bytes === null)) {
             x.asset_raw_bytes = (await this.fetchLiveHeavyAssetBytes({ originFilePath: x.origin_file_path })).asset_raw_bytes
           }
         }
@@ -103,7 +105,12 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
   LiquidFilterRegisterHandlerList,
   IntegratedCachePolicyHandler,
   TkCtxHandler,
-}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler">) => {
+  staticGenEnabledSetter,
+  honoSetter,
+}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler", {
+  staticGenEnabledSetter: (_: boolean) => void,
+  honoSetter: (_: Hono) => void,
+}>) => {
 
   const tkEnv = await tkEnvFromDevVarsFile()
 
@@ -125,21 +132,49 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
     TkCtxHandler,
   })
 
+  honoSetter(super_.honoApp as unknown as Hono)
+
+  const realServeHttp = async (): Promise<TkAppStartInfo<undefined>> => {
+    (super_.honoApp as AnyObj)['hostname'] = tkEnv.NODE_LOCAL_FS_RT_LISTEN_HOST || '127.0.0.1'
+    ;(super_.honoApp as AnyObj)['port'] = Number.parseInt(tkEnv.NODE_LOCAL_FS_RT_LISTEN_PORT || "8569")
+
+    const nodeServer = nodeServe(super_.honoApp, (info) => {
+      l(`Listening on http://${info.address}:${info.port}`)
+    })
+    
+    return {
+      defaultExportObject: undefined,
+      waitForAppEndPromise: new Promise((rs, _rj) => {
+        nodeServer.on('close', rs)
+      })
+    }
+  }
+
+  staticGenEnabledSetter(false)
+  const genStatic = async (): Promise<TkAppStartInfo<undefined>> => {
+
+    const genStaticUrl = new URL('http://pseudo-tien-kou-app.home.arpa/admin/genStatic')
+
+
+    super_.option.isStaticGenFeatureEnabled = true
+    staticGenEnabledSetter(true)
+
+    const theTask = (async () => {
+      await super_.honoApp.fetch(new Request(genStaticUrl))
+    })()
+    
+    return {
+      defaultExportObject: undefined,
+      waitForAppEndPromise: theTask,
+    }
+  }
+
   return EAH<typeof super_, TienKouApp<undefined>>(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
-
-      (super_.honoApp as AnyObj)['hostname'] = tkEnv.NODE_LOCAL_FS_RT_LISTEN_HOST || '127.0.0.1'
-      ;(super_.honoApp as AnyObj)['port'] = Number.parseInt(tkEnv.NODE_LOCAL_FS_RT_LISTEN_PORT || "8569")
-
-      const nodeServer = nodeServe(super_.honoApp, (info) => {
-        l(`Listening on http://${info.address}:${info.port}`)
-      })
-      
-      return {
-        defaultExportObject: undefined,
-        waitForAppEndPromise: new Promise((rs, _rj) => {
-          nodeServer.on('close', rs)
-        })
+      if ((tkEnv.PROCENV_TK_SUB_MODE || '') === 'genStatic') {
+        return await genStatic()
+      } else {
+        return await realServeHttp()
       }
     }
   })
@@ -187,12 +222,18 @@ const nodeMain = async () => {
   const LiquidHandler = await MainLiquidHandler({
     TkFirstCtxProvideHandler,
   })
-  
+
+  let staticGenEnabled = false
+  let honoApp: Hono | undefined = undefined
   const LiquidFilterRegisterHandlerList = [
     await LiquidSqlFilterRegHandler({
       SqlDbHandler,
     }),
     await LiquidTelegramMsgFilterRegHandler({}),
+    await LiquidStaticGenFilterRegHandler({
+      enabledGetter: () => staticGenEnabled,
+      honoGetter: () => honoApp!,
+    }),
   ]
 
   const TienKouAssetCategoryLogicHandler = await TkSqlAssetCategoryLogicHandler({
@@ -206,12 +247,15 @@ const nodeMain = async () => {
     LiquidFilterRegisterHandlerList,
     TienKouAssetCategoryLogicHandler,
     TkCtxHandler,
+    honoSetter: (v) => { honoApp = v },
+    staticGenEnabledSetter: (v) => { staticGenEnabled = v },
   })
   
   const startInfo = await app.start()
   if (startInfo.waitForAppEndPromise !== undefined) {
     await startInfo.waitForAppEndPromise
   }
+  process.exit(0)
 }
 
 // await nodeMain()

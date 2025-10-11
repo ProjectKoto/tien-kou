@@ -5,6 +5,94 @@ import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
 import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
 import { nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
+import nanoSpawn, { SubprocessError } from 'nano-spawn'
+import path, { delimiter } from 'node:path'
+import escapeStringRegexp from 'escape-string-regexp'
+import fs from 'node:fs'
+import os from 'node:os'
+
+// Only a very small subset of .gitignore and rclone filter match rules is supported
+// here, and they still are not guaranteed to work as expected.
+
+// Supported:
+// **/*, **/a.txt, *.log, /dir1/file1, dir2/file2
+
+// Not supported:
+// /**abc, **def**xyz (won't match /abc/def/ghi/xyz in git), !dir3/file3, path//to///some/file, //path/to/file, path/to/dir4, path/to/dir4/, /path/to/dir4, /path/to/dir4/, [0-9].txt, a?.txt, *.{jpg,png} ...
+
+
+const convertIgnoreItemToMddbRegExp = (ignoreItem: string, fixedPrefixSlashEnded: string) => {
+  const doBreak = (delimiter: string, doBreakInner?: ((target2: string) => string[])) => (target: string): string[] => {
+    const parts = target.split(delimiter)
+    return parts.reduce((prev, curr) => {
+      if (prev.length > 0) {
+        prev.push(delimiter)
+      }
+      if (doBreakInner) {
+        const breakInnerResult = doBreakInner(curr)
+        prev.push(...breakInnerResult)
+      } else {
+        prev.push(curr)
+      }
+      return prev
+    }, [] as string[])
+  }
+
+  const startFromBaseDir = ignoreItem.startsWith('/')
+  const ignoreItemStrippedStartingSlash = startFromBaseDir ? ignoreItem.substring(1) : ignoreItem
+  const parsedParts = doBreak('**', doBreak('*'))(ignoreItemStrippedStartingSlash)
+  let regexpStr = '^' + escapeStringRegexp(fixedPrefixSlashEnded) + (startFromBaseDir ? '' : '(?:|.*/)')
+  for (const part of parsedParts) {
+    if (part === '**') {
+      regexpStr += '.*'
+    } else if (part === '*') {
+      regexpStr += '[^/]*'
+    } else {
+      regexpStr += escapeStringRegexp(part)
+    }
+  }
+  regexpStr += '$'
+  return new RegExp(regexpStr, 'ig')
+}
+
+// reused by the following ignore lists; do no assume a base path.
+const commonIgnoreList = [
+  '**/*Excalidraw*',
+  '**/*Excalidraw*/**',
+  '**/*.obsidian*',
+  '**/*.obsidian*/**',
+  '**/*DS_Store*',
+  '**/*DS_Store*/**',
+  '**/.sync-conflict-*',
+  '**/.syncthing.*.tmp',
+  '**/.syncthing.tmp',
+  '**/Unpublished/**',
+  '**/unscannedAsset/**',
+  '**/Unpublished.md',
+]
+
+// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
+const rcloneHeavyIgnoreList = [
+  ...commonIgnoreList,
+  '/liveAsset/backstage/**',
+  ...(() => {
+    const result: string[] = []
+    dedicatedAssetExtNames.forEach(extName => {
+      result.push(`/liveAsset/guarded/**/*.${extName}`)
+    })
+    return result
+  })()
+]
+
+// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/liveAsset
+const mddbWatchIgnoreList = [
+  ...commonIgnoreList,
+]
+
+// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
+const gitIgnoreList = [
+  ...commonIgnoreList,
+]
 
 export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Promise<void>) => {
   const shouldRun = true
@@ -16,6 +104,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   let tursoc: turso.Client | undefined = undefined
 
   const dbPath = "markdown.db"
+  const liveAssetBaseSlashPath = nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!).split(path.sep).join('/')
+  const multiTargetSyncBaseSlashPath = nodeResolvePath(tkCtx.e.HOARD_MULTI_TARGET_SYNC_BASE_DIR!).split(path.sep).join('/')
 
   tursoc = turso.createClient({
     url: tkEnv.TURSO_DATABASE_URL!,
@@ -339,18 +429,82 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     }
   }
 
-  const rcloneAssetFilter = (() => {
-    const result = []
-    result.push(`- /liveAsset/backstage/**`)
-    dedicatedAssetExtNames.forEach(extName => {
-      result.push(`- /liveAsset/guarded/**/*.${extName}`)
-    })
-    return result
-  })()
+  const gitLocalBareRepoPath = tkCtx.e.HOARD_GIT_LOCAL_BARE_REPO_PATH ? nodeResolvePath(tkCtx.e.HOARD_GIT_LOCAL_BARE_REPO_PATH).split(path.sep).join('/') : undefined
+  const gitSyncScriptPath =  nodeResolvePath('./thirdparty/git-sync/git-sync').split(path.sep).join('/')
+  const gitRemote = tkCtx.e.HOARD_GIT_REMOTE ? tkCtx.e.HOARD_GIT_REMOTE : undefined
+
+  const gitSync = async () => {
+    const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(os.tmpdir())
+    
+    try {
+      const gitIgnoreFilePath = path.join(gitIgnoreFileTmpDir, 'tkGitIgnore').split(path.sep).join('/')
+      await fs.promises.writeFile(gitIgnoreFilePath, gitIgnoreList.join('\n'), 'utf-8')
+
+      try {
+        const gitArgs = ['--git-dir=' + gitLocalBareRepoPath, '--work-tree=' + multiTargetSyncBaseSlashPath, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_asset_main.remote=origin', '-c', 'branch.tk_asset_main.syncNewFiles=true', '-c', 'branch.tk_asset_main.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_asset_main.tkSyncRebaseMergeStrategyOption=theirs']
+
+        const runGitProcess = async (args: string[], logMark: string, timeoutMs: number, throwIfNonZero: boolean) => {
+          let gitProcExitCode: number | undefined = 0
+          let gitProcStdout
+          let gitProcStderr
+          const stdoutMark = `git-sync: ${logMark} stdout:`
+          const stderrMark = `git-sync: ${logMark} stderr:`
+          const exitCodeMark = `git-sync: ${logMark} exit:`
+          try {
+            const gitProc = nanoSpawn('git', [...gitArgs, ...args], {
+              timeout: timeoutMs,
+            })
+            ;(async () => {
+              for await (const outLine of gitProc.stdout) {
+                console.log(stdoutMark, outLine)
+              }
+            })().catch(() => {})
+            ;(async () => {
+              for await (const outLine of gitProc.stderr) {
+                console.log(stderrMark, outLine)
+              }
+            })().catch(() => {})
+            const gitProcResult = await gitProc
+            gitProcStdout = gitProcResult.stdout
+            gitProcStderr = gitProcResult.stderr
+          } catch (e: unknown) {
+            if (e instanceof SubprocessError) {
+              gitProcExitCode = e.exitCode
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              gitProcStdout = e.stdout
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              gitProcStderr = e.stderr
+              if (throwIfNonZero) {
+                throw e
+              }
+            } else {
+              throw e
+            }
+          } finally {
+            console.log(exitCodeMark, gitProcExitCode)
+          }
+        }
+
+        if (gitLocalBareRepoPath && gitRemote) {
+          await runGitProcess(['remote', 'add', 'origin', gitRemote], 'add-remote', 4000, false)
+          await runGitProcess(['branch', '--force', 'tk_asset_main', 'HEAD'], 'ensure-branch1', 20000, false)
+          await runGitProcess(['reset', 'tk_asset_main'], 'ensure-branch1', 20000, false)
+          await runGitProcess(['rm', '--cached', '-r', '.'], 'rm-cached', 20000, false)
+          await runGitProcess(['tk-sync'], 'tk-sync', 20000, true)
+        }
+      } catch (e) {
+        le('gitSync err', e)
+      }
+    } finally {
+      await fs.promises.rm(gitIgnoreFileTmpDir, {recursive: true, force: true})
+    }
+  }
+
+  const rcloneAssetFilter = rcloneHeavyIgnoreList.map(x => '- ' + x)
 
   const rcloneHeavy = async () => {
     try {
-      const [exitStatus, _exitSignal, stdout, stderr] = await tkCtx.rcloneW('sync', tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_SOURCE_DIR!, 'TK_HOARD_HEAVY_SYNC:' + (tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR || ''), {
+      const [exitStatus, _exitSignal, stdout, stderr] = await tkCtx.rcloneW('sync', tkCtx.e.HOARD_MULTI_TARGET_SYNC_BASE_DIR!, 'TK_HOARD_HEAVY_SYNC:' + (tkCtx.e.HOARD_RCLONE_TK_HOARD_HEAVY_DEST_DIR || ''), {
         'verbose': true,
         'ignore-case': true,
         'ignore-errors': true,
@@ -375,10 +529,12 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
         await doRefreshMetaMetaInfo()
-        if ((process.env.PROCENV_HOARD_LOCAL_ONLY || '').toString() !== '1') {
+        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly') {
           await doSyncToTurso()
           l('scheduling rcloneHeavy...')
           rcloneHeavy()
+          l('scheduling gitSync...')
+          gitSync()
         }
         l('running update hook...')
         await onUpdate()
@@ -395,10 +551,12 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
         await doRefreshMetaMetaInfo()
-        if ((process.env.PROCENV_HOARD_LOCAL_ONLY || '').toString() !== '1') {
+        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly') {
           await doSyncToTursoIncr()
           l('scheduling rcloneHeavy...')
           rcloneHeavy()
+          l('scheduling gitSync...')
+          gitSync()
         }
         l('running update hook...')
         await onUpdate()
@@ -866,8 +1024,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
   // have background parts
   await mddb.indexFolder({
-    folderPath: nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!),
-    ignorePatterns: [/Excalidraw/, /\.obsidian/, /DS_Store/, /\/\.sync-conflict-/, /\/\.syncthing(\..*\.|\.)tmp$/, /\/Unpublished\//, /\/Unpublished\.md$/],
+    folderPath: liveAssetBaseSlashPath,
+    ignorePatterns: mddbWatchIgnoreList.map(x => convertIgnoreItemToMddbRegExp(x, liveAssetBaseSlashPath + '/')), 
     customConfig: {
       handleDedicated: async (filePath) => {
         const [_, pathStrippedExt, extension] = stripExtensionList(filePath, allKnownAssetExtNames)

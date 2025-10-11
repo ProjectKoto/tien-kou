@@ -96,7 +96,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorTopDirs: locatorTopDirsToSearch,
         locatorSubPaths: (subPathTryStrippedExt !== subPath && isInExtensionList(ext, strippedInLocatorExtNames)) ? [subPath, subPathTryStrippedExt] : [subPath],
         shouldIncludeDerivingParent: true,
-        shouldFetchRawBytes: true,
+        shouldFetchRawBytesIfLight: true,
         shouldIncludeWithoutPubTime: true,
       })
 
@@ -127,7 +127,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorTopDirs: ["backstage/"],
         locatorSubPaths: [subPath],
         shouldIncludeDerivingParent: true,
-        shouldFetchRawBytes: true,
+        shouldFetchRawBytesIfLight: true,
         shouldIncludeWithoutPubTime: true,
       })
 
@@ -176,7 +176,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorTopDirs: locatorTopDirsToSearch,
         locatorSubPaths: [subPath],
         shouldIncludeDerivingParent: false,
-        shouldFetchRawBytes: true,
+        shouldFetchRawBytesIfLight: true,
         shouldIncludeWithoutPubTime: true,
       })
 
