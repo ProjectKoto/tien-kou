@@ -53,12 +53,13 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
             }
           }
 
-          const resp = await honoApp.fetch(new Request(new URL('http://pseudo-tien-kou-app.home.arpa' + webReqPath)), honoEnv)
+          const currUrl = new URL('http://pseudo-tien-kou-app.home.arpa' + webReqPath)
+          const resp = await honoApp.fetch(new Request(currUrl), honoEnv)
 
           if (resp.status === 302) {
             const location = resp.headers.get('Location')
             if (location) {
-              const targetLocationPathTidy = new URL(location).pathname.split('/').filter(x => x !== '').join('/')
+              const targetLocationPathTidy = new URL(location, currUrl).pathname.split('/').filter(x => x !== '').join('/')
               if (!pageAlreadyGenMemo[targetLocationPathTidy]) {
                 await genStaticPageWithAncestors.call(this, '/' + targetLocationPathTidy)
               }
