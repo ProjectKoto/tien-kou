@@ -174,10 +174,10 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
         const cfVerMetadata = (he as AnyObj)["CF_VERSION_METADATA"]
         if (cfVerMetadata) {
           const { id: versionId } =  cfVerMetadata
-          return (versionId || "cfUnknown").toString()
+          return (versionId || "cfWorkerUnknownServerVer").toString()
         }
       }
-      return "otherUnknown"
+      return "otherServerUnknownVer"
     })
 
     l('reqPath', reqPath)
@@ -211,6 +211,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       backpatches: {} as AnyObj,
       backpatchValueMap: {} as AnyObj,
       now: new Date().getTime(),
+      tkAppCtx: TkCtxHandler.appSharedMutableCtx,
     }
 
     resultGenContext.rgc = resultGenContext
@@ -304,8 +305,6 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
         const rgc = resultGenContext
       
         await IntegratedCachePolicyHandler.checkAndDoEvictRuntimeCache(tkCtx)
-
-        rgc.isDoingStaticGen = true
 
         ;(await (await LiquidHandler.liquidReadyPromise).renderFile(rgc.genStaticTemplateRelPath, rgc, {
           globals: {

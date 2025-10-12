@@ -10,6 +10,7 @@ import escapeStringRegexp from 'escape-string-regexp'
 import fs from 'node:fs'
 import os from 'node:os'
 import { buildGitProcessRunner, gitSyncScriptPath } from "../lib/nodeGitUtil.mts"
+import replaceAll from 'string.prototype.replaceall'
 
 // Only a very small subset of .gitignore and rclone filter match rules is supported
 // here, and they still are not guaranteed to work as expected.
@@ -455,7 +456,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
           await runGitProcess(['reset', 'tk_asset_main'], 'ensure-branch1', 20000, false)
           await runGitProcess(['rm', '--cached', '-r', '.'], 'rm-cached', 20000, false)
-          await runGitProcess(['tk-sync'], 'tk-sync', 20000, true)
+          await runGitProcess(['tk-sync'], 'tk-sync', 120*1000, true)
         }
       } catch (e) {
         le('gitSyncLiveAsset err', e)
@@ -549,7 +550,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     const InOneChildDirectivePossible = 1
     const InOneChildAfterDirective = 2
     const InOneChildSource = 3
-    const regexTimestampPrefix = /^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d/i
+    const regexTimestampPrefix = /^\d\d\d\d-\d\d-\d\d \d\d[:.]\d\d[:.]\d\d/i
 
     // credits: https://github.com/tremby/json-multi-parse MIT
     const JSON_PARSE_ERROR_REGEXES = [
@@ -702,8 +703,10 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
             // new child
             state = InOneChildDirectivePossible
-            const childName = line.substring(0, 19)
-            const childPublishDate = new Date(childName)
+            // considering static file generation on Windows
+            const childName = replaceAll(line.substring(0, 19), ':', '.')
+            const validChildDateStr = replaceAll(line.substring(0, 19), '.', ':')
+            const childPublishDate = new Date(validChildDateStr)
             let childExtensionWithDot = (fileInfo.origin_file_extension || "").toLowerCase()
             if (childExtensionWithDot) {
               childExtensionWithDot = "." + childExtensionWithDot

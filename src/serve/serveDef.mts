@@ -5,7 +5,7 @@ import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
-import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
+import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
 type KnownHandlerTypesMap0 = {
   MiddleCacheHandler: MiddleCacheHandler,

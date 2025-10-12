@@ -16,7 +16,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
 } : KD<"TkAppSharedMutableCtxHandler", { HonoProvideHandler: HonoProvideHandler<any> }>) => {
   return {
     doRegister: (reg) => {
-      reg("genStaticPageWithAncestors", async function genStaticPageWithAncestors(webReqPath: string) {
+      reg("genStaticPageWithAncestors", async function genStaticPageWithAncestors(unencodedWebPath: string, search?: string | undefined, overwriteDestPath?: string | undefined) {
         if (!TkAppSharedMutableCtxHandler.appSharedMutableCtx.isStaticGenFeatureEnabled) {
           throw new TkErrorHttpAware("genStaticPageWithAncestors is not enabled")
         }
@@ -41,38 +41,48 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
           gsCtx.pageAlreadyGenMemo = {}
         }
         const pageAlreadyGenMemo = gsCtx.pageAlreadyGenMemo!
-        const pathParts = decodeURI(webReqPath).split('/').filter(x => x !== '')
+        const pathParts = unencodedWebPath.split('/').filter(x => x !== '')
         const pathTidy = pathParts.join('/')
+        const overwriteDestPathTidy = overwriteDestPath === undefined ? undefined : overwriteDestPath.split('/').filter(x => x !== '').join('/')
 
         try {
           
           for (let i = 0; i < pathParts.length; i++) {
             const ancestorPathTidy = pathParts.slice(0, i).join('/')
             if (!pageAlreadyGenMemo[ancestorPathTidy]) {
-              await genStaticPageWithAncestors.call(this, '/' + ancestorPathTidy)
+              await genStaticPageWithAncestors.call(this, ancestorPathTidy)
             }
           }
 
-          const currUrl = new URL('http://pseudo-tien-kou-app.home.arpa' + webReqPath)
+          const currUrl = new URL('http://pseudo-tien-kou-app.home.arpa/' + encodeURI(pathTidy) + (search || ''))
           const resp = await honoApp.fetch(new Request(currUrl), honoEnv)
 
           if (resp.status === 302) {
             const location = resp.headers.get('Location')
             if (location) {
-              const targetLocationPathTidy = new URL(location, currUrl).pathname.split('/').filter(x => x !== '').join('/')
-              if (!pageAlreadyGenMemo[targetLocationPathTidy]) {
-                await genStaticPageWithAncestors.call(this, '/' + targetLocationPathTidy)
+              const locationUrl = new URL(location, currUrl)
+              const targetLocationPathTidy = locationUrl.pathname.split('/').filter(x => x !== '').join('/')
+              // if (pageAlreadyGenMemo[targetLocationPathTidy]) {
+              // }
+
+              const modifiedUrlSearchParams = new URLSearchParams(locationUrl.searchParams)
+              modifiedUrlSearchParams.set('isStaticGen302Target', '1')
+              let modifiedUrlSearchParamsStr = modifiedUrlSearchParams.toString()
+              if (modifiedUrlSearchParamsStr) {
+                modifiedUrlSearchParamsStr = '?' + modifiedUrlSearchParamsStr
               }
 
-              try {
-                await fs.promises.cp(path.join(staticGenBaseDir, './' + targetLocationPathTidy), path.join(staticGenBaseDir, './' + pathTidy), {
-                  recursive: true,
-                  errorOnExist: true,
-                  dereference: true,
-                })
-              } catch (e) {
-                le('genStaticPageWithAncestors', webReqPath, '302 cp err: ', e)
-              }
+              await genStaticPageWithAncestors.call(this, targetLocationPathTidy, modifiedUrlSearchParamsStr, pathTidy)
+
+              // try {
+              //   await fs.promises.cp(path.join(staticGenBaseDir, './' + targetLocationPathTidy), path.join(staticGenBaseDir, './' + pathTidy), {
+              //     recursive: true,
+              //     errorOnExist: true,
+              //     dereference: true,
+              //   })
+              // } catch (e) {
+              //   le('genStaticPageWithAncestors', unencodedWebPath, search, '302 cp err: ', e)
+              // }
             }
           } else if (resp.status === 200) {
             const contentType = resp.headers.get('Content-Type')
@@ -83,15 +93,18 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
               bodyBuffer = Buffer.from("Nothing?")
             }
             if (contentType && /^text\/html(\s*;.*)?$/.test(contentType)) {
-              await ensurePathDirExists(path.join(staticGenBaseDir, './' + pathTidy))
-              await fs.promises.writeFile(path.join(staticGenBaseDir, './' + pathTidy, './index.html'), bodyBuffer)
+              await ensurePathDirExists(path.join(staticGenBaseDir, './' + (overwriteDestPathTidy || pathTidy)))
+              await fs.promises.writeFile(path.join(staticGenBaseDir, './' + (overwriteDestPathTidy || pathTidy), './index.html'), bodyBuffer)
+            } else if (contentType && /^application\/rss+xml(\s*;.*)?$/.test(contentType)) {
+              await ensureParentDirExists(path.join(staticGenBaseDir, './' + (overwriteDestPathTidy || pathTidy)))
+              await fs.promises.writeFile(path.join(staticGenBaseDir, './' + (overwriteDestPathTidy || pathTidy)), bodyBuffer)
             } else {
-              await ensureParentDirExists(path.join(staticGenBaseDir, './' + pathTidy))
-              await fs.promises.writeFile(path.join(staticGenBaseDir, './' + pathTidy), bodyBuffer)
+              await ensureParentDirExists(path.join(staticGenBaseDir, './' + (overwriteDestPathTidy || pathTidy)))
+              await fs.promises.writeFile(path.join(staticGenBaseDir, './' + (overwriteDestPathTidy || pathTidy)), bodyBuffer)
             }
           }
         } catch (e) {
-          le('genStaticPageWithAncestors', webReqPath, 'error', e)
+          le('genStaticPageWithAncestors', unencodedWebPath, search, 'error', e)
         } finally {
           pageAlreadyGenMemo[pathTidy] = true
         }

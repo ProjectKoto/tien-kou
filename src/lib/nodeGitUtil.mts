@@ -106,7 +106,7 @@ export const gitSyncStaticGen = async ({
         }
         await runGitProcess(['reset', 'tk_static_gen'], 'ensure-branch3', 20000, false)
         await runGitProcess(['rm', '--cached', '-r', '.'], 'rm-cached', 20000, false)
-        await runGitProcess(['tk-sync'], 'tk-sync', 20000, true)
+        await runGitProcess(['tk-sync'], 'tk-sync', 300*1000, true)
       }
     } catch (e) {
       le('gitSyncStaticGen err', e)
