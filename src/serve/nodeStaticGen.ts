@@ -65,7 +65,11 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
               }
 
               try {
-                await fs.promises.cp(path.join(staticGenBaseDir, './' + targetLocationPathTidy), path.join(staticGenBaseDir, './' + pathTidy))
+                await fs.promises.cp(path.join(staticGenBaseDir, './' + targetLocationPathTidy), path.join(staticGenBaseDir, './' + pathTidy), {
+                  recursive: true,
+                  errorOnExist: true,
+                  dereference: true,
+                })
               } catch (e) {
                 le('genStaticPageWithAncestors', webReqPath, '302 cp err: ', e)
               }
