@@ -92,7 +92,7 @@ export const gitSyncStaticGen = async ({
     await fs.promises.writeFile(gitIgnoreFilePath, gitStaticGenIgnoreList.join('\n'), 'utf-8')
 
     try {
-      const fixedGitArgs = ['--git-dir=' + gitLocalStaticGenBareRepoPath, '--work-tree=' + staticGenBaseDir, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_static_gen.remote=origin', '-c', 'branch.tk_static_gen.syncNewFiles=true', '-c', 'branch.tk_static_gen.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_static_gen.tkSyncRebaseMergeStrategyOption=theirs']
+      const fixedGitArgs = ['--git-dir=' + gitLocalStaticGenBareRepoPath, '--work-tree=' + staticGenBaseDir, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_static_gen.remote=origin', '-c', 'user.email=automation@localhost', '-c', 'user.name=automation', '-c', 'branch.tk_static_gen.syncNewFiles=true', '-c', 'branch.tk_static_gen.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_static_gen.tkSyncRebaseMergeStrategyOption=theirs']
 
       const runGitProcess = buildGitProcessRunner('git-sync-staticg', fixedGitArgs)
 

@@ -441,7 +441,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       await fs.promises.writeFile(gitIgnoreFilePath, gitIgnoreList.join('\n'), 'utf-8')
 
       try {
-        const fixedGitArgs = ['--git-dir=' + gitLocalLiveAssetBareRepoPath, '--work-tree=' + multiTargetSyncBaseSlashPath, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_asset_main.remote=origin', '-c', 'branch.tk_asset_main.syncNewFiles=true', '-c', 'branch.tk_asset_main.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_asset_main.tkSyncRebaseMergeStrategyOption=theirs']
+        const fixedGitArgs = ['--git-dir=' + gitLocalLiveAssetBareRepoPath, '--work-tree=' + multiTargetSyncBaseSlashPath, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_asset_main.remote=origin', '-c', 'user.email=automation@localhost', '-c', 'user.name=automation', '-c', 'branch.tk_asset_main.syncNewFiles=true', '-c', 'branch.tk_asset_main.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_asset_main.tkSyncRebaseMergeStrategyOption=theirs']
 
         const runGitProcess = buildGitProcessRunner('git-sync-live', fixedGitArgs)
 
