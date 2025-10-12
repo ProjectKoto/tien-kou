@@ -33,10 +33,10 @@ export const isPath2InDir1 = (path1: string, path2: string) => {
   return relative && !relative.startsWith('..') && !path.isAbsolute(relative)
 }
 
-export const calcValidateFileSystemPathSync = (rootPath: string, assetOriginFilePath: string) => {
-  const fileSystemPath = path.normalize(path.join(rootPath, assetOriginFilePath))
-  const topDirPath = path.normalize(path.join(rootPath, (replaceAll(assetOriginFilePath, '\\', '/') as string).split('/').filter(x => x)[0]))
-  if (!isPath2InDir1(rootPath, topDirPath)) {
+export const calcValidateFileSystemPathSync = (basePath: string, assetOriginFilePath: string) => {
+  const fileSystemPath = path.normalize(path.join(basePath, assetOriginFilePath))
+  const topDirPath = path.normalize(path.join(basePath, (replaceAll(assetOriginFilePath, '\\', '/') as string).split('/').filter(x => x)[0]))
+  if (!isPath2InDir1(basePath, topDirPath)) {
     throw new TkError("bad path")
   }
   if (!isPath2InDir1(topDirPath, fileSystemPath)) {
@@ -45,7 +45,7 @@ export const calcValidateFileSystemPathSync = (rootPath: string, assetOriginFile
   return fileSystemPath
 }
 
-export const staticGenBaseDir = './staticGen'
+export const defaultStaticGenBaseDir = './data/staticGen'
 
 // credit: deno authors MIT https://jsr.io/@std/streams/1.0.13/to_array_buffer.ts
 function bufferConcat(buffers: readonly Uint8Array[]): Uint8Array {

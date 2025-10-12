@@ -5,11 +5,10 @@ import * as honoTypes from "hono/types"
 import * as liquid from "liquidjs"
 import mimeDbJson from 'mime-db/db.json'
 import mimeType from 'mime-types'
-import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
+import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkContext, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
-import { AEAH, AHC, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
-import { TkContext } from '../lib/common.mts'
+import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
 
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
   getTkEnvGetter: () => Promise<(honoCtx: hono.Context<HE>) => Record<string, string | undefined>>
@@ -67,6 +66,19 @@ export type HonoEnvTypeWithTkCtx<B extends object> = {
   Variables: HonoEnvVariablesType<HonoEnvTypeWithTkCtx<B>>
 }
 
+export type HonoProvideHandler<HE extends hono.Env, > = {
+  getHono(): HonoWithErrorHandler<HE>
+}
+
+export const MainHonoProvideHandler = <HE extends hono.Env,> () => HC<HonoProvideHandler<HE>>()(async (_: KD<never>) => {
+  const honoApp = new Hono<HE>() as HonoWithErrorHandler<HE>
+  return {
+    getHono: () => {
+      return honoApp
+    }
+  }
+})
+
 export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(async <HE extends HonoEnvTypeWithTkCtx<object>, >({
   TienKouAssetFetchHandler,
   LiquidHandler,
@@ -75,9 +87,11 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   IntegratedCachePolicyHandler,
   TkContextHlGetEHandler,
   TkCtxHandler,
+  HonoProvideHandler,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler",
   {
-    TkContextHlGetEHandler: TkContextHlGetTkEnvHandler<HE>
+    TkContextHlGetEHandler: TkContextHlGetTkEnvHandler<HE>,
+    HonoProvideHandler: HonoProvideHandler<HE>,
   }>) => {
 
   const super_ = await AbstractTkSqlLiquidApp<EO>()({
@@ -94,10 +108,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     }
   })
 
-  const option = Object.assign(super_.option, {
-  })
-
-  const honoApp = new Hono<HE>() as HonoWithErrorHandler<HE>
+  const honoApp = HonoProvideHandler.getHono()
 
   honoApp.use(honoContextStorage())
 
@@ -276,10 +287,6 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   honoApp.on("ALL", ['/.well-known', '/.well-known/*'], async c => {
     return c.text(".well-known not found", 404)
   })
-
-  
-
-  
   
   honoApp.get('/admin/:op', async (c) => {
     const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
@@ -292,7 +299,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       if (op === "refreshSiteVersion") {
         await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
         return c.text("refreshed " + (await IntegratedCachePolicyHandler.fetchDataVersion(tkCtx)).toString() + " " + rgc.serverDeployVersion())
-      } else if (op === 'genStatic' && option.isStaticGenFeatureEnabled) {
+      } else if (op === 'genStatic' && TkCtxHandler.appSharedMutableCtx.isStaticGenFeatureEnabled) {
         const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
         const rgc = resultGenContext
       
@@ -404,7 +411,6 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
   return AEAH(super_, {
     honoApp,
-    option,
   })
 
 })

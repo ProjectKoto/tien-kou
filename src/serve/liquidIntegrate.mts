@@ -144,7 +144,9 @@ export interface TkSqlLiquidAssetQueryCommonParam {
 export type WrapperOpt<T> = T & TkSqlLiquidAssetQueryCommonParam
 
 
-export type ResultGenContext = AnyObj
+export type ResultGenContext = {
+  tkCtx: () => TkContext
+} & AnyObj
 
 export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   TienKouAssetFetchHandler,
@@ -154,10 +156,6 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   IntegratedCachePolicyHandler,
   TkProvideCtxFromNothingHandler,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkProvideCtxFromNothingHandler">) => {
-  
-  const option = {
-    isStaticGenFeatureEnabled: false,
-  }
 
   const parseExtraOptFromLiquidShapeParams = <T extends AnyObj,>(optDefault: T, liquidShapeParams: unknown[], aliasMap: ({[x: string]: string}) = {}) => {
     const opt: T = {
@@ -237,11 +235,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
         return true
       },
   
-      contains(_root, _file) {
+      contains(_base, _file) {
         return true
       },
   
-      resolve(root, file, ext) {
+      resolve(base, file, ext) {
         let fileRelPath = file
         if (!(fileRelPath.endsWith(ext))) {
           fileRelPath += ext
@@ -1357,6 +1355,5 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     fetchBackstageAssetWrapper,
     fetchGenericLocatableAssetWrapper,
     fetchTemplateWrapper: fetchTemplateCallInfo.func,
-    option,
   }
 })

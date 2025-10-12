@@ -2,18 +2,17 @@ import { serve as nodeServe } from '@hono/node-server'
 import { MarkdownDB } from "mddb"
 import fs from "node:fs"
 import path from "node:path"
-import { AnyObj, delayInitVal, l, makeConcatenatableRelPath, TkError } from "../lib/common.mts"
+import { AnyObj, delayInitVal, l, makeConcatenatableRelPath, TkContext } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
-import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
-import { MainLiquidHandler } from "./liquidIntegrate.mts"
-import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
-import { TkContext } from '../lib/common.mts'
-import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
-import { calcValidateFileSystemPathSync, nodeResolvePath } from '../lib/nodeCommon.mts'
+import { calcValidateFileSystemPathSync, defaultStaticGenBaseDir, nodeResolvePath } from '../lib/nodeCommon.mts'
 import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
+import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
+import { MainLiquidHandler } from "./liquidIntegrate.mts"
+import { LiquidStaticGenFilterRegHandler, nodeGenStatic } from './nodeStaticGen'
+import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
-import { Hono } from 'hono'
-import { LiquidStaticGenFilterRegHandler } from './nodeStaticGen'
+import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
+import { gitSyncStaticGen } from '../lib/nodeGitUtil.mts'
 
 if (process.platform === "freebsd") {
   console.error("freebsd not supported, readFile not returing EISDIR")
@@ -51,23 +50,23 @@ const NodeJsLocalFsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(asy
 
   const super_ = await AbstractTkSqlAssetFetchHandler({ SqlDbHandler })
 
-  const liveAssetFileSystemRootPath = delayInitVal<string>()
-  const staticAssetFileSystemRootPath = delayInitVal<string>()
+  const liveAssetFileSystemBasePath = delayInitVal<string>()
+  const staticAssetFileSystemBasePath = delayInitVal<string>()
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
-    liveAssetFileSystemRootPath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!))
-    staticAssetFileSystemRootPath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_STATIC_ASSET_ROOT_PATH!))
+    liveAssetFileSystemBasePath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH!))
+    staticAssetFileSystemBasePath.val = path.normalize(nodeResolvePath(ctx0.e.NODE_LOCAL_FS_STATIC_ASSET_BASE_PATH!))
   })
   
   return EAH(super_, {
     fetchLiveHeavyAssetBytes: async function ({ originFilePath }: { originFilePath: string }): Promise<{ asset_raw_bytes: ArrayBuffer | Buffer<ArrayBufferLike> }> {
-      const fileSystemPath = calcValidateFileSystemPathSync(liveAssetFileSystemRootPath.val, originFilePath)
+      const fileSystemPath = calcValidateFileSystemPathSync(liveAssetFileSystemBasePath.val, originFilePath)
       return {
         asset_raw_bytes: await fs.promises.readFile(fileSystemPath),
       }
     },
     fetchStaticAsset: async ({ locatorTopDir, locatorSubPath }: { tkCtx?: TkContext, locatorTopDir: string, locatorSubPath: string }): Promise<ArrayBuffer | Buffer<ArrayBufferLike>> => {
-      const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemRootPath.val, makeConcatenatableRelPath(locatorTopDir) + makeConcatenatableRelPath(locatorSubPath))
+      const fileSystemPath = calcValidateFileSystemPathSync(staticAssetFileSystemBasePath.val, makeConcatenatableRelPath(locatorTopDir) + makeConcatenatableRelPath(locatorSubPath))
      
       try {
         const fileBytes = await fs.promises.readFile(fileSystemPath)
@@ -105,11 +104,9 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
   LiquidFilterRegisterHandlerList,
   IntegratedCachePolicyHandler,
   TkCtxHandler,
-  staticGenEnabledSetter,
-  honoSetter,
+  HonoProvideHandler,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler", {
-  staticGenEnabledSetter: (_: boolean) => void,
-  honoSetter: (_: Hono) => void,
+  HonoProvideHandler: HonoProvideHandler<HonoEnvTypeWithTkCtx<AnyObj>>
 }>) => {
 
   const tkEnv = await tkEnvFromDevVarsFile()
@@ -130,9 +127,8 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
       },
     } as TkContextHlGetTkEnvHandler<HonoEnvTypeWithTkCtx<AnyObj>>,
     TkCtxHandler,
+    HonoProvideHandler,
   })
-
-  honoSetter(super_.honoApp as unknown as Hono)
 
   const realServeHttp = async (): Promise<TkAppStartInfo<undefined>> => {
     (super_.honoApp as AnyObj)['hostname'] = tkEnv.NODE_LOCAL_FS_RT_LISTEN_HOST || '127.0.0.1'
@@ -150,29 +146,16 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
     }
   }
 
-  staticGenEnabledSetter(false)
-  const genStatic = async (): Promise<TkAppStartInfo<undefined>> => {
-
-    const genStaticUrl = new URL('http://pseudo-tien-kou-app.home.arpa/admin/genStatic')
-
-
-    super_.option.isStaticGenFeatureEnabled = true
-    staticGenEnabledSetter(true)
-
-    const theTask = (async () => {
-      await super_.honoApp.fetch(new Request(genStaticUrl))
-    })()
-    
-    return {
-      defaultExportObject: undefined,
-      waitForAppEndPromise: theTask,
-    }
-  }
-
   return EAH<typeof super_, TienKouApp<undefined>>(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
       if ((tkEnv.PROCENV_TK_SUB_MODE || '') === 'genStatic') {
-        return await genStatic()
+        return await nodeGenStatic(tkEnv, TkCtxHandler, super_.honoApp, async () => {
+          await gitSyncStaticGen({
+            gitLocalStaticGenBareRepoPath: tkEnv.HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH ? nodeResolvePath(tkEnv.HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH).split(path.sep).join('/') : undefined,
+            gitRemote: tkEnv.HOARD_GIT_STATIC_GEN_REMOTE ? tkEnv.HOARD_GIT_STATIC_GEN_REMOTE : undefined,
+            staticGenBaseDir: tkEnv.NODE_STATIC_GEN_BASE_PATH || defaultStaticGenBaseDir,
+          })
+        })()
       } else {
         return await realServeHttp()
       }
@@ -222,17 +205,17 @@ const nodeMain = async () => {
   const LiquidHandler = await MainLiquidHandler({
     TkFirstCtxProvideHandler,
   })
+  
+  const HonoProvideHandler = await MainHonoProvideHandler<HonoEnvTypeWithTkCtx<AnyObj>>()({})
 
-  let staticGenEnabled = false
-  let honoApp: Hono | undefined = undefined
   const LiquidFilterRegisterHandlerList = [
     await LiquidSqlFilterRegHandler({
       SqlDbHandler,
     }),
     await LiquidTelegramMsgFilterRegHandler({}),
     await LiquidStaticGenFilterRegHandler({
-      enabledGetter: () => staticGenEnabled,
-      honoGetter: () => honoApp!,
+      HonoProvideHandler,
+      TkAppSharedMutableCtxHandler: TkCtxHandler,
     }),
   ]
 
@@ -247,8 +230,7 @@ const nodeMain = async () => {
     LiquidFilterRegisterHandlerList,
     TienKouAssetCategoryLogicHandler,
     TkCtxHandler,
-    honoSetter: (v) => { honoApp = v },
-    staticGenEnabledSetter: (v) => { staticGenEnabled = v },
+    HonoProvideHandler,
   })
   
   const startInfo = await app.start()

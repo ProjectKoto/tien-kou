@@ -4,18 +4,18 @@ import { MarkdownDB } from "mddb"
 import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
 import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
-import { nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
-import nanoSpawn, { SubprocessError } from 'nano-spawn'
-import path, { delimiter } from 'node:path'
+import { ensurePathDirExists, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
+import path from 'node:path'
 import escapeStringRegexp from 'escape-string-regexp'
 import fs from 'node:fs'
 import os from 'node:os'
+import { buildGitProcessRunner, gitSyncScriptPath } from "../lib/nodeGitUtil.mts"
 
 // Only a very small subset of .gitignore and rclone filter match rules is supported
 // here, and they still are not guaranteed to work as expected.
 
 // Supported:
-// **/*, **/a.txt, *.log, /dir1/file1, dir2/file2
+// **/*, **/a.txt, *.log, /dir1/file1, dir2/file2, /dir3/**
 
 // Not supported:
 // /**abc, **def**xyz (won't match /abc/def/ghi/xyz in git), !dir3/file3, path//to///some/file, //path/to/file, path/to/dir4, path/to/dir4/, /path/to/dir4, /path/to/dir4/, [0-9].txt, a?.txt, *.{jpg,png} ...
@@ -68,6 +68,7 @@ const commonIgnoreList = [
   '**/.syncthing.tmp',
   '**/Unpublished/**',
   '**/unscannedAsset/**',
+  '/staticGen/**',
   '**/Unpublished.md',
 ]
 
@@ -104,7 +105,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   let tursoc: turso.Client | undefined = undefined
 
   const dbPath = "markdown.db"
-  const liveAssetBaseSlashPath = nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_ROOT_PATH!).split(path.sep).join('/')
+  const liveAssetBaseSlashPath = nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH!).split(path.sep).join('/')
   const multiTargetSyncBaseSlashPath = nodeResolvePath(tkCtx.e.HOARD_MULTI_TARGET_SYNC_BASE_DIR!).split(path.sep).join('/')
 
   tursoc = turso.createClient({
@@ -429,11 +430,10 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     }
   }
 
-  const gitLocalBareRepoPath = tkCtx.e.HOARD_GIT_LOCAL_BARE_REPO_PATH ? nodeResolvePath(tkCtx.e.HOARD_GIT_LOCAL_BARE_REPO_PATH).split(path.sep).join('/') : undefined
-  const gitSyncScriptPath =  nodeResolvePath('./thirdparty/git-sync/git-sync').split(path.sep).join('/')
-  const gitRemote = tkCtx.e.HOARD_GIT_REMOTE ? tkCtx.e.HOARD_GIT_REMOTE : undefined
+  const gitLocalLiveAssetBareRepoPath = tkCtx.e.HOARD_GIT_LOCAL_LIVE_ASSET_BARE_REPO_PATH ? nodeResolvePath(tkCtx.e.HOARD_GIT_LOCAL_LIVE_ASSET_BARE_REPO_PATH).split(path.sep).join('/') : undefined
+  const gitRemote = tkCtx.e.HOARD_GIT_LIVE_ASSET_REMOTE ? tkCtx.e.HOARD_GIT_LIVE_ASSET_REMOTE : undefined
 
-  const gitSync = async () => {
+  const gitSyncLiveAsset = async () => {
     const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(os.tmpdir())
     
     try {
@@ -441,59 +441,24 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       await fs.promises.writeFile(gitIgnoreFilePath, gitIgnoreList.join('\n'), 'utf-8')
 
       try {
-        const gitArgs = ['--git-dir=' + gitLocalBareRepoPath, '--work-tree=' + multiTargetSyncBaseSlashPath, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_asset_main.remote=origin', '-c', 'branch.tk_asset_main.syncNewFiles=true', '-c', 'branch.tk_asset_main.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_asset_main.tkSyncRebaseMergeStrategyOption=theirs']
+        const fixedGitArgs = ['--git-dir=' + gitLocalLiveAssetBareRepoPath, '--work-tree=' + multiTargetSyncBaseSlashPath, '-c', 'alias.tk-sync=!bash ' + gitSyncScriptPath, '-c', 'branch.tk_asset_main.remote=origin', '-c', 'branch.tk_asset_main.syncNewFiles=true', '-c', 'branch.tk_asset_main.sync=true', '-c', 'core.excludesFile=' + gitIgnoreFilePath, '-c', 'branch.tk_asset_main.tkSyncRebaseMergeStrategyOption=theirs']
 
-        const runGitProcess = async (args: string[], logMark: string, timeoutMs: number, throwIfNonZero: boolean) => {
-          let gitProcExitCode: number | undefined = 0
-          let gitProcStdout
-          let gitProcStderr
-          const stdoutMark = `git-sync: ${logMark} stdout:`
-          const stderrMark = `git-sync: ${logMark} stderr:`
-          const exitCodeMark = `git-sync: ${logMark} exit:`
-          try {
-            const gitProc = nanoSpawn('git', [...gitArgs, ...args], {
-              timeout: timeoutMs,
-            })
-            ;(async () => {
-              for await (const outLine of gitProc.stdout) {
-                console.log(stdoutMark, outLine)
-              }
-            })().catch(() => {})
-            ;(async () => {
-              for await (const outLine of gitProc.stderr) {
-                console.log(stderrMark, outLine)
-              }
-            })().catch(() => {})
-            const gitProcResult = await gitProc
-            gitProcStdout = gitProcResult.stdout
-            gitProcStderr = gitProcResult.stderr
-          } catch (e: unknown) {
-            if (e instanceof SubprocessError) {
-              gitProcExitCode = e.exitCode
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              gitProcStdout = e.stdout
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              gitProcStderr = e.stderr
-              if (throwIfNonZero) {
-                throw e
-              }
-            } else {
-              throw e
-            }
-          } finally {
-            console.log(exitCodeMark, gitProcExitCode)
-          }
-        }
+        const runGitProcess = buildGitProcessRunner('git-sync-live', fixedGitArgs)
 
-        if (gitLocalBareRepoPath && gitRemote) {
+        if (gitLocalLiveAssetBareRepoPath && gitRemote) {
+          await ensurePathDirExists(gitLocalLiveAssetBareRepoPath)
+          await buildGitProcessRunner('git-sync-live', [])(['init', '--bare', gitLocalLiveAssetBareRepoPath], 'init-bare', 4000, false)
           await runGitProcess(['remote', 'add', 'origin', gitRemote], 'add-remote', 4000, false)
-          await runGitProcess(['branch', '--force', 'tk_asset_main', 'HEAD'], 'ensure-branch1', 20000, false)
+          const ensureBranch1Result = await runGitProcess(['branch', '--force', 'tk_asset_main', 'HEAD'], 'ensure-branch1', 20000, false)
+          if (ensureBranch1Result.exitCode !== 0 && ensureBranch1Result.stderr.indexOf('not a valid object name') < 0) {
+            await runGitProcess(['checkout', '-b', 'tk_asset_main'], 'ensure-branch2', 4000, false)
+          }
           await runGitProcess(['reset', 'tk_asset_main'], 'ensure-branch1', 20000, false)
           await runGitProcess(['rm', '--cached', '-r', '.'], 'rm-cached', 20000, false)
           await runGitProcess(['tk-sync'], 'tk-sync', 20000, true)
         }
       } catch (e) {
-        le('gitSync err', e)
+        le('gitSyncLiveAsset err', e)
       }
     } finally {
       await fs.promises.rm(gitIgnoreFileTmpDir, {recursive: true, force: true})
@@ -529,16 +494,24 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("initial indexing, start updating")
         const ret = await origSaveDataToDisk.apply(this, args)
         await doRefreshMetaMetaInfo()
-        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly') {
+        const tasksToWait: Promise<unknown>[] = []
+        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
           await doSyncToTurso()
           l('scheduling rcloneHeavy...')
-          rcloneHeavy()
-          l('scheduling gitSync...')
-          gitSync()
+          tasksToWait.push(rcloneHeavy())
+          l('scheduling gitSyncLiveAsset...')
+          tasksToWait.push(gitSyncLiveAsset())
         }
         l('running update hook...')
         await onUpdate()
         l("updated")
+        l("initial indexFolder done")
+        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+          l("[Watching changes]")
+        } else {
+          await Promise.all(tasksToWait)
+          process.exit(0)
+        }
         return ret
       } catch (e) {
         console.error(e)
@@ -551,12 +524,12 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
         await doRefreshMetaMetaInfo()
-        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly') {
+        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
           await doSyncToTursoIncr()
           l('scheduling rcloneHeavy...')
           rcloneHeavy()
-          l('scheduling gitSync...')
-          gitSync()
+          l('scheduling gitSyncLiveAsset...')
+          gitSyncLiveAsset()
         }
         l('running update hook...')
         await onUpdate()
@@ -1022,6 +995,10 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     return aliasMap
   })()
 
+  let watch = false
+  if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+    watch = true
+  }
   // have background parts
   await mddb.indexFolder({
     folderPath: liveAssetBaseSlashPath,
@@ -1078,10 +1055,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         },
       ],
     },
-    watch: true
+    watch
   })
-
-  l("initial indexFolder done")
-  l("[Watching changes]")
+  
 }
 

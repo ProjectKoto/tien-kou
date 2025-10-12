@@ -4,8 +4,8 @@ import Emittery from "emittery"
 import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
-import { Ao, AnyObj, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, sqlGlobPatternEscape, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, TkContext, truncateStrByLen, SqlArgValue, sqlFormatForDisp } from "../lib/common.mts"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
+import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
 type KnownHandlerTypesMap0 = {
   MiddleCacheHandler: MiddleCacheHandler,
@@ -22,6 +22,7 @@ type KnownHandlerTypesMap0 = {
   TienKouAssetCategoryLogicHandler: TienKouAssetCategoryLogicHandler,
   LiquidFilterRegisterHandler: LiquidFilterRegisterHandler,
   TkProvideCtxFromNothingHandler: TkProvideCtxFromNothingHandler,
+  TkAppSharedMutableCtxHandler: TkAppSharedMutableCtxHandler,
 }
 
 type KnownHandlerTypesMap = KnownHandlerTypesMap0 & {
@@ -111,7 +112,15 @@ export interface TkEachCtxNotifyHandler {
 
 }
 
-export interface TkCtxHandler extends TkFirstCtxProvideHandler, TkEachCtxNotifyHandler {
+export type TkAppSharedMutableCtx = {
+  isStaticGenFeatureEnabled: boolean
+}
+
+export interface TkAppSharedMutableCtxHandler {
+  appSharedMutableCtx: TkAppSharedMutableCtx
+}
+
+export interface TkCtxHandler extends TkFirstCtxProvideHandler, TkEachCtxNotifyHandler, TkAppSharedMutableCtxHandler {
 
   triggerProcessTkCtx(ctx: TkContext): Promise<void>
   triggerProcessTkCtxOnEnd(ctx: TkContext): Promise<void>
@@ -430,6 +439,9 @@ export const MainTkCtxHandler = HC<TkCtxHandler>()(async (_: KD<never>) => {
       await eachCtxEndedEvent.emitSerial('eachCtxEnded', ctx)
     },
     
+    appSharedMutableCtx: {
+      isStaticGenFeatureEnabled: false,
+    }
   }
 
   return r

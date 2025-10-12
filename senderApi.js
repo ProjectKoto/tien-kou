@@ -11,8 +11,8 @@ const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
 const stat = promisify(fs.stat);
 
-// Default root directory
-let rootDirectory = process.env.ROOT_DIR || path.join(__dirname, 'content');
+// Default base directory
+let baseDirectory = process.env.BASE_DIR || path.join(__dirname, 'content');
 
 // Server configuration
 const PORT = process.env.PORT || 3000;
@@ -113,29 +113,29 @@ async function handleConfiguration(req, res) {
     try {
         const body = await parseJsonBody(req);
         
-        if (body.rootDirectory) {
-            const newRoot = path.resolve(body.rootDirectory);
+        if (body.baseDirectory) {
+            const newBase = path.resolve(body.baseDirectory);
             
             // Check if directory exists
             try {
-                await stat(newRoot);
+                await stat(newBase);
             } catch (error) {
                 // Create directory if it doesn't exist
-                await mkdir(newRoot, { recursive: true });
+                await mkdir(newBase, { recursive: true });
             }
             
-            rootDirectory = newRoot;
+            baseDirectory = newBase;
             
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({
                 message: 'Configuration updated',
-                rootDirectory
+                baseDirectory: baseDirectory
             }));
         } else {
             res.statusCode = 400;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ message: 'Missing rootDirectory parameter' }));
+            res.end(JSON.stringify({ message: 'Missing baseDirectory parameter' }));
         }
     } catch (error) {
         res.statusCode = 400;
@@ -148,8 +148,8 @@ async function handleConfiguration(req, res) {
 async function saveSubmission(now, mdPath, attachPathPattern, content, files, formData, appendMode) {
     // Process placeholders in paths
     const processedMdPath = processPath(now, mdPath);
-    const fullMdPath = path.join(rootDirectory, processedMdPath);
-    const mdPathRel = path.relative(path.normalize(rootDirectory), path.normalize(fullMdPath))
+    const fullMdPath = path.join(baseDirectory, processedMdPath);
+    const mdPathRel = path.relative(path.normalize(baseDirectory), path.normalize(fullMdPath))
     if (!(mdPathRel && !mdPathRel.startsWith('..') && !path.isAbsolute(mdPathRel))) {
         throw new Error('not relative');
     }
@@ -178,8 +178,8 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, fo
                 { name: file.filename }
             );
             
-            const fullAttachPath = path.join(rootDirectory, processedAttachPath);
-            const attachPathRel = path.relative(path.normalize(rootDirectory), path.normalize(fullAttachPath))
+            const fullAttachPath = path.join(baseDirectory, processedAttachPath);
+            const attachPathRel = path.relative(path.normalize(baseDirectory), path.normalize(fullAttachPath))
             if (!(attachPathRel && !attachPathRel.startsWith('..') && !path.isAbsolute(attachPathRel))) {
                 throw new Error('attach not relative');
             }
@@ -242,7 +242,7 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, fo
     
     return {
         markdownPath: processedMdPath,
-        attachments: processedAttachments.map(a => path.relative(rootDirectory, a.path))
+        attachments: processedAttachments.map(a => path.relative(baseDirectory, a.path))
     };
 }
 

@@ -3,7 +3,7 @@ import * as hono from 'hono'
 import isArrayBuffer from 'is-array-buffer'
 import { AnyObj, l, LazyVal, lazyValue, le, TkContext, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
-import { AbstractTkSqlLiquidHonoApp, hc, HonoEnvTypeWithTkCtx, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
+import { AbstractTkSqlLiquidHonoApp, hc, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
 import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, MiddleCacheHandler, MultiIntanceCachePolicyHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from './serveDef.mts'
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
@@ -291,7 +291,10 @@ const TienKouCloudflareWorkerApp = HC<TienKouApp<HonoWithErrorHandler<Cfwe>
   LiquidFilterRegisterHandlerList,
   IntegratedCachePolicyHandler,
   TkCtxHandler,
-}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler">) => {
+  HonoProvideHandler,
+}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler", {
+  HonoProvideHandler: HonoProvideHandler<Cfwe>
+}>) => {
 
   const super_ = await AbstractTkSqlLiquidHonoApp<HonoWithErrorHandler<Cfwe>>()({
     TienKouAssetFetchHandler,
@@ -305,6 +308,7 @@ const TienKouCloudflareWorkerApp = HC<TienKouApp<HonoWithErrorHandler<Cfwe>
       },
     } as TkContextHlGetTkEnvHandler<Cfwe>,
     TkCtxHandler,
+    HonoProvideHandler,
   })
 
   return EAH(super_, {
@@ -377,6 +381,8 @@ const appExportedObjPromise = (async () => {
     TienKouAssetFetchHandler,
   })
 
+  const HonoProvideHandler = await MainHonoProvideHandler<Cfwe>()({})
+
   const app = await TienKouCloudflareWorkerApp({
     TienKouAssetFetchHandler,
     IntegratedCachePolicyHandler,
@@ -384,6 +390,7 @@ const appExportedObjPromise = (async () => {
     LiquidFilterRegisterHandlerList,
     TienKouAssetCategoryLogicHandler,
     TkCtxHandler,
+    HonoProvideHandler,
   })
   
   const startInfo = await app.start()

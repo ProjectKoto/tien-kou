@@ -24,18 +24,18 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     return
   }
 
-  if (!tkEnv.TELEGRAM_HOARD_DEST_ROOT_PATH) {
-    throw new Error("TELEGRAM_HOARD_DEST_ROOT_PATH missing")
+  if (!tkEnv.TELEGRAM_HOARD_DEST_BASE_PATH) {
+    throw new Error("TELEGRAM_HOARD_DEST_BASE_PATH missing")
   }
-  const tgDest = replaceAll(tkEnv.TELEGRAM_HOARD_DEST_ROOT_PATH, '\\', '/')
+  const tgDest = replaceAll(tkEnv.TELEGRAM_HOARD_DEST_BASE_PATH, '\\', '/')
   l("tgDest", tgDest)
   const tgMediaDest = replaceAll(path.join(tgDest, "media"), '\\', '/')
   l("tgMediaDest", tgMediaDest)
 
-  if (!tkEnv.TELEGRAM_PUB_HOARD_DEST_ROOT_PATH) {
-    throw new Error("TELEGRAM_PUB_HOARD_DEST_ROOT_PATH missing")
+  if (!tkEnv.TELEGRAM_PUB_HOARD_DEST_BASE_PATH) {
+    throw new Error("TELEGRAM_PUB_HOARD_DEST_BASE_PATH missing")
   }
-  const tgPubDest = replaceAll(tkEnv.TELEGRAM_PUB_HOARD_DEST_ROOT_PATH, '\\', '/')
+  const tgPubDest = replaceAll(tkEnv.TELEGRAM_PUB_HOARD_DEST_BASE_PATH, '\\', '/')
   l("tgPubDest", tgPubDest)
   const tgPubMediaDest = replaceAll(path.join(tgPubDest, "media"), '\\', '/')
   l("tgPubMediaDest", tgPubMediaDest)

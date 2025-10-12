@@ -4,7 +4,7 @@ import dotenv from 'dotenv'
 import fs from 'node:fs'
 
 export const tkEnvFromDevVarsFile = async (): Promise<Record<string, string | undefined>> => {
-  const e = dotenv.parse(await fs.promises.readFile(".dev.vars", { encoding: 'utf-8' }))
+  const e = dotenv.parse(await fs.promises.readFile(process.env.ALT_DEV_VARS_FILE || ".dev.vars", { encoding: 'utf-8' }))
   const pendingProcEnvUpdates: Record<string, string> = {}
   for (const k in process.env) {
     const v = process.env[k]
