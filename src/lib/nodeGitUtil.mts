@@ -85,7 +85,7 @@ export const gitSyncStaticGen = async ({
   staticGenBaseDir: string,
   gitRemote: string | undefined,
 }) => {
-  const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(os.tmpdir())
+  const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'tk-git-ignore-'))
   
   try {
     const gitIgnoreFilePath = path.join(gitIgnoreFileTmpDir, 'tkGitIgnore').split(path.sep).join('/')

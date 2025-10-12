@@ -434,7 +434,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const gitRemote = tkCtx.e.HOARD_GIT_LIVE_ASSET_REMOTE ? tkCtx.e.HOARD_GIT_LIVE_ASSET_REMOTE : undefined
 
   const gitSyncLiveAsset = async () => {
-    const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(os.tmpdir())
+    const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'tk-git-ignore-'))
     
     try {
       const gitIgnoreFilePath = path.join(gitIgnoreFileTmpDir, 'tkGitIgnore').split(path.sep).join('/')
