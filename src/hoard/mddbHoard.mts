@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import { buildGitProcessRunner, gitSyncScriptPath } from "../lib/nodeGitUtil.mts"
 import replaceAll from 'string.prototype.replaceall'
+import { defaultMarkdowndbDbPath } from "../serve/serveDef.mts"
 
 // Only a very small subset of .gitignore and rclone filter match rules is supported
 // here, and they still are not guaranteed to work as expected.
@@ -56,46 +57,6 @@ const convertIgnoreItemToMddbRegExp = (ignoreItem: string, fixedPrefixSlashEnded
   return new RegExp(regexpStr, 'ig')
 }
 
-// reused by the following ignore lists; do no assume a base path.
-const commonIgnoreList = [
-  '**/*Excalidraw*',
-  '**/*Excalidraw*/**',
-  '**/*.obsidian*',
-  '**/*.obsidian*/**',
-  '**/*DS_Store*',
-  '**/*DS_Store*/**',
-  '**/.sync-conflict-*',
-  '**/.syncthing.*.tmp',
-  '**/.syncthing.tmp',
-  '**/Unpublished/**',
-  '**/unscannedAsset/**',
-  '/staticGen/**',
-  '**/Unpublished.md',
-]
-
-// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
-const rcloneHeavyIgnoreList = [
-  ...commonIgnoreList,
-  '/liveAsset/backstage/**',
-  ...(() => {
-    const result: string[] = []
-    dedicatedAssetExtNames.forEach(extName => {
-      result.push(`/liveAsset/guarded/**/*.${extName}`)
-    })
-    return result
-  })()
-]
-
-// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/liveAsset
-const mddbWatchIgnoreList = [
-  ...commonIgnoreList,
-]
-
-// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
-const gitIgnoreList = [
-  ...commonIgnoreList,
-]
-
 export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Promise<void>) => {
   const shouldRun = true
   if (!shouldRun) {
@@ -103,9 +64,57 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   }
   const tkEnv = tkCtx.e
 
+  // reused by the following ignore lists; do no assume a base path.
+  const commonIgnoreList = [
+    '**/*Excalidraw*',
+    '**/*Excalidraw*/**',
+    '**/*.obsidian*',
+    '**/*.obsidian*/**',
+    '**/*DS_Store*',
+    '**/*DS_Store*/**',
+    '**/.sync-conflict-*',
+    '**/.syncthing.*.tmp',
+    '**/.syncthing.tmp',
+    '**/unscannedAsset/**',
+    '/staticGen/**',
+  ]
+
+  if (!(
+    tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS &&
+      ((tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === '1' || (tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === 'true')
+  )) {
+    commonIgnoreList.push(
+      '**/Unpublished/**',
+      '**/Unpublished.md',
+    )
+  }
+
+  // assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
+  const rcloneHeavyIgnoreList = [
+    ...commonIgnoreList,
+    '/liveAsset/backstage/**',
+    ...(() => {
+      const result: string[] = []
+      dedicatedAssetExtNames.forEach(extName => {
+        result.push(`/liveAsset/guarded/**/*.${extName}`)
+      })
+      return result
+    })()
+  ]
+
+  // assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/liveAsset
+  const mddbWatchIgnoreList = [
+    ...commonIgnoreList,
+  ]
+
+  // assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
+  const gitIgnoreList = [
+    ...commonIgnoreList,
+  ]
+
   let tursoc: turso.Client | undefined = undefined
 
-  const dbPath = "markdown.db"
+  const dbPath = tkCtx.tkEnv.MARKDOWNDB_DB_PATH || defaultMarkdowndbDbPath
   const liveAssetBaseSlashPath = nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH!).split(path.sep).join('/')
   const multiTargetSyncBaseSlashPath = nodeResolvePath(tkCtx.e.HOARD_MULTI_TARGET_SYNC_BASE_DIR!).split(path.sep).join('/')
 

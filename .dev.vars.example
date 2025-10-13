@@ -1,9 +1,15 @@
 # For wrangler local dev
 
+PROFILE_NAME = 'release'
+
+SHOULD_INCLUDE_UNPUBLISHED_ASSETS = '0'
+
 TURSO_DATABASE_URL = "libsql://xxx.turso.io"
 TURSO_AUTH_TOKEN = "xxx"
 HTTP_PROXY = "http://127.0.0.1:8118"
 DEBUG = "proxy-agent,knex:query"
+
+MARKDOWNDB_DB_PATH = 'markdown.db'
 
 HOARD_DB_BATCH_DEBUG_MODE = "0"
 
@@ -18,6 +24,8 @@ TELEGRAM_PROXY_PORT = "1080"
 # SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW = "1"
 
 TELEGRAM_HOARD_DEST_BASE_PATH = "/path/to/tg_hoard_dest"
+# gram.js forces the dir in cwd, so only the name can be customized...
+TELEGRAM_HOARD_SESSION_DIR_NAME = "tg_session"
 TELEGRAM_PUB_HOARD_DEST_BASE_PATH = "/path/to/tg_pub_hoard_dest"
 
 NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH = "..../liveAsset"
@@ -56,3 +64,5 @@ HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH = '/path/to/static-gen-repo.git'
 
 HOARD_GIT_LIVE_ASSET_REMOTE = 'ssh://xxx'
 HOARD_GIT_STATIC_GEN_REMOTE = 'ssh://xxx2'
+
+HOARD_MARKDOWNDB_FILES_JSON_PATH = '/path/to/.markdowndb/files.json'

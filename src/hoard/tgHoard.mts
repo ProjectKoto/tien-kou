@@ -43,7 +43,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
   await ensurePathDirExists(tgMediaDest)
   await ensurePathDirExists(tgPubMediaDest)
 
-  const storeSession = new StoreSession("tg_session")
+  const storeSession = new StoreSession((tkEnv.TELEGRAM_HOARD_SESSION_DIR_NAME || "tg_session"))
   const client = new telegram.TelegramClient(storeSession, parseInt(tkEnv.TELEGRAM_API_ID!), tkEnv.TELEGRAM_API_HASH!, {
     // useWSS: false, // Important. Most proxies cannot use SSL.
     useWSS: true,

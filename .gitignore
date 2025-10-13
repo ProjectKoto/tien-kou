@@ -172,7 +172,6 @@ dist
 /cfDist/
 /extDist/
 **/node_modules/
-/.markdown/
 /.wrangler/
 /tg_session/
 # .vscode/
@@ -182,7 +181,6 @@ dist
 /static/staticAsset
 
 /markdown.db
-/tg
 /data
 
 /data/staticGen

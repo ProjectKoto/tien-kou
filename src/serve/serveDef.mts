@@ -7,6 +7,8 @@ import { Liquid, LiquidOptions } from "liquidjs"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
 import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
+export const defaultMarkdowndbDbPath = "markdown.db"
+
 type KnownHandlerTypesMap0 = {
   MiddleCacheHandler: MiddleCacheHandler,
   RuntimeCacheHandler: RuntimeCacheHandler,
@@ -112,12 +114,12 @@ export interface TkEachCtxNotifyHandler {
 
 }
 
-export type TkAppSharedMutableCtx = {
+export type TkAppSharedCtxCurrInstOnly = {
   isStaticGenFeatureEnabled: boolean
 }
 
 export interface TkAppSharedMutableCtxHandler {
-  appSharedMutableCtx: TkAppSharedMutableCtx
+  appSharedCtxCurrInstOnly: TkAppSharedCtxCurrInstOnly
 }
 
 export interface TkCtxHandler extends TkFirstCtxProvideHandler, TkEachCtxNotifyHandler, TkAppSharedMutableCtxHandler {
@@ -439,7 +441,7 @@ export const MainTkCtxHandler = HC<TkCtxHandler>()(async (_: KD<never>) => {
       await eachCtxEndedEvent.emitSerial('eachCtxEnded', ctx)
     },
     
-    appSharedMutableCtx: {
+    appSharedCtxCurrInstOnly: {
       isStaticGenFeatureEnabled: false,
     }
   }

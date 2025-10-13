@@ -1,6 +1,6 @@
 
 import nanoSpawn, { SubprocessError } from 'nano-spawn'
-import { ensurePathDirExists, nodeResolvePath } from './nodeCommon.mts'
+import { defaultStaticGenBaseDir, ensurePathDirExists, nodeResolvePath } from './nodeCommon.mts'
 import path from 'node:path'
 import os from 'node:os'
 import fs from 'node:fs'
@@ -76,15 +76,30 @@ const gitStaticGenIgnoreList = [
   '**/unscannedAsset/**',
 ]
 
-export const gitSyncStaticGen = async ({
-  gitLocalStaticGenBareRepoPath,
-  staticGenBaseDir,
-  gitRemote,
-}: {
-  gitLocalStaticGenBareRepoPath: string | undefined,
-  staticGenBaseDir: string,
-  gitRemote: string | undefined,
-}) => {
+export const gitSyncStaticGen = async (tkEnv: Record<string, string | undefined>) => {
+
+  // assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
+  const gitStaticGenIgnoreList = [
+    '**/*DS_Store*',
+    '**/*DS_Store*/**',
+    '**/.sync-conflict-*',
+    '**/.syncthing.*.tmp',
+    '**/.syncthing.tmp',
+    '**/unscannedAsset/**',
+  ]
+  if (!(
+    tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS &&
+      ((tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === '1' || (tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === 'true')
+  )) {
+    gitStaticGenIgnoreList.push(
+      '**/Unpublished/**',
+    )
+  }
+
+  const gitLocalStaticGenBareRepoPath = tkEnv.HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH ? nodeResolvePath(tkEnv.HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH).split(path.sep).join('/') : undefined
+  const gitRemote = tkEnv.HOARD_GIT_STATIC_GEN_REMOTE ? tkEnv.HOARD_GIT_STATIC_GEN_REMOTE : undefined
+  const staticGenBaseDir = tkEnv.NODE_STATIC_GEN_BASE_PATH || defaultStaticGenBaseDir
+
   const gitIgnoreFileTmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'tk-git-ignore-'))
   
   try {

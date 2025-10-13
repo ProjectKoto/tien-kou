@@ -17,7 +17,6 @@ thirdparty/**/node_modules
 markdown.db
 tg_session
 liveAsset
-tg
 
 thirdparty/cloudflare_workers-sdk/**
 !thirdparty/cloudflare_workers-sdk/packages/miniflare/**

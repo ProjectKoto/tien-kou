@@ -9,7 +9,7 @@ import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { MainLiquidHandler } from "./liquidIntegrate.mts"
 import { LiquidStaticGenFilterRegHandler, nodeGenStatic } from './nodeStaticGen'
-import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
+import { AbstractTkSqlAssetFetchHandler, defaultMarkdowndbDbPath, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { gitSyncStaticGen } from '../lib/nodeGitUtil.mts'
@@ -26,11 +26,11 @@ const MddbSqliteSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHand
   let mddbReadyResolver: ((value: MarkdownDB) => void)
   const mddbReadyPromise = new Promise<MarkdownDB>(r => { mddbReadyResolver = r })
 
-  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async _ctx0 => {
+  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
     mddb = await new MarkdownDB({
       client: "sqlite3",
       connection: {
-        filename: "markdown.db",
+        filename: ctx0.tkEnv.MARKDOWNDB_DB_PATH || defaultMarkdowndbDbPath,
       },
     }).init()
     if (mddbReadyResolver) {
@@ -150,11 +150,7 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
     start: async (): Promise<TkAppStartInfo<undefined>> => {
       if ((tkEnv.PROCENV_TK_SUB_MODE || '') === 'genStatic') {
         return await nodeGenStatic(tkEnv, TkCtxHandler, super_.honoApp, async () => {
-          await gitSyncStaticGen({
-            gitLocalStaticGenBareRepoPath: tkEnv.HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH ? nodeResolvePath(tkEnv.HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH).split(path.sep).join('/') : undefined,
-            gitRemote: tkEnv.HOARD_GIT_STATIC_GEN_REMOTE ? tkEnv.HOARD_GIT_STATIC_GEN_REMOTE : undefined,
-            staticGenBaseDir: tkEnv.NODE_STATIC_GEN_BASE_PATH || defaultStaticGenBaseDir,
-          })
+          await gitSyncStaticGen(tkEnv)
         })()
       } else {
         return await realServeHttp()

@@ -203,6 +203,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       serverDeployVersion: () => { return serverDeployVersionGetter() },
       dataVersion: async () => { return IntegratedCachePolicyHandler.fetchDataVersion(tkCtx) },
       reqIfNoneMatchHeader: () => { return ifNoneMatchHeaderGetter() },
+      serverProfileName: () => tkCtx.tkEnv.PROFILE_NAME || 'release',
       mainTemplateRelPath: "main.tmpl.html",
       genStaticTemplateRelPath: "genStatic.tmpl.html",
       markdownExtNames,
@@ -211,7 +212,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       backpatches: {} as AnyObj,
       backpatchValueMap: {} as AnyObj,
       now: new Date().getTime(),
-      tkAppCtx: TkCtxHandler.appSharedMutableCtx,
+      tkCurrInstAppCtx: TkCtxHandler.appSharedCtxCurrInstOnly,
     }
 
     resultGenContext.rgc = resultGenContext
@@ -300,7 +301,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       if (op === "refreshSiteVersion") {
         await IntegratedCachePolicyHandler.evictForNewDataVersion(tkCtx)
         return c.text("refreshed " + (await IntegratedCachePolicyHandler.fetchDataVersion(tkCtx)).toString() + " " + rgc.serverDeployVersion())
-      } else if (op === 'genStatic' && TkCtxHandler.appSharedMutableCtx.isStaticGenFeatureEnabled) {
+      } else if (op === 'genStatic' && TkCtxHandler.appSharedCtxCurrInstOnly.isStaticGenFeatureEnabled) {
         const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
         const rgc = resultGenContext
       

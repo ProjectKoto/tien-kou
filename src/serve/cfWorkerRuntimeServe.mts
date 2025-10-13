@@ -76,15 +76,11 @@ const CloudflareWorkerKvCacheHandler = HC<MiddleCacheHandler>()(async ({ TkFirst
         return fetchedKvDataVersion
       }
       return undefined
-      // const newDataVersion = await TkDataPersistHandler.fetchDataVersion(ctx)
-      // console.log("KvCache:fetchDataVersion:new", newDataVersion)
-      // await we.KV.put("dataVersion", newDataVersion)
-      // return newDataVersion
     },
     evictForNewDataVersion: async (ctx: TkContext, backstoreDataVersion: number) => {
       const we = cfwe(ctx)
 
-      // all write could fail
+      // all write could fail because of cf worker free tier limit
       // try {
       //   l('KV.delete dataVersion')
       //   await we.KV.delete("dataVersion")

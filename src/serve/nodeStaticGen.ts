@@ -17,7 +17,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
   return {
     doRegister: (reg) => {
       reg("genStaticPageWithAncestors", async function genStaticPageWithAncestors(unencodedWebPath: string, search?: string | undefined, overwriteDestPath?: string | undefined) {
-        if (!TkAppSharedMutableCtxHandler.appSharedMutableCtx.isStaticGenFeatureEnabled) {
+        if (!TkAppSharedMutableCtxHandler.appSharedCtxCurrInstOnly.isStaticGenFeatureEnabled) {
           throw new TkErrorHttpAware("genStaticPageWithAncestors is not enabled")
         }
 
@@ -118,7 +118,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
 export const nodeGenStatic = (tkEnv: Record<string, string | undefined>, TkCtxHandler: TkCtxHandler, honoApp: Hono<any>, postTask: () => Promise<void>) => async (): Promise<TkAppStartInfo<undefined>> => {
   const genStaticUrl = new URL('http://pseudo-tien-kou-app.home.arpa/admin/genStatic')
 
-  TkCtxHandler.appSharedMutableCtx.isStaticGenFeatureEnabled = true
+  TkCtxHandler.appSharedCtxCurrInstOnly.isStaticGenFeatureEnabled = true
 
   const theTask = (async () => {
     await fs.promises.rm(tkEnv.NODE_STATIC_GEN_BASE_PATH || defaultStaticGenBaseDir, { force: true, recursive: true, })
