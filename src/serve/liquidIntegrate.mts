@@ -728,10 +728,16 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       hashtagRegExp: /(?:[^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source,
       preceding:     /^|\s+|\n+|\r+/.source,
     })
+    .use(markdownItLinkAttributes, {
+      attrs: {
+        target: '_blank',
+        // rel: 'noopener',
+      }
+    })
 
   md.renderer.rules.hashtag_open = function(tokens, idx) {
     const tagName = tokens[idx].content
-    return '<a href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
+    return '<a target="_blank" href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
   }
 
   const mdSafe = markdownit({
@@ -745,13 +751,15 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       preceding:     /^|\s+|\n+|\r+/.source,
     })
     .use(markdownItLinkAttributes, {
-      target: '_blank',
-      // rel: 'noopener'
+      attrs: {
+        target: '_blank',
+        // rel: 'noopener',
+      }
     })
 
   md.renderer.rules.hashtag_open = function(tokens, idx) {
     const tagName = tokens[idx].content
-    return '<a href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
+    return '<a  target="_blank" href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
   }
 
   LiquidHandler.registerFilterPostCreate("md", async function (a) {
