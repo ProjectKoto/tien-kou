@@ -181,6 +181,7 @@ dist
 /static/staticAsset
 
 /markdown.db
+/*markdown*.db
 /data
 
 /data/staticGen

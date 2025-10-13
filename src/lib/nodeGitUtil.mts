@@ -24,16 +24,18 @@ export const buildGitProcessRunner = (commonLogPrefix: string, fixedGitArgs: str
         LC_ALL: 'en_US.UTF-8'
       }
     })
-    ;(async () => {
-      for await (const outLine of gitProc.stdout) {
-        console.log(stdoutMark, outLine)
-      }
-    })().catch(() => {})
-    ;(async () => {
-      for await (const outLine of gitProc.stderr) {
-        console.log(stderrMark, outLine)
-      }
-    })().catch(() => {})
+    if (logMark) {
+      ;(async () => {
+        for await (const outLine of gitProc.stdout) {
+          console.log(stdoutMark, outLine)
+        }
+      })().catch(() => {})
+      ;(async () => {
+        for await (const outLine of gitProc.stderr) {
+          console.log(stderrMark, outLine)
+        }
+      })().catch(() => {})
+    }
     const gitProcResult = await gitProc
     gitProcStdout = gitProcResult.stdout
     gitProcStderr = gitProcResult.stderr
@@ -65,17 +67,6 @@ export const buildGitProcessRunner = (commonLogPrefix: string, fixedGitArgs: str
 
 export const gitSyncScriptPath =  nodeResolvePath('./thirdparty/git-sync/git-sync').split(path.sep).join('/')
 
-// assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
-const gitStaticGenIgnoreList = [
-  '**/*DS_Store*',
-  '**/*DS_Store*/**',
-  '**/.sync-conflict-*',
-  '**/.syncthing.*.tmp',
-  '**/.syncthing.tmp',
-  '**/Unpublished/**',
-  '**/unscannedAsset/**',
-]
-
 export const gitSyncStaticGen = async (tkEnv: Record<string, string | undefined>) => {
 
   // assume base path: HOARD_MULTI_TARGET_SYNC_BASE_DIR/
@@ -88,11 +79,18 @@ export const gitSyncStaticGen = async (tkEnv: Record<string, string | undefined>
     '**/unscannedAsset/**',
   ]
   if (!(
-    tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS &&
-      ((tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === '1' || (tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === 'true')
+    tkEnv.SHOULD_INCLUDE_UNRELEASED_ASSETS &&
+      ((tkEnv.SHOULD_INCLUDE_UNRELEASED_ASSETS).toString() === '1' || (tkEnv.SHOULD_INCLUDE_UNRELEASED_ASSETS).toString() === 'true')
   )) {
     gitStaticGenIgnoreList.push(
-      '**/Unpublished/**',
+      '**/Unreleased/**',
+      '**/UnreleasedSlip/**',
+      '**/TheUnreleased/**',
+      '**/＊Unreleased/**',
+      '**/＊TheUnreleased/**',
+      '**/TheUnreleased',
+      '**/＊Unreleased',
+      '**/＊TheUnreleased',
     )
   }
 

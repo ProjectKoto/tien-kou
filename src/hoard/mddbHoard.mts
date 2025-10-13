@@ -80,12 +80,17 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   ]
 
   if (!(
-    tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS &&
-      ((tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === '1' || (tkEnv.SHOULD_INCLUDE_UNPUBLISHED_ASSETS).toString() === 'true')
+    tkEnv.SHOULD_INCLUDE_UNRELEASED_ASSETS &&
+      ((tkEnv.SHOULD_INCLUDE_UNRELEASED_ASSETS).toString() === '1' || (tkEnv.SHOULD_INCLUDE_UNRELEASED_ASSETS).toString() === 'true')
   )) {
     commonIgnoreList.push(
-      '**/Unpublished/**',
-      '**/Unpublished.md',
+      '**/Unreleased/**',
+      '**/UnreleasedSlip/**',
+      '**/Unreleased.md',
+      '**/UnreleasedSlip.md',
+      '**/TheUnreleased.md',
+      '**/＊Unreleased.md',
+      '**/＊TheUnreleased.md',
     )
   }
 
@@ -464,7 +469,21 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             await runGitProcess(['checkout', '-b', 'tk_asset_main'], 'ensure-branch2', 4000, false)
           }
           await runGitProcess(['reset', 'tk_asset_main'], 'ensure-branch1', 20000, false)
-          await runGitProcess(['rm', '--cached', '-r', '.'], 'rm-cached', 20000, false)
+          const rmCachedProcResult = await runGitProcess(['rm', '--cached', '-r', '.'], '', 20000, false)
+          let rmCachedStdout = rmCachedProcResult.stdout.split('\n')
+          if (rmCachedStdout.length > 14) {
+            rmCachedStdout = rmCachedStdout.splice(5, rmCachedStdout.length - 10, '...')
+          }
+          for (const line of rmCachedStdout) {
+            console.log(`git-sync-live: rm-cached stdout: ${line}`)
+          }
+          let rmCachedStderr = rmCachedProcResult.stderr.split('\n')
+          if (rmCachedStderr.length > 14) {
+            rmCachedStderr = rmCachedStderr.splice(5, rmCachedStderr.length - 10, '...')
+          }
+          for (const line of rmCachedStderr) {
+            console.log(`git-sync-live: rm-cached stderr: ${line}`)
+          }
           await runGitProcess(['tk-sync'], 'tk-sync', 120*1000, true)
         }
       } catch (e) {

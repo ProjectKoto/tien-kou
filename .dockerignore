@@ -15,6 +15,7 @@ thirdparty/**/node_modules
 !.env.example
 .wrangler/
 markdown.db
+*markdown*.db
 tg_session
 liveAsset
 
