@@ -470,16 +470,16 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
           await runGitProcess(['reset', 'tk_asset_main'], 'ensure-branch1', 20000, false)
           const rmCachedProcResult = await runGitProcess(['rm', '--cached', '-r', '.'], '', 20000, false)
-          let rmCachedStdout = rmCachedProcResult.stdout.split('\n')
+          const rmCachedStdout = (rmCachedProcResult.stdout || '').split('\n')
           if (rmCachedStdout.length > 14) {
-            rmCachedStdout = rmCachedStdout.splice(5, rmCachedStdout.length - 10, '...')
+            rmCachedStdout.splice(5, rmCachedStdout.length - 10, '...')
           }
           for (const line of rmCachedStdout) {
             console.log(`git-sync-live: rm-cached stdout: ${line}`)
           }
-          let rmCachedStderr = rmCachedProcResult.stderr.split('\n')
+          const rmCachedStderr = (rmCachedProcResult.stderr || '').split('\n')
           if (rmCachedStderr.length > 14) {
-            rmCachedStderr = rmCachedStderr.splice(5, rmCachedStderr.length - 10, '...')
+            rmCachedStderr.splice(5, rmCachedStderr.length - 10, '...')
           }
           for (const line of rmCachedStderr) {
             console.log(`git-sync-live: rm-cached stderr: ${line}`)
