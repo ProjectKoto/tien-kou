@@ -65,4 +65,4 @@ HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH = '/path/to/static-gen-repo.git'
 HOARD_GIT_LIVE_ASSET_REMOTE = 'ssh://xxx'
 HOARD_GIT_STATIC_GEN_REMOTE = 'ssh://xxx2'
 
-HOARD_MARKDOWNDB_FILES_JSON_PATH = '/path/to/.markdowndb/files.json'
+PROCENV_HOARD_MARKDOWNDB_FILES_JSON_PATH = '/path/to/.markdowndb/files.json'
