@@ -214,6 +214,10 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, fo
             // File doesn't exist, start with empty content
             mdContent = '';
         }
+
+        if (mdContent.trim() === '') {
+            mdContent = `---\nisDerivableIntoChildren: true\n---\n`
+        }
         
         // Add new content with timestamp
         const yyyy = now.getFullYear();
