@@ -92,7 +92,7 @@ const main = async () => {
   }
       
   await startMddbHoard(tkCtx, onUpdate)
-  if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+  if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
     await startTgHoard(tkCtx, onUpdate)
   }
 

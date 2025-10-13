@@ -13,7 +13,7 @@ export const tkEnvFromDevVarsFile = async (): Promise<Record<string, string | un
     }
   }
   for (const k of Object.keys(e)) {
-    if (k.startsWith('PROCENV_')) {
+    if (k.startsWith('PROCENV_') && !pendingProcEnvUpdates[k]) {
       process.env[k] = e[k]
     }
   }

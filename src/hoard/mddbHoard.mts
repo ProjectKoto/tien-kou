@@ -505,7 +505,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         const ret = await origSaveDataToDisk.apply(this, args)
         await doRefreshMetaMetaInfo()
         const tasksToWait: Promise<unknown>[] = []
-        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+        if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
           await doSyncToTurso()
           l('scheduling rcloneHeavy...')
           tasksToWait.push(rcloneHeavy())
@@ -516,7 +516,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         await onUpdate()
         l("updated")
         l("initial indexFolder done")
-        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+        if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
           l("[Watching changes]")
         } else {
           await Promise.all(tasksToWait)
@@ -534,7 +534,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         l("change detected, start updating")
         const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
         await doRefreshMetaMetaInfo()
-        if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+        if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
           await doSyncToTursoIncr()
           l('scheduling rcloneHeavy...')
           rcloneHeavy()
@@ -1008,7 +1008,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   })()
 
   let watch = false
-  if ((tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+  if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
     watch = true
   }
   // have background parts

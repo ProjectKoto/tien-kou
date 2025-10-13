@@ -148,7 +148,7 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
 
   return EAH<typeof super_, TienKouApp<undefined>>(super_, {
     start: async (): Promise<TkAppStartInfo<undefined>> => {
-      if ((tkEnv.PROCENV_TK_SUB_MODE || '') === 'genStatic') {
+      if ((tkEnv.PROCENV_TK_SERVE_SUB_MODE || '') === 'genStatic') {
         return await nodeGenStatic(tkEnv, TkCtxHandler, super_.honoApp, async () => {
           await gitSyncStaticGen(tkEnv)
         })()

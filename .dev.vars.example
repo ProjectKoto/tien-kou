@@ -4,6 +4,8 @@ PROFILE_NAME = 'release'
 
 SHOULD_INCLUDE_UNPUBLISHED_ASSETS = '0'
 
+PROCENV_TK_HOARD_SUB_MODE = 'hoardLocalOnly'
+
 TURSO_DATABASE_URL = "libsql://xxx.turso.io"
 TURSO_AUTH_TOKEN = "xxx"
 HTTP_PROXY = "http://127.0.0.1:8118"
