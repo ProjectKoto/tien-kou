@@ -108,6 +108,7 @@
     "liquidjs": "^10.21.1",
     "markdown-it": "^14.1.0",
     "markdown-it-hashtag": "^0.4.0",
+    "markdown-it-link-attributes": "^4.0.1",
     "mddb": "file:thirdparty/markdowndb",
     "mime-types": "^3.0.1",
     "miniflare": "file:thirdparty/cloudflare_workers-sdk/packages/miniflare/package",

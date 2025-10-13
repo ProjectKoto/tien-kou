@@ -4,6 +4,7 @@ import { Liquid, LiquidOptions } from "liquidjs"
 import { LiquidCache } from "liquidjs/dist/cache"
 import { default as markdownit } from 'markdown-it'
 import { default as markdownItHashtag } from 'markdown-it-hashtag'
+import { default as markdownItLinkAttributes } from 'markdown-it-link-attributes'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
 import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash } from "../lib/common.mts"
@@ -742,6 +743,10 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     .use(markdownItHashtag, {
       hashtagRegExp: /(?:[^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source,
       preceding:     /^|\s+|\n+|\r+/.source,
+    })
+    .use(markdownItLinkAttributes, {
+      target: '_blank',
+      // rel: 'noopener'
     })
 
   md.renderer.rules.hashtag_open = function(tokens, idx) {
