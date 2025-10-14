@@ -123,10 +123,14 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const liveAssetBaseSlashPath = nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH!).split(path.sep).join('/')
   const multiTargetSyncBaseSlashPath = nodeResolvePath(tkCtx.e.HOARD_MULTI_TARGET_SYNC_BASE_DIR!).split(path.sep).join('/')
 
-  tursoc = turso.createClient({
-    url: tkEnv.TURSO_DATABASE_URL!,
-    authToken: tkEnv.TURSO_AUTH_TOKEN,
-  })
+  if (tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true') {
+    tursoc = undefined
+  } else {
+    tursoc = turso.createClient({
+      url: tkEnv.TURSO_DATABASE_URL!,
+      authToken: tkEnv.TURSO_AUTH_TOKEN,
+    })
+  }
 
   const origClient = await new MarkdownDB({
     client: "sqlite3",
@@ -525,11 +529,13 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         await doRefreshMetaMetaInfo()
         const tasksToWait: Promise<unknown>[] = []
         if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
-          await doSyncToTurso()
-          l('scheduling rcloneHeavy...')
-          tasksToWait.push(rcloneHeavy())
-          l('scheduling gitSyncLiveAsset...')
-          tasksToWait.push(gitSyncLiveAsset())
+          if (!(tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true')) {
+            await doSyncToTurso()
+            l('scheduling rcloneHeavy...')
+            tasksToWait.push(rcloneHeavy())
+            l('scheduling gitSyncLiveAsset...')
+            tasksToWait.push(gitSyncLiveAsset())
+          }
         }
         l('running update hook...')
         await onUpdate()
@@ -554,11 +560,13 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
         await doRefreshMetaMetaInfo()
         if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
-          await doSyncToTursoIncr()
-          l('scheduling rcloneHeavy...')
-          rcloneHeavy()
-          l('scheduling gitSyncLiveAsset...')
-          gitSyncLiveAsset()
+          if (!(tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true')) {
+            await doSyncToTursoIncr()
+            l('scheduling rcloneHeavy...')
+            rcloneHeavy()
+            l('scheduling gitSyncLiveAsset...')
+            gitSyncLiveAsset()
+          }
         }
         l('running update hook...')
         await onUpdate()
