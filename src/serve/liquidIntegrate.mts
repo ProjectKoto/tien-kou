@@ -30,7 +30,7 @@ export const MainLiquidHandler = HC<LiquidHandler>()(async ({ TkFirstCtxProvideH
   let liquidReadyResolver: ((value: Liquid) => void)
   const liquidReadyPromise = new Promise<Liquid>(r => { liquidReadyResolver = r })
 
-  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async _ctx0 => {
+  TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
     
     if (liquidOptions === undefined) {
       throw new Error('liquidOptions === undefined in MainLiquidHandler.listenOnFirstCtxForInit???')
@@ -39,6 +39,13 @@ export const MainLiquidHandler = HC<LiquidHandler>()(async ({ TkFirstCtxProvideH
     await liquidPreCreateEvent.emitSerial('liquidPreCreate')
     // TODO: is using r
     await r.mandatoryCustomizeLiquidOpt(liquidOptions)
+    liquidOptions.timezoneOffset = (() => {
+      const tzOffsetStr = ctx0.tkEnv.LIQUID_DATE_TIMEZONE_OFFSET_MINUTE
+      if (tzOffsetStr) {
+        return -Number.parseInt(tzOffsetStr)
+      }
+      return undefined
+    })()
     liquid = new Liquid(liquidOptions)
     await liquidPostCreateEvent.emitSerial('liquidPostCreate')
     if (liquidReadyResolver) {
