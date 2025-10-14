@@ -62,7 +62,10 @@ const convertIgnoreItemToMddbRegExp = (ignoreItem: string, baseDirPath: string) 
     }
   }
   regexpStr += '$'
-  return new RegExp(regexpStr, 'ig')
+
+  // MUST NOT BE 'g' HERE.
+  // RegExp.test(...) changes RegExp's INTERNAL STATE when it's /g !
+  return new RegExp(regexpStr, 'i')
 }
 
 export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Promise<void>) => {
@@ -1047,9 +1050,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     watch = true
   }
 
-  mddbWatchIgnoreList.map(x => convertIgnoreItemToMddbRegExp(x, liveAssetBaseSlashPath + '/')).forEach(x => {
-    console.log(x.source)
-  })
+  // mddbWatchIgnoreList.map(x => convertIgnoreItemToMddbRegExp(x, liveAssetBaseSlashPath + '/')).forEach(x => {
+  //   console.log(x.source)
+  // })
 
   // have background parts
   await mddb.indexFolder({

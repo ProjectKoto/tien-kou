@@ -80,6 +80,10 @@ const main = async () => {
   }
 
   const onUpdate = async () => {
+    if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') === 'hoardLocalOnly' || (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') === 'hoardLocalOnlyOnce') {
+      return
+    }
+
     const dataUpdateCbUrlStr = tkEnv.HOARD_DATA_UPDATE_CALLBACK_URL_LIST
     if (dataUpdateCbUrlStr) {
       await batchCallUrl(dataUpdateCbUrlStr, 6000, 'dataUpdateCbUrl')
