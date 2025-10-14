@@ -19,29 +19,46 @@ import { TkContext } from '../lib/common.mts'
 export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<void>) => {
   const tkEnv = tkCtx.e
 
-  // eslint-disable-next-line no-constant-condition
-  if (false) {
+  if (tkEnv.TELEGRAM_HOARD_DISABLE === '1' || tkEnv.TELEGRAM_HOARD_DISABLE === 'true') {
     return
   }
 
-  if (!tkEnv.TELEGRAM_HOARD_DEST_BASE_PATH) {
-    throw new Error("TELEGRAM_HOARD_DEST_BASE_PATH missing")
-  }
-  const tgDest = replaceAll(tkEnv.TELEGRAM_HOARD_DEST_BASE_PATH, '\\', '/')
-  l("tgDest", tgDest)
-  const tgMediaDest = replaceAll(path.join(tgDest, "media"), '\\', '/')
-  l("tgMediaDest", tgMediaDest)
+  const hoardTriggeringReplyPrefix = tkEnv.TELEGRAM_HOARD_TRIGGERING_REPLY_PREFIX || 'pub'
 
-  if (!tkEnv.TELEGRAM_PUB_HOARD_DEST_BASE_PATH) {
-    throw new Error("TELEGRAM_PUB_HOARD_DEST_BASE_PATH missing")
+  let tgHoardNonReleaseConfig: null | {
+    destBasePath: string,
+    mediaDestBasePath: string,
   }
-  const tgPubDest = replaceAll(tkEnv.TELEGRAM_PUB_HOARD_DEST_BASE_PATH, '\\', '/')
-  l("tgPubDest", tgPubDest)
-  const tgPubMediaDest = replaceAll(path.join(tgPubDest, "media"), '\\', '/')
-  l("tgPubMediaDest", tgPubMediaDest)
 
-  await ensurePathDirExists(tgMediaDest)
-  await ensurePathDirExists(tgPubMediaDest)
+  {
+    if (tkEnv.TELEGRAM_HOARD_DEST_BASE_PATH) {
+      const tgDest = replaceAll(tkEnv.TELEGRAM_HOARD_DEST_BASE_PATH, '\\', '/')
+      l("tgDest", tgDest)
+      const tgMediaDest = replaceAll(path.join(tgDest, "media"), '\\', '/')
+      l("tgMediaDest", tgMediaDest)
+      tgHoardNonReleaseConfig = {
+        destBasePath: tgDest,
+        mediaDestBasePath: tgMediaDest,
+      }
+    } else {
+      tgHoardNonReleaseConfig = null
+    }
+  }
+
+  if (!tkEnv.TELEGRAM_RELEASE_HOARD_DEST_BASE_PATH) {
+    throw new Error("TELEGRAM_RELEASE_HOARD_DEST_BASE_PATH missing")
+  }
+  const tgReleaseDest = replaceAll(tkEnv.TELEGRAM_RELEASE_HOARD_DEST_BASE_PATH, '\\', '/')
+  l("tgReleaseDest", tgReleaseDest)
+  const tgReleaseMediaDest = replaceAll(path.join(tgReleaseDest, "media"), '\\', '/')
+  l("tgReleaseMediaDest", tgReleaseMediaDest)
+
+  if (tgHoardNonReleaseConfig) {
+    await ensurePathDirExists(tgHoardNonReleaseConfig.destBasePath)
+    await ensurePathDirExists(tgHoardNonReleaseConfig.mediaDestBasePath)
+  }
+  await ensurePathDirExists(tgReleaseDest)
+  await ensurePathDirExists(tgReleaseMediaDest)
 
   const storeSession = new StoreSession((tkEnv.TELEGRAM_HOARD_SESSION_DIR_NAME || "tg_session"))
   const client = new telegram.TelegramClient(storeSession, parseInt(tkEnv.TELEGRAM_API_ID!), tkEnv.TELEGRAM_API_HASH!, {
@@ -455,13 +472,13 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     let currMediaDest
     let jsonMessageToBeSaved
     let extraOneChildDirectiveOrSource = ""
-    if (message.message && ( message.message === 'pub' || message.message.startsWith("pub ")) && m.extInvolvedMessage) {
+    if (message.message && ( message.message === hoardTriggeringReplyPrefix || message.message.startsWith(hoardTriggeringReplyPrefix + " ")) && m.extInvolvedMessage) {
       const msgParts = message.message.split(' ')
       if (msgParts.length >= 2) {
         extraOneChildDirectiveOrSource = msgParts.slice(1).join(' ')
       }
-      currDest = tgPubDest
-      currMediaDest = tgPubMediaDest
+      currDest = tgReleaseDest
+      currMediaDest = tgReleaseMediaDest
       m.extInvolvedMessage.extInvolvedMessage = m.extInvolvedMessageLv2
       m.extInvolvedMessage.extInvolvedMessageLv2 = m.extInvolvedMessageLv3
       m.extInvolvedMessage.extInvolvedMessageLv3 = m.extInvolvedMessageLv4
@@ -477,9 +494,14 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
 
       jsonMessageToBeSaved = m.extInvolvedMessage
     } else {
-      currDest = tgDest
-      currMediaDest = tgMediaDest
-      jsonMessageToBeSaved = m
+      if (tgHoardNonReleaseConfig) {
+        currDest = tgHoardNonReleaseConfig.destBasePath
+        currMediaDest = tgHoardNonReleaseConfig.mediaDestBasePath
+        jsonMessageToBeSaved = m
+      } else {
+        l(`telegram: no nonReleaseConfig, ignore message ${messageTextForLog}`)
+        return
+      }
     }
 
     for (const d of desensitizerCollector) {

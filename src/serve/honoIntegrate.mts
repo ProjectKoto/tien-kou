@@ -190,6 +190,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       // get containing tkCtx
       tkCtx: () => tkCtx,
       rgc: undefined as unknown as ResultGenContextHl<HE>,
+      reqUrl: honoCtx.req.url,
       reqPath,
       reqPathTidy: reqPath.split('/').filter(x => x !== '').join('/'),
       reqQuery: () => { return queryGetter() },

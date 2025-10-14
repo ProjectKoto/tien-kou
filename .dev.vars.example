@@ -25,10 +25,12 @@ TELEGRAM_PROXY_PORT = "1080"
 # SHOULD_HOARD_DROP_REMOTE_META_META = "1"
 # SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW = "1"
 
+# optional
 TELEGRAM_HOARD_DEST_BASE_PATH = "/path/to/tg_hoard_dest"
 # gram.js forces the dir in cwd, so only the name can be customized...
 TELEGRAM_HOARD_SESSION_DIR_NAME = "tg_session"
-TELEGRAM_PUB_HOARD_DEST_BASE_PATH = "/path/to/tg_pub_hoard_dest"
+TELEGRAM_RELEASE_HOARD_DEST_BASE_PATH = "/path/to/tg_rel_hoard_dest"
+TELEGRAM_HOARD_TRIGGERING_REPLY_PREFIX = 'pub'
 
 NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH = "..../liveAsset"
 NODE_LOCAL_FS_STATIC_ASSET_BASE_PATH = "..../staticAsset"
