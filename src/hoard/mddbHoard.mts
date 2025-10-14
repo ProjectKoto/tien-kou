@@ -23,7 +23,7 @@ import { defaultMarkdowndbDbPath } from "../serve/serveDef.mts"
 // /**abc, **def**xyz (won't match /abc/def/ghi/xyz in git), !dir3/file3, path//to///some/file, //path/to/file, path/to/dir4, path/to/dir4/, /path/to/dir4, /path/to/dir4/, [0-9].txt, a?.txt, *.{jpg,png} ...
 
 
-const convertIgnoreItemToMddbRegExp = (ignoreItem: string, fixedPrefixSlashEnded: string) => {
+const convertIgnoreItemToMddbRegExp = (ignoreItem: string, baseDirPath: string) => {
   const doBreak = (delimiter: string, doBreakInner?: ((target2: string) => string[])) => (target: string): string[] => {
     const parts = target.split(delimiter)
     return parts.reduce((prev, curr) => {
@@ -40,10 +40,18 @@ const convertIgnoreItemToMddbRegExp = (ignoreItem: string, fixedPrefixSlashEnded
     }, [] as string[])
   }
 
+  let baseDirNonSlashLastI = baseDirPath.length - 1
+  for (; baseDirNonSlashLastI >= 0; baseDirNonSlashLastI--) {
+    if (baseDirPath[baseDirNonSlashLastI] !== '/') {
+      break
+    }
+  }
+  baseDirPath = baseDirNonSlashLastI < 0 ? '/' : baseDirPath.substring(0, baseDirNonSlashLastI + 1)
+
   const startFromBaseDir = ignoreItem.startsWith('/')
-  const ignoreItemStrippedStartingSlash = startFromBaseDir ? ignoreItem.substring(1) : ignoreItem
-  const parsedParts = doBreak('**', doBreak('*'))(ignoreItemStrippedStartingSlash)
-  let regexpStr = '^' + escapeStringRegexp(fixedPrefixSlashEnded) + (startFromBaseDir ? '' : '(?:|.*/)')
+  // const ignoreItemStrippedStartingSlash = startFromBaseDir ? ignoreItem.substring(1) : ignoreItem
+  const parsedParts = doBreak('**', doBreak('*'))(ignoreItem)
+  let regexpStr = '^' + escapeStringRegexp(baseDirPath) + '(?=\\/)' + (startFromBaseDir ? '' : '(?:|.*/)')
   for (const part of parsedParts) {
     if (part === '**') {
       regexpStr += '.*'
@@ -1038,10 +1046,15 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
     watch = true
   }
+
+  mddbWatchIgnoreList.map(x => convertIgnoreItemToMddbRegExp(x, liveAssetBaseSlashPath + '/')).forEach(x => {
+    console.log(x.source)
+  })
+
   // have background parts
   await mddb.indexFolder({
     folderPath: liveAssetBaseSlashPath,
-    ignorePatterns: mddbWatchIgnoreList.map(x => convertIgnoreItemToMddbRegExp(x, liveAssetBaseSlashPath + '/')), 
+    ignorePatterns: mddbWatchIgnoreList.map(x => convertIgnoreItemToMddbRegExp(x, liveAssetBaseSlashPath)), 
     customConfig: {
       handleDedicated: async (filePath) => {
         const [_, pathStrippedExt, extension] = stripExtensionList(filePath, allKnownAssetExtNames)
