@@ -83,7 +83,7 @@ async function handlePostSubmission(req, res) {
         const mdPath = formData.mdPath;
         const attachPathPattern = formData.attachPathPattern;
         const content = formData.content;
-        const appendMode = formData.appendMode === 'true';
+        const contentMode = formData.contentMode;
         
         if (!mdPath) {
             res.statusCode = 400;
@@ -93,7 +93,7 @@ async function handlePostSubmission(req, res) {
         }
         
         // Process paths and save files
-        const result = await saveSubmission(new Date(), mdPath, attachPathPattern, content, files, formData, appendMode);
+        const result = await saveSubmission(new Date(), mdPath, attachPathPattern, content, files, formData, contentMode);
         
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
@@ -145,7 +145,7 @@ async function handleConfiguration(req, res) {
 }
 
 // Save submission files
-async function saveSubmission(now, mdPath, attachPathPattern, content, files, formData, appendMode) {
+async function saveSubmission(now, mdPath, attachPathPattern, content, files, formData, contentMode) {
     // Process placeholders in paths
     const processedMdPath = processPath(now, mdPath);
     const fullMdPath = path.join(baseDirectory, processedMdPath);
@@ -205,7 +205,9 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, fo
     
     // Prepare markdown content
     let mdContent = '';
-    if (appendMode) {
+    const commonBody = `${content}${attachmentHtmls.map(x => '\n\n' + x).join('')}\n`;
+    let newContent = commonBody;
+    if (contentMode !== 'createOrOverwrite') {
         // Try to read existing content
         try {
             const existingContent = await readFile(fullMdPath, 'utf8');
@@ -215,25 +217,36 @@ async function saveSubmission(now, mdPath, attachPathPattern, content, files, fo
             mdContent = '';
         }
 
-        if (mdContent.trim() === '') {
-            mdContent = `---\nisDerivableIntoChildren: true\n---\n`
+        if (contentMode === 'chronoChild') {
+            if (mdContent.trim() === '') {
+                mdContent = `---\nisDerivableIntoChildren: true\n---\n`
+            }
+
+            // Add new content with timestamp
+            const yyyy = now.getFullYear();
+            const MM = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const HH = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const formattedDate = `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`;
+
+            newContent = formattedDate + ' ' + commonBody;
+        } else {
+            // do nothing
         }
-        
-        // Add new content with timestamp
-        const yyyy = now.getFullYear();
-        const MM = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const HH = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        const ss = String(now.getSeconds()).padStart(2, '0');
-        const formattedDate = `${yyyy}-${MM}-${dd} ${HH}:${mm}:${ss}`;
-        if (!mdContent.endsWith('\n')) {
+
+        if (mdContent === '') {
+            // do nothing
+        } else if (mdContent.endsWith('\n')) {
             mdContent += '\n';
+        } else {
+            mdContent += '\n\n';
         }
-        mdContent += `\n${formattedDate} ${content}${attachmentHtmls.map(x => '\n\n' + x).join('')}\n`;
+        mdContent += newContent;
     } else {
         // In overwrite mode, just use the new content
-        mdContent = `${content}${attachmentHtmls.map(x => '\n\n' + x).join('\n\n')}\n`;
+        mdContent = newContent;
     }
     
     // Save markdown file
