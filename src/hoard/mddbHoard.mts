@@ -83,7 +83,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     '**/*.obsidian*/**',
     '**/*DS_Store*',
     '**/*DS_Store*/**',
-    '**/.sync-conflict-*',
+    '**/*.sync-conflict-*',
     '**/.syncthing.*.tmp',
     '**/.syncthing.tmp',
     '**/unscannedAsset/**',
