@@ -782,7 +782,10 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               asset_locator: childLocator,
               // will assign later
               asset_type: undefined,
-              metadata: structuredClone(fileInfo.metadata) || {},
+              // metadata: structuredClone(fileInfo.metadata) || {},
+              metadata: {
+	        publishTime: childPublishDate.getTime(),
+	      },
               // will assign later
               referencedTags: [],
               declaredTags: [],
