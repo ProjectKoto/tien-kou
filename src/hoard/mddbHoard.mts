@@ -1000,7 +1000,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const metadataFieldAliases = await (async () => {
     let aliasStr = tkCtx.e.HOARD_METADATA_FIELD_ALIAS_LIST
     if (!aliasStr) {
-      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags'
+      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;bottomPostRef:groupType=bottomPostRef&groupPrimaryLocator;bpref:groupType=bottomPostRef&groupPrimaryLocator;repo:privateOneSidedGroupType=noBorderRef&privateOneSidedGroupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags;tidbit=tidbits'
     }
     const aliasSplit = aliasStr.split(';').map(x => x.trim()).filter(x => x)
     const aliasMap: Record<string, {

@@ -65,7 +65,7 @@ PROCENV_HOARD_METADATA_DATE_TIMEZONE_OFFSET_MINUTE = '480'
 # UTC+8
 LIQUID_DATE_TIMEZONE_OFFSET_MINUTE = '480'
 
-# HOARD_METADATA_FIELD_ALIAS_LIST = 'ref:groupType=ref&groupPrimaryLocator;topRef:groupType=topRef&groupPrimaryLocator;tref:groupType=topRef&groupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags'
+# HOARD_METADATA_FIELD_ALIAS_LIST = 'ref:groupType=ref&groupPrimaryLocator;bottomPostRef:groupType=bottomPostRef&groupPrimaryLocator;bpref:groupType=bottomPostRef&groupPrimaryLocator;repo:privateOneSidedGroupType=noBorderRef&privateOneSidedGroupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags;tidbit=tidbits'
 
 
 HOARD_GIT_LOCAL_LIVE_ASSET_BARE_REPO_PATH = '/path/to/repo.git'

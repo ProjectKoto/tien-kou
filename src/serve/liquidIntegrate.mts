@@ -950,6 +950,25 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     return result
   })
 
+  const makeSetCompatibleWithLiquidContainsOperator = (...args: unknown[]) => {
+    const s = new Set(...(args as Array<never>))
+    ;(s as AnyObj).indexOf = function(v: unknown) {
+      const result = (this as Set<unknown>).has(v) ? 0 : -1
+      return result
+    }
+    return s
+  }
+
+  LiquidHandler.registerFilterPostCreate("toSet", function (arr) {
+    if (!arr) {
+      return makeSetCompatibleWithLiquidContainsOperator()
+    }
+    if (!Array.isArray(arr)) {
+      throw new TkErrorHttpAware("in filter toSet: arr is not an array, it is " + arr.toString())
+    }
+    return makeSetCompatibleWithLiquidContainsOperator(arr)
+  })
+
   const arrayInplacePush: liquid.FilterImplOptions = function (a: AnyObj[], ...rest) {
     for (const b of rest) {
       a.push(b)

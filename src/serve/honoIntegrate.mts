@@ -168,6 +168,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       return honoCtx.req.header('If-None-Match')
     })
 
+    const serverStartTime = Date.now()
+    const serverVersionFallback = "v" + serverStartTime.toString()
     const serverDeployVersionGetter = lazyValue<string>(() => {
       const he = honoCtx?.env
       if (he) {
@@ -177,7 +179,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
           return (versionId || "cfWorkerUnknownServerVer").toString()
         }
       }
-      return "otherServerUnknownVer"
+      return serverVersionFallback
     })
 
     l('reqPath', reqPath)
