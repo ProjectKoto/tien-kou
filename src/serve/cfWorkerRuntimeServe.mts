@@ -305,6 +305,7 @@ const TienKouCloudflareWorkerApp = HC<TienKouApp<HonoWithErrorHandler<Cfwe>
     } as TkContextHlGetTkEnvHandler<Cfwe>,
     TkCtxHandler,
     HonoProvideHandler,
+    HonoMiddlewares: null,
   })
 
   return EAH(super_, {

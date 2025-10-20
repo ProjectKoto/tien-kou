@@ -784,8 +784,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               asset_type: undefined,
               // metadata: structuredClone(fileInfo.metadata) || {},
               metadata: {
-	        publishTime: childPublishDate.getTime(),
-	      },
+                publishTime: childPublishDate.getTime(),
+              },
               // will assign later
               referencedTags: [],
               declaredTags: [],

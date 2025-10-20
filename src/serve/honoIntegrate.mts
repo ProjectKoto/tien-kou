@@ -5,10 +5,11 @@ import * as honoTypes from "hono/types"
 import * as liquid from "liquidjs"
 import mimeDbJson from 'mime-db/db.json'
 import mimeType from 'mime-types'
-import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkContext, TkError, TkErrorHttpAware, um } from "../lib/common.mts"
+import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkContext, TkError, TkErrorHttpAware, toArrayBuffer, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
-import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError } from "./serveDef.mts"
+import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError, MiddleCacheHandler, notImplementedCtx } from "./serveDef.mts"
+import { ContentfulStatusCode } from "hono/utils/http-status"
 
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
   getTkEnvGetter: () => Promise<(honoCtx: hono.Context<HE>) => Record<string, string | undefined>>
@@ -88,10 +89,12 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   TkContextHlGetEHandler,
   TkCtxHandler,
   HonoProvideHandler,
+  HonoMiddlewares,
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler",
   {
     TkContextHlGetEHandler: TkContextHlGetTkEnvHandler<HE>,
     HonoProvideHandler: HonoProvideHandler<HE>,
+    HonoMiddlewares: hono.MiddlewareHandler[] | undefined | null,
   }>) => {
 
   const super_ = await AbstractTkSqlLiquidApp<EO>()({
@@ -111,6 +114,11 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   const honoApp = HonoProvideHandler.getHono()
 
   honoApp.use(honoContextStorage())
+  if (HonoMiddlewares) {
+    for (const m of HonoMiddlewares) {
+      honoApp.use(m)
+    }
+  }
 
   const origHonoErrorHandler = honoApp.errorHandler
   honoApp.onError((err, c) => {
@@ -418,3 +426,71 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
 })
 
+export const honoReqCache = async ({
+  MiddleCacheHandler
+}: {
+  MiddleCacheHandler: MiddleCacheHandler,
+}): Promise<hono.MiddlewareHandler> => {
+  return async (c, next) => {
+    const cacheFetchResult = await (async () => {
+      if (c.req.path.length > 500) {
+        return false
+      }
+      if (c.req.method.length > 30) {
+        return false
+      }
+      const url = new URL(c.req.url)
+      if (url.pathname.length > 500) {
+        return false
+      }
+      if (url.search.length > 500) {
+        return false
+      }
+      const cacheKey = c.req.method.length.toString() + c.req.method + url.pathname.length.toString() + url.pathname.length + url.search
+      
+      const cachedValue = await MiddleCacheHandler.getInCache(notImplementedCtx, cacheKey)
+      if (cachedValue === null || cachedValue === undefined) {
+        return {
+          cacheKey,
+          val: undefined,
+        }
+      } else {
+        return {
+          cacheKey,
+          val: cachedValue,
+        }
+      }
+    })()
+
+    if (cacheFetchResult === false) {
+      await next()
+    } else {
+      if (cacheFetchResult.val) {
+        l('cache hit')
+        const resp = cacheFetchResult.val as {
+          headers: [n: string, v: string][],
+          status: number,
+          body: Buffer,
+        }
+        for (const h of resp.headers) {
+          c.header(h[0], h[1])
+        }
+        c.body(resp.body, resp.status as ContentfulStatusCode)
+      } else {
+        await next()
+        if (c.res.body !== null) {
+          const respClone = c.res.clone()
+          const respToCache = new Response(respClone.body, respClone)
+          respToCache.headers.delete('Cache-Control')
+          respToCache.headers.delete('Expires')
+          respToCache.headers.delete('Last-Modified')
+          await MiddleCacheHandler.putInCache(notImplementedCtx, cacheFetchResult.cacheKey, {
+            headers: Array.from(respToCache.headers.entries()),
+            status: respToCache.status,
+            body: Buffer.from(await toArrayBuffer(respToCache.body!)),
+          })
+        }
+      }
+    }
+  }
+}

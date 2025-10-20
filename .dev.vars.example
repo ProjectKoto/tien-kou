@@ -75,3 +75,5 @@ HOARD_GIT_LIVE_ASSET_REMOTE = 'ssh://xxx'
 HOARD_GIT_STATIC_GEN_REMOTE = 'ssh://xxx2'
 
 PROCENV_HOARD_MARKDOWNDB_FILES_JSON_PATH = '/path/to/.markdowndb/files.json'
+
+PROCENV_CACHE_LRU_SQLITE_PATH = './lruCache.sqlite'

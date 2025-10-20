@@ -3,9 +3,9 @@ import fs from "node:fs"
 import path from "node:path"
 import { AnyObj, delayInitVal, l, makeConcatenatableRelPath, TkContext } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
-import { calcValidateFileSystemPathSync, defaultStaticGenBaseDir, nodeResolvePath } from '../lib/nodeCommon.mts'
+import { calcValidateFileSystemPathSync, defaultStaticGenBaseDir, LruSqliteMiddleCacheHandler, nodeResolvePath } from '../lib/nodeCommon.mts'
 import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
-import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
+import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, HonoProvideHandler, honoReqCache, MainHonoProvideHandler, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
 import { RuntimeCachedLiquidHandler } from "./liquidIntegrate.mts"
 import { LiquidStaticGenFilterRegHandler, nodeGenStatic } from './nodeStaticGen'
 import { AbstractTkSqlAssetFetchHandler, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError, WebRedirHeavyAssetHandler } from "./serveDef.mts"
@@ -69,10 +69,11 @@ const TienKouNodeJsCloudHonoApp = HC<TienKouApp<undefined>>()(async ({
   LiquidHandler,
   TienKouAssetCategoryLogicHandler,
   LiquidFilterRegisterHandlerList,
+  MiddleCacheHandler,
   IntegratedCachePolicyHandler,
   TkCtxHandler,
   HonoProvideHandler,
-}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "TkCtxHandler", {
+}: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "MiddleCacheHandler" | "TkCtxHandler", {
   HonoProvideHandler: HonoProvideHandler<HonoEnvTypeWithTkCtx<AnyObj>>
 }>) => {
 
@@ -93,6 +94,7 @@ const TienKouNodeJsCloudHonoApp = HC<TienKouApp<undefined>>()(async ({
     } as TkContextHlGetTkEnvHandler<HonoEnvTypeWithTkCtx<AnyObj>>,
     TkCtxHandler,
     HonoProvideHandler,
+    HonoMiddlewares: [await honoReqCache({ MiddleCacheHandler })],
   })
 
   const realServeHttp = async (): Promise<TkAppStartInfo<undefined>> => {
@@ -140,7 +142,7 @@ const nodeMain = async () => {
     SqlDbHandler,
   })
 
-  const MiddleCacheHandler = await NoMiddleCacheHandler({
+  const MiddleCacheHandler = await LruSqliteMiddleCacheHandler({
     TkFirstCtxProvideHandler,
   })
 
@@ -194,6 +196,7 @@ const nodeMain = async () => {
     TienKouAssetCategoryLogicHandler,
     TkCtxHandler,
     HonoProvideHandler,
+    MiddleCacheHandler,
   })
 
   const startInfo = await app.start()

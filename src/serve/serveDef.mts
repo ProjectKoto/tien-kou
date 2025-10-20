@@ -1196,6 +1196,14 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
   }
 })
 
+export const notImplementedCtx: TkContext = {
+  get e(): Record<string, string | undefined> {
+    throw new TkErrorHttpAware('notImplementedCtx.e not impl')
+  },
+  get tkEnv(): Record<string, string | undefined> {
+    throw new TkErrorHttpAware('notImplementedCtx.tkEnv not impl')
+  },
+}
 
 export * as default from './serveDef.mts'
 
