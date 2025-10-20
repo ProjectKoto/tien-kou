@@ -5,7 +5,8 @@ import replaceAll from 'string.prototype.replaceall'
 import KeyvSqlite from "@keyv/sqlite"
 import Keyv from "keyv"
 import { HC, MiddleCacheHandler, KD } from "../serve/serveDef.mts"
-import SqliteLruCache from 'cache-sqlite-lru-ttl'
+import { SqliteCache as SqliteLruCache } from 'cache-sqlite-lru-ttl'
+import '../nodeEnv.mts'
 
 export const nodeResolvePath = (p: string) => {
   // return url.fileURLToPath(import.meta.resolve(p))

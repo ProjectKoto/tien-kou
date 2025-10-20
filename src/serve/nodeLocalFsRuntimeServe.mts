@@ -19,6 +19,8 @@ if (process.platform === "freebsd") {
   process.exit(1)
 }
 
+const tkEnvP = tkEnvFromDevVarsFile()
+
 const MddbSqliteSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   let mddb: MarkdownDB | undefined = undefined
@@ -110,7 +112,7 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
   HonoProvideHandler: HonoProvideHandler<HonoEnvTypeWithTkCtx<AnyObj>>
 }>) => {
 
-  const tkEnv = await tkEnvFromDevVarsFile()
+  const tkEnv = await tkEnvP
 
   // applyTkEnvToProcessEnv(tkEnv)
 
@@ -163,6 +165,7 @@ const TienKouNodeJsLocalFsHonoApp = HC<TienKouApp<undefined>>()(async ({
 })
 
 const nodeMain = async () => {
+  await tkEnvP
 
   const TkCtxHandler = await MainTkCtxHandler({})
   const TkFirstCtxProvideHandler = TkCtxHandler

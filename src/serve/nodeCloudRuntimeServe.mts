@@ -19,6 +19,7 @@ if (process.platform === "freebsd") {
   process.exit(1)
 }
 
+const tkEnvP = tkEnvFromDevVarsFile()
 
 const NodeJsCloudTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(async ({ SqlDbHandler,  TkFirstCtxProvideHandler, HeavyAssetHandler }: KD<"SqlDbHandler" | "TkFirstCtxProvideHandler" | "HeavyAssetHandler">) => {
 
@@ -76,8 +77,7 @@ const TienKouNodeJsCloudHonoApp = HC<TienKouApp<undefined>>()(async ({
 }: KD<"LiquidHandler" | "TienKouAssetFetchHandler" | "TienKouAssetCategoryLogicHandler" | "LiquidFilterRegisterHandlerList" | "IntegratedCachePolicyHandler" | "MiddleCacheHandler" | "TkCtxHandler", {
   HonoProvideHandler: HonoProvideHandler<HonoEnvTypeWithTkCtx<AnyObj>>
 }>) => {
-
-  const tkEnv = await tkEnvFromDevVarsFile()
+  const tkEnv = await tkEnvP
 
   const super_ = await AbstractTkSqlLiquidHonoApp<HonoWithErrorHandler<HonoEnvTypeWithTkCtx<AnyObj>>>()({
     TienKouAssetFetchHandler,
@@ -129,6 +129,7 @@ const TienKouNodeJsCloudHonoApp = HC<TienKouApp<undefined>>()(async ({
 })
 
 const nodeMain = async () => {
+  await tkEnvP
 
   const TkCtxHandler = await MainTkCtxHandler({})
   const TkFirstCtxProvideHandler = TkCtxHandler
