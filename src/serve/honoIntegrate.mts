@@ -443,6 +443,9 @@ export const honoReqCache = async ({
       if (url.pathname.length > 500) {
         return false
       }
+      if (url.pathname.startsWith('/admin/')) {
+        return false
+      }
       if (url.search.length > 500) {
         return false
       }
