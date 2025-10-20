@@ -7,7 +7,7 @@ import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { calcValidateFileSystemPathSync, defaultStaticGenBaseDir, nodeResolvePath } from '../lib/nodeCommon.mts'
 import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
-import { MainLiquidHandler } from "./liquidIntegrate.mts"
+import { MainLiquidHandler, RuntimeCachedLiquidHandler } from "./liquidIntegrate.mts"
 import { LiquidStaticGenFilterRegHandler, nodeGenStatic } from './nodeStaticGen'
 import { AbstractTkSqlAssetFetchHandler, defaultMarkdowndbDbPath, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
@@ -198,8 +198,9 @@ const nodeMain = async () => {
     HeavyAssetHandler,
   })
 
-  const LiquidHandler = await MainLiquidHandler({
+  const LiquidHandler = await RuntimeCachedLiquidHandler({
     TkFirstCtxProvideHandler,
+    RuntimeCacheHandler,
   })
   
   const HonoProvideHandler = await MainHonoProvideHandler<HonoEnvTypeWithTkCtx<AnyObj>>()({})
