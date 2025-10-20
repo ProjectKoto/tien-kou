@@ -23,3 +23,5 @@ thirdparty/cloudflare_workers-sdk/**
 !thirdparty/cloudflare_workers-sdk/packages/miniflare/**
 thirdparty/cloudflare_workers-sdk/packages/miniflare/node_modules
 thirdparty/cloudflare_workers-sdk/packages/miniflare/node_modules/**
+
+*lruCache*.sqlite

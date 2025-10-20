@@ -446,7 +446,7 @@ export const honoReqCache = async ({
       if (url.search.length > 500) {
         return false
       }
-      const cacheKey = c.req.method.length.toString() + c.req.method + url.pathname.length.toString() + url.pathname.length + url.search
+      const cacheKey = c.req.method.length.toString() + c.req.method + url.pathname.length.toString() + url.pathname + url.search
       
       const cachedValue = await MiddleCacheHandler.getInCache(notImplementedCtx, cacheKey)
       if (cachedValue === null || cachedValue === undefined) {
@@ -472,10 +472,13 @@ export const honoReqCache = async ({
           status: number,
           body: Buffer,
         }
-        for (const h of resp.headers) {
-          c.header(h[0], h[1])
-        }
-        c.body(resp.body, resp.status as ContentfulStatusCode)
+        // for (const h of resp.headers) {
+        //   c.header(h[0], h[1])
+        // }
+        return new Response(resp.body, {
+          headers: resp.headers,
+          status: resp.status,
+        })
       } else {
         await next()
         if (c.res.body !== null) {
@@ -484,11 +487,14 @@ export const honoReqCache = async ({
           respToCache.headers.delete('Cache-Control')
           respToCache.headers.delete('Expires')
           respToCache.headers.delete('Last-Modified')
-          await MiddleCacheHandler.putInCache(notImplementedCtx, cacheFetchResult.cacheKey, {
-            headers: Array.from(respToCache.headers.entries()),
-            status: respToCache.status,
-            body: Buffer.from(await toArrayBuffer(respToCache.body!)),
-          })
+          const abBody = await toArrayBuffer(respToCache.body!)
+          if (abBody.byteLength <= 1024 * 1024 * 2) {
+            await MiddleCacheHandler.putInCache(notImplementedCtx, cacheFetchResult.cacheKey, {
+              headers: Array.from(respToCache.headers.entries()),
+              status: respToCache.status,
+              body: Buffer.from(abBody),
+            })
+          }
         }
       }
     }

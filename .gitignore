@@ -186,3 +186,5 @@ dist
 
 /data/staticGen
 /data/staticGen*
+
+/*lruCache*.sqlite

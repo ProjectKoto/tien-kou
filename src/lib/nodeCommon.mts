@@ -64,6 +64,8 @@ export const KeyvMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD<neve
     }),
   }))
 
+  await (await kp).clear()
+
   return {
     fetchDataVersion: async (_ctx) => {
       const kv = await kp
@@ -102,6 +104,8 @@ export const LruSqliteMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD
     maxItems: 2000,
     compress: false,
   }))
+
+  await (await lsp).clear()
 
   return {
     fetchDataVersion: async (_ctx) => {
