@@ -751,7 +751,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             // new child
             state = InOneChildDirectivePossible
             // considering static file generation on Windows
-            const childName = replaceAll(line.substring(0, 19), ':', '.')
+            const childName = replaceAll(replaceAll(line.substring(0, 19), ':', '.'), ' ', '_')
             const validChildDateStr = replaceAll(line.substring(0, 19), '.', ':')
             const childPublishDate = new Date(validChildDateStr)
             let childExtensionWithDot = (fileInfo.origin_file_extension || "").toLowerCase()
