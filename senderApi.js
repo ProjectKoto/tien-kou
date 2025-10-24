@@ -16,6 +16,28 @@ let baseDirectory = process.env.BASE_DIR || path.join(__dirname, 'content');
 
 // Server configuration
 const PORT = process.env.PORT || 3000;
+const SECRET_CODE = process.env.SECRET_CODE;
+
+if (!SECRET_CODE) {
+	throw new Error('no SECRET_CODE');
+}
+
+function parseCookies (request) {
+    const list = {};
+    const cookieHeader = request.headers?.cookie;
+    if (!cookieHeader) return list;
+
+    cookieHeader.split(`;`).forEach(function(cookie) {
+        let [ name, ...rest] = cookie.split(`=`);
+        name = name?.trim();
+        if (!name) return;
+        const value = rest.join(`=`).trim();
+        if (!value) return;
+        list[name] = decodeURIComponent(value);
+    });
+
+    return list;
+}
 
 // Create server
 const server = http.createServer(async (req, res) => {
@@ -35,9 +57,11 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        if (!(parsedUrl.query && parsedUrl.query['a'] === 'yjnn')) {
+	const cookies = parseCookies(req);
+	    
+        if (!(parsedUrl.query && parsedUrl.query['a'] === SECRET_CODE || cookies['tkSenderSecretCode'] === SECRET_CODE)) {
             res.statusCode = 400;
-            res.end();
+            res.end('secret code not provided in query(a) or cookies(tkSenderSecretCode). note: a successful submit grants you the secret code in cookies.');
             return;
         }
         
@@ -46,7 +70,7 @@ const server = http.createServer(async (req, res) => {
             res.statusCode = 200;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.end(await readFile(process.env.PAGE_HTML_FILE || '/dev/null'));
-        }if (pathname === '/api/send' && req.method === 'POST') {
+        } else if (pathname === '/api/send' && req.method === 'POST') {
             await handlePostSubmission(req, res);
         // } else if (pathname === '/api/configure' && req.method === 'POST') {
         //     await handleConfiguration(req, res);
@@ -97,6 +121,7 @@ async function handlePostSubmission(req, res) {
         
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
+	res.setHeader('Set-Cookie', 'tkSenderSecretCode=' + SECRET_CODE + '; max-age=864000000; path=/; ');
         res.end(JSON.stringify({
             message: 'Post saved successfully',
             result
