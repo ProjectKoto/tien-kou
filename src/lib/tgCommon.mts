@@ -1,10 +1,10 @@
-import tg from "telegram"
+import teleproto from "teleproto"
 import * as tgEntity from "@telegraf/entity"
 import type * as tgEntityTypes from "@telegraf/entity/types/types.d.ts"
 import { AnyObj } from "./common.mts"
 
 export type TgMessageLike = { message: string, entities: AnyObj[] }
-type TgEntityCompat = tg.Api.TypeMessageEntity & { type: string | undefined }
+type TgEntityCompat = teleproto.Api.TypeMessageEntity & { type: string | undefined }
 
 const processTgEntityCompat = (entity: TgEntityCompat) => {
   switch (entity?.className) {

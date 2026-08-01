@@ -97,9 +97,9 @@ export const KeyvMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD<neve
 export const LruSqliteMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD<never>) => {
 
   let lsResolve: (value: SqliteLruCache) => void = undefined!
-  const lsp: Promise<SqliteLruCache> = new Promise<SqliteLruCache>(r => { lsResolve = r })
+  const lsp: Promise<SqliteLruCache<unknown>> = new Promise<SqliteLruCache<unknown>>(r => { lsResolve = r })
 
-  lsResolve(new SqliteLruCache({
+  lsResolve(new SqliteLruCache<unknown>({
     database: process.env.PROCENV_CACHE_LRU_SQLITE_PATH!,
     maxItems: 2000,
     compress: false,
@@ -112,7 +112,7 @@ export const LruSqliteMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD
       const ls = await lsp
       const fetchedKvDataVersion = await ls.get("dataVersion")
       if (fetchedKvDataVersion !== null && fetchedKvDataVersion !== undefined && fetchedKvDataVersion !== "") {
-        return fetchedKvDataVersion
+        return fetchedKvDataVersion as number
       }
       return undefined
     },
@@ -126,7 +126,7 @@ export const LruSqliteMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD
       if (v === undefined || v === null) {
         return undefined
       }
-      return v
+      return v as T
     },
     putInCache: async <T,>(_ctx: TkContext, k: string, v: T | undefined): Promise<void> => {
       const ls = await lsp

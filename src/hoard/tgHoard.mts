@@ -6,9 +6,9 @@ import * as input from "input"
 import path from "path"
 import randomBigint from 'random-bigint'
 import replaceAll from 'string.prototype.replaceall'
-import telegram from "telegram"
-import tgEvents from "telegram/events/index.js"
-import { StoreSession } from "telegram/sessions/index.js"
+import teleproto from "teleproto"
+import tgEvents from "teleproto/events/index.js"
+import { StoreSession } from "teleproto/sessions/index.js"
 import { throttle } from 'throttle-debounce'
 import '../nodeEnv.mts'
 
@@ -61,9 +61,9 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
   await ensurePathDirExists(tgReleaseMediaDest)
 
   const storeSession = new StoreSession((tkEnv.TELEGRAM_HOARD_SESSION_DIR_NAME || "tg_session"))
-  const client = new telegram.TelegramClient(storeSession, parseInt(tkEnv.TELEGRAM_API_ID!), tkEnv.TELEGRAM_API_HASH!, {
+  const client = new teleproto.TelegramClient(storeSession, parseInt(tkEnv.TELEGRAM_API_ID!), tkEnv.TELEGRAM_API_HASH!, {
     // useWSS: false, // Important. Most proxies cannot use SSL.
-    useWSS: true,
+    // useWSS: true,  // deprecated since 202607 switch to teleproto.
     proxy: {
       ip: "127.0.0.1", // Proxy host (IP or hostname)
       port: parseInt(tkEnv.TELEGRAM_PROXY_PORT!), // Proxy port
@@ -71,10 +71,11 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       socksType: 5, // If used Socks you can choose 4 or 5.
       timeout: 2, // Timeout (in seconds) for connection,
     },
+    connectionRetries: 5,
   })
   await client.start({
     phoneNumber: async () => await input.text("tg phoneNumber?"),
-    password: async () => await input.text("tg password?"),
+    password: async () => await input.text("tg 2FA password?"),
     phoneCode: async () => await input.text("tg phoneCode?"),
     onError: (err) => console.error(err),
   })
@@ -94,8 +95,8 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
   const throttledSendHoarded = throttle(5000, async () => {
     const randomId = randomBigint(128)!
     await client.invoke(
-      new telegram.Api.messages.SendMessage({
-        peer: new telegram.Api.InputPeerSelf(),
+      new teleproto.Api.messages.SendMessage({
+        peer: new teleproto.Api.InputPeerSelf(),
         message: "hoarded",
         randomId: randomId as unknown as LibraryBigInteger,
       })
@@ -116,9 +117,9 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
 
     // -- function declaration
 
-    const processGjSessionPeerInfo = async (peerLike: telegram.Api.TypePeer, originalArgs: AnyObj | undefined, originalArgs2: AnyObj | undefined, originalArgs3: AnyObj | undefined, originalArgs4: AnyObj | undefined) => {
+    const processGjSessionPeerInfo = async (peerLike: teleproto.Api.TypePeer, originalArgs: AnyObj | undefined, originalArgs2: AnyObj | undefined, originalArgs3: AnyObj | undefined, originalArgs4: AnyObj | undefined) => {
       // (id, hash, username, phone, name, date)
-      const peerInfo = await storeSession.getEntityRowsById(telegram.utils.getPeerId(peerLike), true)
+      const peerInfo = await storeSession.getEntityRowsById(teleproto.utils.getPeerId(peerLike), true)
       if (peerInfo && Array.isArray(peerInfo) && peerInfo.length >= 6) {
         peerInfo[1] = null
         peerInfo[3] = null
@@ -183,7 +184,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       return peerInfo
     }
 
-    const resolveMessagePeerInplace = async (theMessage: telegram.Api.Message) => {
+    const resolveMessagePeerInplace = async (theMessage: teleproto.Api.Message) => {
       if (theMessage.fromId && typeof theMessage.fromId === "object") {
         try {
           await processGjSessionPeerInfo(theMessage.fromId, theMessage.originalArgs.fromId, undefined, undefined, undefined)
@@ -229,7 +230,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       }
     }
 
-    const resolveExtInvolvedMessage = async (theMessage: telegram.Api.Message, onlyTellExistence: boolean = false) => {
+    const resolveExtInvolvedMessage = async (theMessage: teleproto.Api.Message, onlyTellExistence: boolean = false) => {
       const isReply = !!theMessage?.replyTo?.replyToMsgId
       const isFwd = !!theMessage?.fwdFrom?.fromId
 
@@ -249,7 +250,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
           involvementType,
           isOnlyExistence: true,
           message: '...'
-        } as unknown as telegram.Api.Message
+        } as unknown as teleproto.Api.Message
       }
 
       await new Promise(r => setTimeout(r, 1500))
@@ -257,18 +258,18 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       if (isReply) {
         // WARN: when current user havn't joined this peer (channel), this FETCHES THE WRONG MESSAGE
         // let repliedMessage = await theMessage?.getReplyMessage()
-        let repliedMessage: telegram.Api.Message | undefined = undefined
+        let repliedMessage: teleproto.Api.Message | undefined = undefined
 
         if (repliedMessage === undefined) {
           // will cause FLOOD_WAIT. CAUTION!!!
           // await client.getEntity(...)
 
           l("theMessage?.replyTo?.replyToPeerId", theMessage?.replyTo?.replyToPeerId)
-          const inputPeer = await client.getInputEntity(theMessage?.replyTo?.replyToPeerId || theMessage?.peerId as telegram.Api.TypePeer)
+          const inputPeer = await client.getInputEntity(theMessage?.replyTo?.replyToPeerId || theMessage?.peerId as teleproto.Api.TypePeer)
           // l("inputPeer", inputPeer)
-          // const inputPeer = await client.getInputEntity(new telegram.Api.Channel({
-          //   id: (theMessage?.replyTo?.replyToPeerId as telegram.Api.PeerChannel).channelId
-          // } as telegram.Api.Channel))
+          // const inputPeer = await client.getInputEntity(new teleproto.Api.Channel({
+          //   id: (theMessage?.replyTo?.replyToPeerId as teleproto.Api.PeerChannel).channelId
+          // } as teleproto.Api.Channel))
 
           if (theMessage?.replyTo?.replyToMsgId) {
             const repliedMsgId = theMessage?.replyTo?.replyToMsgId
@@ -290,8 +291,8 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
               }
 
               if (repliedMessage?.groupedId) {
-                let sameGroupedMsgMin: telegram.Api.Message | undefined = undefined
-                let sameGroupedMsgs: telegram.Api.Message[] = []
+                let sameGroupedMsgMin: teleproto.Api.Message | undefined = undefined
+                let sameGroupedMsgs: teleproto.Api.Message[] = []
                 for (const m of repliedMessageSurroundList) {
                   if (m.groupedId && m.groupedId.equals(repliedMessage.groupedId!)) {
                     if (sameGroupedMsgMin === undefined || sameGroupedMsgMin.id > m.id) {
@@ -333,23 +334,23 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
         }
         return repliedMessage
       } else if (isFwd) {
-        let fwdMessage = undefined as telegram.Api.Message | undefined
+        let fwdMessage = undefined as teleproto.Api.Message | undefined
         
         let isFwdToSave: boolean | undefined = undefined
         let inputPeer
         if (theMessage?.fwdFrom?.savedFromId) {
           isFwdToSave = true
-          inputPeer = await client.getInputEntity(theMessage?.fwdFrom?.savedFromId as telegram.Api.TypePeer)
+          inputPeer = await client.getInputEntity(theMessage?.fwdFrom?.savedFromId as teleproto.Api.TypePeer)
         } else if (theMessage?.fwdFrom?.fromId) {
           isFwdToSave = false
-          inputPeer = await client.getInputEntity(theMessage?.fwdFrom?.fromId as telegram.Api.TypePeer)
+          inputPeer = await client.getInputEntity(theMessage?.fwdFrom?.fromId as teleproto.Api.TypePeer)
         } else {
           inputPeer = undefined
         }
         // l("inputPeer", inputPeer)
-        // const inputPeer = await client.getInputEntity(new telegram.Api.Channel({
-        //   id: (theMessage?.fwdFrom?.fromId as telegram.Api.PeerChannel).channelId
-        // } as telegram.Api.Channel))
+        // const inputPeer = await client.getInputEntity(new teleproto.Api.Channel({
+        //   id: (theMessage?.fwdFrom?.fromId as teleproto.Api.PeerChannel).channelId
+        // } as teleproto.Api.Channel))
 
         const origMsgId = (() => {
           if (isFwdToSave === true) {
@@ -363,7 +364,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
         if (origMsgId && inputPeer) {
           try {
             fwdMessage = (await client.getMessages(inputPeer, {
-              ids: new telegram.Api.InputMessageID({ id: origMsgId }),
+              ids: new teleproto.Api.InputMessageID({ id: origMsgId }),
             }))[0]
           } catch (e) {
             le("resolveExtInvolvedMessage#isFwd#client.getMessages err", e)
@@ -390,7 +391,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     
     // -- message handling logic
 
-    if ((event?.message?.peerId as telegram.Api.PeerUser)?.userId?.toString() !== meIdStr) {
+    if ((event?.message?.peerId as teleproto.Api.PeerUser)?.userId?.toString() !== meIdStr) {
       return
     }
     if ((event?.message?.message ?? '') === "hoarded") {
@@ -407,13 +408,13 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     const m: (typeof m0) & { client?: AnyObj, extInvolvedMessage?: AnyObj, extInvolvedMessageLv2?: AnyObj, extInvolvedMessageLv3?: AnyObj, extInvolvedMessageLv4?: AnyObj } = m0
     m.client = undefined
     m._client = undefined
-    await resolveMessagePeerInplace(m as telegram.Api.Message)
+    await resolveMessagePeerInplace(m as teleproto.Api.Message)
 
     const message = event?.message
-    let extInvolvedMessage: telegram.Api.Message | AnyObj | undefined = undefined
-    let extInvolvedMessageLv2: telegram.Api.Message | AnyObj | undefined = undefined
-    let extInvolvedMessageLv3: telegram.Api.Message | AnyObj | undefined = undefined
-    let extInvolvedMessageLv4: telegram.Api.Message | AnyObj | undefined = undefined
+    let extInvolvedMessage: teleproto.Api.Message | AnyObj | undefined = undefined
+    let extInvolvedMessageLv2: teleproto.Api.Message | AnyObj | undefined = undefined
+    let extInvolvedMessageLv3: teleproto.Api.Message | AnyObj | undefined = undefined
+    let extInvolvedMessageLv4: teleproto.Api.Message | AnyObj | undefined = undefined
 
     extInvolvedMessage = await resolveExtInvolvedMessage(event.message)
     if (extInvolvedMessage) {
@@ -425,7 +426,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       m.extInvolvedMessage!._client = undefined
       // to make gramjs toJSON() happy
       m.originalArgs.extInvolvedMessage = m.extInvolvedMessage
-      extInvolvedMessageLv2 = await resolveExtInvolvedMessage(extInvolvedMessage as telegram.Api.Message)
+      extInvolvedMessageLv2 = await resolveExtInvolvedMessage(extInvolvedMessage as teleproto.Api.Message)
       if (extInvolvedMessageLv2) {
         const mm = {
           ...extInvolvedMessageLv2
@@ -436,7 +437,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
         ;(mm as AnyObj).client = undefined
         mm._client = undefined
 
-        extInvolvedMessageLv3 = await resolveExtInvolvedMessage(extInvolvedMessageLv2 as telegram.Api.Message)
+        extInvolvedMessageLv3 = await resolveExtInvolvedMessage(extInvolvedMessageLv2 as teleproto.Api.Message)
         if (extInvolvedMessageLv3) {
           const mmm = {
             ...extInvolvedMessageLv3
@@ -447,7 +448,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
           ;(mmm as AnyObj).client = undefined
           mmm._client = undefined
 
-          extInvolvedMessageLv4 = await resolveExtInvolvedMessage(extInvolvedMessageLv3 as telegram.Api.Message)
+          extInvolvedMessageLv4 = await resolveExtInvolvedMessage(extInvolvedMessageLv3 as teleproto.Api.Message)
           if (extInvolvedMessageLv4) {
             const mmmm = {
               ...extInvolvedMessageLv4
@@ -458,7 +459,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
             ;(mmmm as AnyObj).client = undefined
             mmmm._client = undefined
 
-            const haveMoreLevelExtInvolvedMessage = await resolveExtInvolvedMessage(extInvolvedMessageLv4 as telegram.Api.Message, true)
+            const haveMoreLevelExtInvolvedMessage = await resolveExtInvolvedMessage(extInvolvedMessageLv4 as teleproto.Api.Message, true)
             if (haveMoreLevelExtInvolvedMessage) {
               (m as AnyObj).haveMoreLevelExtInvolvedMessage = haveMoreLevelExtInvolvedMessage
               m.originalArgs.haveMoreLevelExtInvolvedMessage = haveMoreLevelExtInvolvedMessage
@@ -519,7 +520,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
             await mediaDownQ.run(async () => {
               const p = datePath(currMediaDest, currM.media?.document?.id.toString() + ".dat", "[%y-%m]/m-", now)
               await ensureParentDirExists(p)
-              await client.downloadMedia(currM as telegram.Api.Message, {
+              await client.downloadMedia(currM as teleproto.Api.Message, {
                 outputFile: p,
               })
               l(`telegram: saved file in ${p}`)
@@ -530,7 +531,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
           await mediaDownQ.run(async () => {
             const p = datePath(currMediaDest, currM.media?.photo?.id.toString() + ".png", "[%y-%m]/m-", now)
             await ensureParentDirExists(p)
-            await client.downloadMedia(currM as telegram.Api.Message, {
+            await client.downloadMedia(currM as teleproto.Api.Message, {
               outputFile: p,
             })
             l(`telegram: saved media photo in ${p}`)
@@ -540,7 +541,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
           await mediaDownQ.run(async () => {
             const p = datePath(currMediaDest, currM.media?.webpage?.photo?.id.toString() + ".png", "[%y-%m]/m-", now)
             await ensureParentDirExists(p)
-            await client.downloadMedia(currM as telegram.Api.Message, {
+            await client.downloadMedia(currM as teleproto.Api.Message, {
               outputFile: p,
             })
             l(`telegram: saved webpage photo in ${p}`)

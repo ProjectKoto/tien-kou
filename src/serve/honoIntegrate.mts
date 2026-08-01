@@ -72,7 +72,7 @@ export type HonoProvideHandler<HE extends hono.Env, > = {
 }
 
 export const MainHonoProvideHandler = <HE extends hono.Env,> () => HC<HonoProvideHandler<HE>>()(async (_: KD<never>) => {
-  const honoApp = new Hono<HE>() as HonoWithErrorHandler<HE>
+  const honoApp = new Hono<HE>() as unknown as HonoWithErrorHandler<HE>
   return {
     getHono: () => {
       return honoApp

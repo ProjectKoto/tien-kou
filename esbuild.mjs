@@ -41,7 +41,7 @@ export const hoardBuildCfg = ({
     // {
     //   name: 'selectPackagesExternalHoard',
     //   setup(build) {
-    //     build.onResolve({ filter: /^telegram/ }, args => {
+    //     build.onResolve({ filter: /^teleproto/ }, args => {
     //       return { external: false }
     //     })
     //     build.onResolve({ filter: /^mddb/ }, args => {
@@ -75,7 +75,7 @@ esbuildConfig = await makeEsbuildConfig('nodeLocalFsRtServe')
 // dump esbuild options by adding log to wrangler bundleWorker() then imitate it
 export const nodeLocalFsRtServeBuildCfg = ({
   ...esbuildConfig,
-  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
+  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'bun:sqlite', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
   // external: [ '__STATIC_CONTENT_MANIFEST' ],
   entryPoints: ['src/serve/nodeLocalFsRuntimeServe.mts'],
   format: 'cjs',
@@ -92,7 +92,7 @@ esbuildConfig = await makeEsbuildConfig('nodeCloudRtServe')
 
 export const nodeCloudRtServeBuildCfg = ({
   ...esbuildConfig,
-  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
+  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'bun:sqlite', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
   // external: [ '__STATIC_CONTENT_MANIFEST' ],
   entryPoints: ['src/serve/nodeCloudRuntimeServe.mts'],
   format: 'cjs',
@@ -110,7 +110,7 @@ esbuildConfig = await makeEsbuildConfig('webExt')
 // dump esbuild options by adding log to wrangler bundleWorker() then imitate it
 export const webExtBuildCfg = ({
   ...esbuildConfig,
-  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
+  external: [ '__STATIC_CONTENT_MANIFEST', 'sqlite3', 'better-sqlite3', 'bun:sqlite', 'pg', 'mysql', 'mysql2', 'tedious', 'pg-query-stream', 'oracledb', 'aws-sdk', 'mock-aws-s3', 'nock' ],
   // external: [ '__STATIC_CONTENT_MANIFEST' ],
   entryPoints: ['src/webExtMain.mjs'],
   format: 'esm',
@@ -139,6 +139,13 @@ export const main = async () => {
     configList = [hoardBuildCfg, nodeLocalFsRtServeBuildCfg, nodeCloudRtServeBuildCfg, webExtBuildCfg]
   } else {
     throw new Error('unrecognized arg: ' + which)
+  }
+
+  for (let i = 0; i < 3; i++) {
+    console.log(`${(() => {
+      const date = new Date()
+      return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().replace(/Z$/g, '')
+    })()} WARN: esbuild DOES NOT check for TypeScript errors/warnings. See: https://github.com/evanw/esbuild/issues/1631 . Use npm run typeCheck / npm run t for that.`)
   }
 
   if (process.argv[process.argv.length - 1] === 'watch') {

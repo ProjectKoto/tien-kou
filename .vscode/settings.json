@@ -12,7 +12,7 @@
 		// "thirdparty/**": true,
 		"thirdparty/markdowndb/**": false,
 		"thirdparty/cloudflare*/**": true,
-		"thirdparty/telegram/**": true,
+		"thirdparty/teleproto/**": true,
 		"*Dist/**": true,
 		"*.wrangler/**": true,
 		"**/package-lock.json": true,

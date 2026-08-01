@@ -43,6 +43,6 @@ isLocatableContent = isLiveLight && isLocatable && isDedicated
 template -> backstage?
 
 
-node_modules/telegram/client/telegramBaseClient.js
+node_modules/teleproto/client/telegramBaseClient.js
 
 node_modules/@libsql/isomorphic-ws/node.mjs

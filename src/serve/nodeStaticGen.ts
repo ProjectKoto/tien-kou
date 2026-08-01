@@ -1,5 +1,4 @@
 
-import os from 'node:os'
 import fs from 'node:fs'
 import path from 'node:path'
 import { le, TkErrorHttpAware, toArrayBuffer } from "../lib/common.mts"
@@ -8,6 +7,7 @@ import { HonoProvideHandler, TkContextHl } from "./honoIntegrate.mts"
 import { ResultGenContext } from "./liquidIntegrate.mts"
 import { HC, KD, LiquidFilterRegisterHandler, TkAppStartInfo, TkCtxHandler } from "./serveDef.mts"
 import { Hono } from 'hono'
+import { HonoWithErrorHandler } from '../lib/hack.mts'
 
 export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()(async ({
   HonoProvideHandler,
@@ -115,7 +115,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const nodeGenStatic = (tkEnv: Record<string, string | undefined>, TkCtxHandler: TkCtxHandler, honoApp: Hono<any>, postTask: () => Promise<void>) => async (): Promise<TkAppStartInfo<undefined>> => {
+export const nodeGenStatic = (tkEnv: Record<string, string | undefined>, TkCtxHandler: TkCtxHandler, honoApp: Hono<any> | HonoWithErrorHandler<any, any, any>, postTask: () => Promise<void>) => async (): Promise<TkAppStartInfo<undefined>> => {
   const genStaticUrl = new URL('http://pseudo-tien-kou-app.home.arpa/admin/genStatic')
 
   TkCtxHandler.appSharedCtxCurrInstOnly.isStaticGenFeatureEnabled = true

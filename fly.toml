@@ -21,6 +21,7 @@ primary_region = 'lax'
   processes = ['app']
 
 [[vm]]
+  # 256mb not enough
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1

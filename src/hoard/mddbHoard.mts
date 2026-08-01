@@ -143,7 +143,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     })
   }
 
-  const origClient = await new MarkdownDB({
+  const mddb = await new MarkdownDB({
     client: "sqlite3",
     connection: {
       filename: dbPath,
@@ -531,65 +531,6 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     }
   }
 
-  const mddb = await (async (origClient) => {
-    const origSaveDataToDisk = origClient["saveDataToDisk"]
-    origClient["saveDataToDisk"] = async function(...args: unknown[]) {
-      try {
-        l("initial indexing, start updating")
-        const ret = await origSaveDataToDisk.apply(this, args)
-        await doRefreshMetaMetaInfo()
-        const tasksToWait: Promise<unknown>[] = []
-        if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
-          if (!(tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true')) {
-            await doSyncToTurso()
-            l('scheduling rcloneHeavy...')
-            tasksToWait.push(rcloneHeavy())
-            l('scheduling gitSyncLiveAsset...')
-            tasksToWait.push(gitSyncLiveAsset())
-          }
-        }
-        l('running update hook...')
-        await onUpdate()
-        l("updated")
-        l("initial indexFolder done")
-        if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
-          l("[Watching changes]")
-        } else {
-          await Promise.all(tasksToWait)
-          process.exit(0)
-        }
-        return ret
-      } catch (e) {
-        console.error(e)
-        process.exit(1)
-      }
-    }
-    const origSaveDataToDiskIncr = origClient["saveDataToDiskIncr"]
-    origClient["saveDataToDiskIncr"] = async function(...args: unknown[]) {
-      try {
-        l("change detected, start updating")
-        const ret = await origSaveDataToDiskIncr.apply(this, args as [number])
-        await doRefreshMetaMetaInfo()
-        if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
-          if (!(tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true')) {
-            await doSyncToTursoIncr()
-            l('scheduling rcloneHeavy...')
-            rcloneHeavy()
-            l('scheduling gitSyncLiveAsset...')
-            gitSyncLiveAsset()
-          }
-        }
-        l('running update hook...')
-        await onUpdate()
-        l("updated")
-        return ret
-      } catch (e) {
-        console.error(e)
-      }
-    }
-    return origClient
-  })(origClient)
-
   l("initial indexFolder start")
 
   const genChildAssetFromLines = (() => {
@@ -601,8 +542,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
     // credits: https://github.com/tremby/json-multi-parse MIT
     const JSON_PARSE_ERROR_REGEXES = [
-      /^()()Unexpected .* in JSON at position (\d+)$/, // Node 8..18, Chrome 69
-      /^()()Unexpected non-whitespace character after JSON at position (\d+)($|\n)/, // Chromium 113
+      /^()()Unexpected .* in JSON at position (\d+)($|\n|\s)/, // Node 8..18, Chrome 69
+      /^()()Unexpected non-whitespace character after JSON at position (\d+)($|\n|\s)/, // Chromium 113 / Node ~22 has line and column numbers following
       /^JSON.parse: unexpected non-whitespace character after JSON data at line (\d+) column (\d+) of the JSON data()$/, // Firefox 62
     ]
 
@@ -1080,17 +1021,21 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       isExtensionMarkdown: async (ext) => {
         return isInExtensionList(ext, markdownExtNames)
       },
-      deriveChildFileInfo: async (fileInfo, sourceWithoutMatter, metadata) => {
+      deriveChildFileInfo: async function * (fileInfo, sourceWithoutMatter, metadata) {
+        let fiList: FileInfo[]
         if (metadata.isDerivableIntoChildren) {
           fileInfo.has_derived_children = true
           // fileInfo.deriving_parent = undefined
-          return await genChildAssetFromLines(fileInfo, sourceWithoutMatter.split("\n"))
+          fiList = await genChildAssetFromLines(fileInfo, sourceWithoutMatter.split("\n"))
         } else {
-          return []
+          fiList = []
+        }
+        for (const fi of fiList) {
+          yield fi
         }
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      markdownExtraHandler: async (filePath, getSourceFunc, fileInfo, fileInfoList, { ast, metadata, links, tags }) => {
+      markdownExtraHandler: async (filePath, getSourceFunc, fileInfo, { ast, metadata, links, tags }) => {
         if (metadata) {
           for (const alias of Object.values(metadataFieldAliases)) {
             const aliasVal = metadata[alias.aliasName]
@@ -1112,6 +1057,55 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
         },
       ],
+      onInitialIndexingEnd: async () => {
+        try {
+          l("initial indexing end, start updating")
+          await doRefreshMetaMetaInfo()
+          const tasksToWait: Promise<unknown>[] = []
+          if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+            if (!(tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true')) {
+              await doSyncToTurso()
+              l('scheduling rcloneHeavy...')
+              tasksToWait.push(rcloneHeavy())
+              l('scheduling gitSyncLiveAsset...')
+              tasksToWait.push(gitSyncLiveAsset())
+            }
+          }
+          l('running update hook...')
+          await onUpdate()
+          l("updated")
+          l("initial indexFolder done")
+          if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+            l("[Watching changes]")
+          } else {
+            await Promise.all(tasksToWait)
+            process.exit(0)
+          }
+        } catch (e) {
+          console.error(e)
+          process.exit(1)
+        }
+      },
+      onIncrementalIndexingEnd: async () => {
+        try {
+          l("change detected, start updating")
+          await doRefreshMetaMetaInfo()
+          if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnly' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
+            if (!(tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true')) {
+              await doSyncToTursoIncr()
+              l('scheduling rcloneHeavy...')
+              rcloneHeavy()
+              l('scheduling gitSyncLiveAsset...')
+              gitSyncLiveAsset()
+            }
+          }
+          l('running update hook...')
+          await onUpdate()
+          l("updated")
+        } catch (e) {
+          console.error(e)
+        }
+      },
     },
     watch
   })

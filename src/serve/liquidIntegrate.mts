@@ -243,7 +243,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
         return true
       },
   
-      contains(_base, _file) {
+      async contains(_base, _file) {
         return true
       },
   
