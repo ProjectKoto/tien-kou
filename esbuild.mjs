@@ -145,7 +145,7 @@ export const main = async () => {
     console.log(`${(() => {
       const date = new Date()
       return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().replace(/Z$/g, '')
-    })()} WARN: esbuild DOES NOT check for TypeScript errors/warnings. See: https://github.com/evanw/esbuild/issues/1631 . Use npm run typeCheck / npm run t for that.`)
+    })()} WARN: esbuild DOES NOT check for TypeScript errors/warnings. See: https://github.com/evanw/esbuild/issues/1631 . Use npm run typeCheck / npm run t for that, or use npm run tb to run type check first then build.`)
   }
 
   if (process.argv[process.argv.length - 1] === 'watch') {
