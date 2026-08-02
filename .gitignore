@@ -182,9 +182,15 @@ dist
 
 /markdown.db
 /*markdown*.db
+/*markdown*.db-wal
+/*markdown*.db-shm
+/*markdown*.db-journal
 /data
 
 /data/staticGen
 /data/staticGen*
 
 /*lruCache*.sqlite
+/*lruCache*.sqlite-wal
+/*lruCache*.sqlite-shm
+/*lruCache*.sqlite-journal

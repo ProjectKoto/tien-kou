@@ -16,6 +16,9 @@ thirdparty/**/node_modules
 .wrangler/
 markdown.db
 *markdown*.db
+*markdown*.db-wal
+*markdown*.db-shm
+*markdown*.db-journal
 tg_session
 liveAsset
 
@@ -25,3 +28,6 @@ thirdparty/cloudflare_workers-sdk/packages/miniflare/node_modules
 thirdparty/cloudflare_workers-sdk/packages/miniflare/node_modules/**
 
 *lruCache*.sqlite
+*lruCache*.sqlite-wal
+*lruCache*.sqlite-shm
+*lruCache*.sqlite-journal
