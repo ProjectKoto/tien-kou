@@ -73,12 +73,48 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
     },
     connectionRetries: 5,
   })
+
+  const tgLoginAbortController = new AbortController()
+  let tgRequireLoginFirstAsk = true
   await client.start({
-    phoneNumber: async () => await input.text("tg phoneNumber?"),
-    password: async () => await input.text("tg 2FA password?"),
-    phoneCode: async () => await input.text("tg phoneCode?"),
-    onError: (err) => console.error(err),
-  })
+    phoneNumber: async () => {
+      // an undocumented hack
+      if (tgRequireLoginFirstAsk) {
+        l(`tg: Telegram is not logged in, wait for 4 seconds before prompting the user to enter auth credentials...`)
+        await new Promise(r => setTimeout(r, 4000))
+        tgRequireLoginFirstAsk = false
+      }
+      if (tkEnv.TELEGRAM_LOGIN_USE_QRCODE === '1' || tkEnv.TELEGRAM_LOGIN_USE_QRCODE === 'true') {
+        await input.text("tg please press enter to do QR code login...")
+        throw { errorMessage: 'RESTART_AUTH_WITH_QR' }
+      }
+      return await input.text("tg phoneNumber?")
+    },
+    password: async (hint) => await input.text(`tg (2FA, hint=${hint}) password?`),
+    phoneCode: async () => await input.text("tg (should already be sent in active session Telegram service chat. If not, wait for some time, or change phone number format between \"+XX XXX XXX XXXX\" and \"+XXXXXXXXXXXX\", or terminate old userbot sessions, and restart hoard to do login again.) phoneCode?"),
+    emailAddress: async (_isCodeViaApp?: boolean) => await input.text("tg emailAddress?"),
+    emailVerification: async (_options) => ({ type: "code", code: await input.text("tg emailVerification.code?") }),
+    firstAndLastNames: async () => ([await input.text("tg First Name?"), await input.text("tg Last Name?")]),
+    forceSMS: undefined,
+    qrCode: async ({ token, expires }) => {
+      const url = `tg://login?token=${token.toString("base64url")}`
+      // qrcode.generate(url, { small: true });
+      l(`tg: tg Login qrCode url:    ${url}`)
+      const qrCodeExpireDate = new Date(0)
+      qrCodeExpireDate.setUTCSeconds(expires)
+      l(`tg: use the above url to generate a QR code then scan it. QR expires in ${genTimestampString(qrCodeExpireDate)} (Local Time Zone) / ${qrCodeExpireDate.toISOString()} (UTC) - scan from Telegram Settings > Devices > Link Desktop Device`)
+    },
+    reCaptchaCallback: async (siteKey) => {
+      l(`tg: Telegram requested a reCAPTCHA for site key: ${siteKey}`)
+      // return await solveCaptcha(siteKey)
+      l(`tg: currently, solving captcha isn't implemented. Telegram will stay unlogged in.`)
+      await new Promise(r => setTimeout(r, 5000))
+      return "notImplemented"
+    },
+    onError: (err) => console.error('tk: error: ', err),
+    // abortSignal is only respected in QR code login only (authMethods.QrCodeAuthParams)
+    abortSignal: tgLoginAbortController.signal,
+  } as teleproto.client.auth.UserAuthParams & { abortSignal?: AbortSignal })
   if (!client.connected) {
     throw new Error("Telegram is not connected, there may be further error info above")
   }
