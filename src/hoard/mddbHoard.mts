@@ -148,6 +148,18 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     connection: {
       filename: dbPath,
     },
+    // https://github.com/knex/knex/issues/3176
+    pool: {
+      min: 0,
+      max: 10,
+      // @ts-expect-error any
+      afterCreate: (conn, doneFunc) => {
+        // @ts-expect-error any
+        conn.run('PRAGMA journal_mode=WAL', (err) => {
+          doneFunc(err, conn)
+        })
+      },
+    },
   }).init()
 
   const tableCreateForceOrder: Record<string, number> = { 'files': -20, 'tags': -10 }
