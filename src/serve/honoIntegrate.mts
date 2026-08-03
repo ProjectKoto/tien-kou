@@ -367,6 +367,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     l('forwardedResp', forwardedResp)
     const forwardedRespClone = forwardedResp.clone()
     c.res = new Response(await forwardedRespClone.bytes(), forwardedRespClone)
+    c.res.headers.delete('Content-Encoding')
+    c.res.headers.delete('Transfer-Encoding')
   })
   
   honoApp.get('/admin/:op', async (c) => {
