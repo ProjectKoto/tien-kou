@@ -27,7 +27,7 @@ primary_region = 'lax'
   auto_start_machines = true
   # min_machines_running = 0
   min_machines_running = 1
-  processes = ['app']
+  processes = ['node_cloud_serve']
 
 [[vm]]
   # 256mb not enough
