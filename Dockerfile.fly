@@ -39,10 +39,10 @@ FROM base
 RUN apt-get update -qq && \
     apt-get install -y curl python-is-python3 pkg-config build-essential 
 
+RUN ["sh", "-xc", "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/libsql/releases/download/libsql-server-v0.24.32/libsql-server-installer.sh | sh"]
+
 # Copy built application
 COPY --from=build /app /app
-
-RUN ["sh", "-xc", "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/libsql/releases/download/libsql-server-v0.24.32/libsql-server-installer.sh | sh"]
 
 # Start the server by default, this can be overwritten at runtime
 # CMD [ "sh", "-c", "npm run esbuildNodeCloudRtServe && npm run nodeCloudServe" ]
