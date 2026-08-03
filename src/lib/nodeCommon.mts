@@ -19,6 +19,13 @@ export const pathExists = async (p: string) => {
   return await fs.promises.access(p).then(() => true, () => false)
 }
 
+export const checkDirExistsAndIsNotEmpty = async (p: string) => {
+  if (!(await fs.promises.access(p).then(() => true, () => false))) {
+    return false
+  }
+  const dirContent = await fs.promises.readdir(p)
+  return dirContent.length > 0
+}
 
 export const ensurePathDirExists = async (p: string) => {
   if (!await pathExists(p)) {

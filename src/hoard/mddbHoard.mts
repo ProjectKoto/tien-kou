@@ -3,7 +3,7 @@ import crypto from "crypto"
 import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
 import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
-import { ensurePathDirExists, makeInitMarkdownDbCommon, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
+import { checkDirExistsAndIsNotEmpty, ensurePathDirExists, makeInitMarkdownDbCommon, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
 import path from 'node:path'
 import escapeStringRegexp from 'escape-string-regexp'
 import fs from 'node:fs'
@@ -132,6 +132,19 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const dbPath = tkCtx.tkEnv.MARKDOWNDB_DB_PATH || defaultMarkdowndbDbPath
   const liveAssetBaseSlashPath = nodeResolvePath(tkCtx.e.NODE_LOCAL_FS_LIVE_ASSET_BASE_PATH!).split(path.sep).join('/')
   const multiTargetSyncBaseSlashPath = nodeResolvePath(tkCtx.e.HOARD_MULTI_TARGET_SYNC_BASE_DIR!).split(path.sep).join('/')
+
+  if (!(await checkDirExistsAndIsNotEmpty(liveAssetBaseSlashPath))) {
+    le(`fatal at start: directory '${liveAssetBaseSlashPath}' does not exist or is empty.`)
+    le(`program will exit after 5 seconds.`)
+    await new Promise(r => setTimeout(r, 5000))
+    process.exit(2)
+  }
+  if (!(await checkDirExistsAndIsNotEmpty(multiTargetSyncBaseSlashPath))) {
+    le(`fatal at start: directory '${multiTargetSyncBaseSlashPath}' does not exist or is empty.`)
+    le(`program will exit after 5 seconds.`)
+    await new Promise(r => setTimeout(r, 5000))
+    process.exit(2)
+  }
 
   if (tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === '1' || tkEnv.HOARD_FILE_SYNC_RELATED_DISABLE === 'true') {
     tursoc = undefined
