@@ -3,6 +3,10 @@ import * as tgEntity from "@telegraf/entity"
 import type * as tgEntityTypes from "@telegraf/entity/types/types.d.ts"
 import { AnyObj } from "./common.mts"
 
+
+
+// import * as tgRich from "tg-rich-messages"
+
 export type TgMessageLike = { message: string, entities: AnyObj[] }
 type TgEntityCompat = teleproto.Api.TypeMessageEntity & { type: string | undefined }
 
@@ -75,5 +79,53 @@ export const tgMessageToHtml = async (tgMessage: TgMessageLike) => {
     text: tgMessage.message,
     entities: entities,
   } as tgEntityTypes.Message) + "</div>"
+}
+
+const tgRichMessageToHtmlWorker = async (o: AnyObj) => {
+  if (typeof o === 'string') {
+    return tgEntity.escapers.HTML(o)
+  }
+
+  let result = ''
+  
+  if (o.text) {
+    result += await tgRichMessageToHtmlWorker(o.text)
+  }
+
+  if (o.texts) {
+    for (const t of o.texts) {
+      result += await tgRichMessageToHtmlWorker(t)
+    }
+  }
+
+  if (o.blocks) {
+    for (const b of o.blocks) {
+      result += await tgRichMessageToHtmlWorker(b)
+    }
+  }
+
+  if (o.url) {
+    result = `<a href="${tgEntity.escapers.HTML(o.url)}" target="_blank">${result}</a>`
+  }
+
+  if (o.className === 'PageBlockParagraph') {
+    result = `<p>${result}</p>`
+  }
+
+  if (o.className && o.className.startsWith('PageBlockHeading')) {
+    result = `<h3>${result}</h3>`
+  }
+  if (o.className === ('PageBlockBlockquoteBlocks')) {
+    result = `<blockquote>${result}</blockquote>`
+  }
+
+  return result
+}
+
+export const tgRichMessageToHtml = async (tgRichMessage: AnyObj) => {
+  return "<div class=\"tg-white-space-preserve white-space-preserve tg-msg tg-rich-msg\">" +
+    // tgRich.doc(...((tgRichMessage.blocks as tgRich.BlockContent[]) || [])).toHTML() +
+    (await tgRichMessageToHtmlWorker(tgRichMessage)) +
+    "</div>"
 }
 

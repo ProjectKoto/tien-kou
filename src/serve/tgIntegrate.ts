@@ -1,5 +1,5 @@
 
-import { tgMessageToHtml } from "../lib/tgCommon.mts"
+import { tgMessageToHtml, tgRichMessageToHtml } from "../lib/tgCommon.mts"
 import { HC, KD, LiquidFilterRegisterHandler } from "./serveDef.mts"
 
 export const LiquidTelegramMsgFilterRegHandler = HC<LiquidFilterRegisterHandler>()(async (_: KD<never>) => {
@@ -7,6 +7,9 @@ export const LiquidTelegramMsgFilterRegHandler = HC<LiquidFilterRegisterHandler>
     doRegister: (reg) => {
       reg("tgMsg", async function (x) {
         return await tgMessageToHtml(x)
+      })
+      reg("tgRichMsg", async function (x) {
+        return await tgRichMessageToHtml(x)
       })
     }
   }
