@@ -7,6 +7,7 @@ import Keyv from "keyv"
 import { HC, MiddleCacheHandler, KD } from "../serve/serveDef.mts"
 import { SqliteCache as SqliteLruCache } from 'cache-sqlite-lru-ttl'
 import '../nodeEnv.mts'
+import { MarkdownDB } from "mddb"
 
 export const nodeResolvePath = (p: string) => {
   // return url.fileURLToPath(import.meta.resolve(p))
@@ -30,6 +31,7 @@ export const ensureParentDirExists = async (p: string) => {
 }
 
 export interface TkContextHoard extends TkContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rcloneW: (...args: (string | AnyObj)[]) => Promise<any>
 }
 
@@ -135,3 +137,23 @@ export const LruSqliteMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD
   }
 })
 
+export const makeInitMarkdownDbCommon = async (dbPath: string) => {
+  return await new MarkdownDB({
+    client: "sqlite3",
+    connection: {
+      filename: dbPath,
+    },
+    // https://github.com/knex/knex/issues/3176
+    pool: {
+      min: 0,
+      max: 10,
+      // @ts-expect-error any
+      afterCreate: (conn, doneFunc) => {
+        // @ts-expect-error any
+        conn.run('PRAGMA journal_mode=WAL', (err) => {
+          doneFunc(err, conn)
+        })
+      },
+    },
+  }).init()
+}

@@ -9,7 +9,6 @@ import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
 import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError, MiddleCacheHandler, notImplementedCtx } from "./serveDef.mts"
-import { ContentfulStatusCode } from "hono/utils/http-status"
 
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
   getTkEnvGetter: () => Promise<(honoCtx: hono.Context<HE>) => Record<string, string | undefined>>
@@ -299,6 +298,66 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   
   honoApp.on("ALL", ['/.well-known', '/.well-known/*'], async c => {
     return c.text(".well-known not found", 404)
+  })
+
+  honoApp.on("ALL", ['/sqlDb/:secretPath/*'], async c => {
+    const { tkCtx } = await processOnHonoCtxReceive(c)
+    const secretPath = c.req.param("secretPath")
+    if (!(tkCtx.e.TURSO_EXPOSE_SECRET_PATH && tkCtx.e.TURSO_EXPOSE_SECRET_PATH === secretPath && tkCtx.e.TURSO_DATABASE_URL)) {
+      return c.text("path not found", 404)
+    }
+
+    const origReqPath = c.req.path
+    const origReqPathSplit = origReqPath.split('/')
+    // take, until we get first two non-empty path component
+    let origReqPathFirstTwoNonEmptyCompI = 0
+    let origReqPathNonEmptyCompCount = 0
+    for (; origReqPathFirstTwoNonEmptyCompI < origReqPathSplit.length; origReqPathFirstTwoNonEmptyCompI++) {
+      if (origReqPathSplit[origReqPathFirstTwoNonEmptyCompI]) {
+        origReqPathNonEmptyCompCount++
+      }
+      if (origReqPathNonEmptyCompCount >= 2) {
+        break
+      }
+    }
+    let resolvedForwardedPath: string | undefined = undefined
+    if (origReqPathNonEmptyCompCount == 2 && origReqPathFirstTwoNonEmptyCompI < origReqPathSplit.length) {
+      const stripPrefixLen = origReqPathSplit.slice(0, origReqPathFirstTwoNonEmptyCompI + 1).join('/').length
+      if (stripPrefixLen < origReqPath.length) {
+        resolvedForwardedPath = origReqPath.slice(stripPrefixLen)
+      }
+    }
+    if (!resolvedForwardedPath || !resolvedForwardedPath.startsWith('/')) {
+      return c.text("path not found", 404)
+    }
+    let newUrl = tkCtx.e.TURSO_DATABASE_URL
+    if (newUrl.startsWith('libsql')) {
+      const tmpUrlStr = "http" + newUrl.slice(6)
+      const tmpUrl = new URL(tmpUrlStr)
+      if (tmpUrl.searchParams.get('tls') === '0') {
+        newUrl = tmpUrlStr
+      } else if (tmpUrl.searchParams.get('tls') === '1') {
+        newUrl = "https" + newUrl.slice(6)
+      } else if (tkCtx.e.TURSO_DISABLE_TLS === '1' || tkCtx.e.TURSO_DISABLE_TLS === 'true') {
+        newUrl = tmpUrlStr
+      } else {
+        newUrl = "https" + newUrl.slice(6)
+      }
+    }
+    if (newUrl.endsWith('/')) {
+      newUrl = newUrl.slice(0, newUrl.length - 1)
+    }
+    newUrl = newUrl + resolvedForwardedPath
+    const newReq: Request = new Request(newUrl, {
+      body: await c.req.bytes(),
+      headers: c.req.raw.headers,
+      method: c.req.raw.method,
+    })
+    l('oldReq', c.req.raw)
+    l('newReq', newReq)
+    const forwardedResp = await fetch(newUrl, newReq)
+    l('forwardedResp', forwardedResp)
+    c.res = forwardedResp
   })
   
   honoApp.get('/admin/:op', async (c) => {

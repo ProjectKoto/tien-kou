@@ -4,12 +4,12 @@ import fs from "node:fs"
 import path from "node:path"
 import { AnyObj, delayInitVal, l, makeConcatenatableRelPath, TkContext } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
-import { calcValidateFileSystemPathSync, defaultStaticGenBaseDir, LruSqliteMiddleCacheHandler, nodeResolvePath } from '../lib/nodeCommon.mts'
+import { calcValidateFileSystemPathSync, LruSqliteMiddleCacheHandler, makeInitMarkdownDbCommon, nodeResolvePath } from '../lib/nodeCommon.mts'
 import { tkEnvFromDevVarsFile } from '../nodeEnv.mts'
 import { AbstractTkSqlLiquidHonoApp, HonoEnvTypeWithTkCtx, HonoProvideHandler, honoReqCache, MainHonoProvideHandler, TkContextHlGetTkEnvHandler } from "./honoIntegrate.mts"
-import { MainLiquidHandler, RuntimeCachedLiquidHandler } from "./liquidIntegrate.mts"
+import { RuntimeCachedLiquidHandler } from "./liquidIntegrate.mts"
 import { LiquidStaticGenFilterRegHandler, nodeGenStatic } from './nodeStaticGen'
-import { AbstractTkSqlAssetFetchHandler, defaultMarkdowndbDbPath, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, NoMiddleCacheHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
+import { AbstractTkSqlAssetFetchHandler, defaultMarkdowndbDbPath, EAH, HC, KD, MainJsRuntimeCacheHandler, MainTkCtxHandler, QueryLiveAssetSqlCommonParam, SingleInstanceCachePolicyHandler, SqlDbHandler, StubHeavyAssetHandler, TienKouApp, TienKouAssetFetchHandler, TkAppStartInfo, TkAssetInfo, TkAssetIsDirectoryError, TkAssetNotFoundError } from "./serveDef.mts"
 import { LiquidTelegramMsgFilterRegHandler } from './tgIntegrate'
 import { LiquidSqlFilterRegHandler, SqlTkDataPersistHandler, TkSqlAssetCategoryLogicHandler } from "./tkAssetCategoryLogic.mts"
 import { gitSyncStaticGen } from '../lib/nodeGitUtil.mts'
@@ -29,12 +29,7 @@ const MddbSqliteSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHand
   const mddbReadyPromise = new Promise<MarkdownDB>(r => { mddbReadyResolver = r })
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
-    mddb = await new MarkdownDB({
-      client: "sqlite3",
-      connection: {
-        filename: ctx0.tkEnv.MARKDOWNDB_DB_PATH || defaultMarkdowndbDbPath,
-      },
-    }).init()
+    mddb = await makeInitMarkdownDbCommon(ctx0.tkEnv.MARKDOWNDB_DB_PATH || defaultMarkdowndbDbPath)
     if (mddbReadyResolver) {
       mddbReadyResolver(mddb)
     }

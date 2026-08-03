@@ -13,6 +13,7 @@ export const TursoSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHa
     tursoc = turso.createClient({
       url: ctx0.e.TURSO_DATABASE_URL!,
       authToken: ctx0.e.TURSO_AUTH_TOKEN!,
+      tls: !((ctx0.e.TURSO_AUTH_TOKEN ?? '') === '1' || (ctx0.e.TURSO_AUTH_TOKEN ?? '') === 'true'),
     })
     if (tursocReadyResolver) {
       tursocReadyResolver(tursoc)

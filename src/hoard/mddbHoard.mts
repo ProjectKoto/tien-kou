@@ -1,10 +1,9 @@
 import * as turso from "@libsql/client"
 import crypto from "crypto"
-import { MarkdownDB } from "mddb"
 import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
 import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
-import { ensurePathDirExists, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
+import { ensurePathDirExists, makeInitMarkdownDbCommon, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
 import path from 'node:path'
 import escapeStringRegexp from 'escape-string-regexp'
 import fs from 'node:fs'
@@ -140,27 +139,11 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     tursoc = turso.createClient({
       url: tkEnv.TURSO_DATABASE_URL!,
       authToken: tkEnv.TURSO_AUTH_TOKEN,
+      tls: !(tkEnv.TURSO_DISABLE_TLS === '1' || tkEnv.TURSO_DISABLE_TLS === 'true'),
     })
   }
 
-  const mddb = await new MarkdownDB({
-    client: "sqlite3",
-    connection: {
-      filename: dbPath,
-    },
-    // https://github.com/knex/knex/issues/3176
-    pool: {
-      min: 0,
-      max: 10,
-      // @ts-expect-error any
-      afterCreate: (conn, doneFunc) => {
-        // @ts-expect-error any
-        conn.run('PRAGMA journal_mode=WAL', (err) => {
-          doneFunc(err, conn)
-        })
-      },
-    },
-  }).init()
+  const mddb = await makeInitMarkdownDbCommon(dbPath)
 
   const tableCreateForceOrder: Record<string, number> = { 'files': -20, 'tags': -10 }
 
