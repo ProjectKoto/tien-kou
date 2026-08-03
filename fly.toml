@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for tien-kou on 2025-10-04T17:06:54+08:00
+# fly.toml app configuration file generated for tien-kou on 2026-08-03T18:00:29+08:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -17,8 +17,34 @@ primary_region = 'lax'
   destination = '/persist'
 
 [processes]
-  node_cloud_serve = "\"sh\" \"-c\" \"npm run esbuildNodeCloudRtServe && npm run nodeCloudServe\""
-  turso_libsql_server_sqld = "\"sh\" \"-c\" \"/root/.cargo/bin/sqld --db-path /persist/sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754\""
+  # two process groups runs in two machines, we dont want that
+  # node_cloud_serve = "\"sh\" \"-c\" \"npm run esbuildNodeCloudRtServe && npm run nodeCloudServe\""
+  # turso_libsql_server_sqld = "\"sh\" \"-c\" \"/root/.cargo/bin/sqld --db-path /persist/sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754\""
+  # per https://fly.io/docs/app-guides/multiple-processes/#just-use-bash
+  mixed = """
+/bin/bash -c \"
+
+(
+  while true; do
+    echo \\\"\\$(date) nodeCloud start\\\" >&2
+    npm run esbuildNodeCloudRtServe && npm run nodeCloudServe
+    echo \\\"\\$(date) nodeCloud exit \\$? , sleeping 5\\\" >&2
+    sleep 5
+  done
+) &
+
+(
+  while true; do
+    echo \\\"\\$(date) sqld start\\\" >&2
+    /root/.cargo/bin/sqld --db-path /persist/sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754
+    echo \\\"\\$(date) sqld exit \\$? , sleeping 5\\\" >&2
+    sleep 5
+  done
+) &
+
+tail -f /dev/null
+\"
+"""
 
 [http_service]
   internal_port = 8571
@@ -27,7 +53,8 @@ primary_region = 'lax'
   auto_start_machines = true
   # min_machines_running = 0
   min_machines_running = 1
-  processes = ['node_cloud_serve']
+  # processes = ['node_cloud_serve']
+  processes = ['mixed']
 
 [[vm]]
   # 256mb not enough
