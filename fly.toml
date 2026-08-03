@@ -12,12 +12,21 @@ primary_region = 'lax'
 [env]
   PORT = '8571'
 
+[[mounts]]
+  source = 'persist_data'
+  destination = '/persist'
+
+[processes]
+  node_cloud_serve = "\"sh\" \"-c\" \"npm run esbuildNodeCloudRtServe && npm run nodeCloudServe\""
+  turso_libsql_server_sqld = "\"sh\" \"-c\" \"/root/.cargo/bin/sqld --db-path /persist/sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754\""
+
 [http_service]
   internal_port = 8571
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  # min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
 [[vm]]
@@ -29,4 +38,5 @@ primary_region = 'lax'
 [[files]]
   guest_path = "/app/.dev.vars"
   # fly secrets set DEV_VARS_FILE=$(cat .dev.vars | base64 | tr -d '\r\n')
+  # fly secrets set DEV_VARS_FILE=$(cat .dev.vars.flycloud | base64 | tr -d '\r\n')
   secret_name = "DEV_VARS_FILE"

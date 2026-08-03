@@ -1,7 +1,8 @@
 # syntax = docker/dockerfile:1
 
 # Adjust NODE_VERSION as desired
-ARG NODE_VERSION=20.10.0
+ARG NODE_VERSION=24
+# or: ARG NODE_VERSION=24.xx.xx
 FROM node:${NODE_VERSION}-slim AS base
 
 LABEL fly_launch_runtime="NodeJS"
@@ -18,7 +19,7 @@ FROM base AS build
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential 
+    apt-get install -y curl python-is-python3 pkg-config build-essential 
 
 # Install node modules
 COPY --link package.json package-lock.json .
@@ -37,5 +38,8 @@ FROM base
 # Copy built application
 COPY --from=build /app /app
 
+RUN curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/libsql/releases/download/libsql-server-v0.24.32/libsql-server-installer.sh | sh
+
 # Start the server by default, this can be overwritten at runtime
-CMD [ "sh", "-c", "npm run esbuildNodeCloudRtServe && npm run nodeCloudServe" ]
+# CMD [ "sh", "-c", "npm run esbuildNodeCloudRtServe && npm run nodeCloudServe" ]
+CMD [ "sh", "-xc", "echo 'Sorry, docker cmd is not actively used. Please use [processes] in fly.toml . '; sleep 30" ]
