@@ -505,6 +505,9 @@ export const honoReqCache = async ({
       if (url.pathname.startsWith('/admin/')) {
         return false
       }
+      if (url.pathname.startsWith('/sqlDb/')) {
+        return false
+      }
       if (url.search.length > 500) {
         return false
       }
