@@ -330,32 +330,40 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     if (!resolvedForwardedPath || !resolvedForwardedPath.startsWith('/')) {
       return c.text("path not found", 404)
     }
-    let newUrl = tkCtx.e.TURSO_DATABASE_URL
-    if (newUrl.startsWith('libsql')) {
-      const tmpUrlStr = "http" + newUrl.slice(6)
+    const tursoUrlStr = tkCtx.e.TURSO_DATABASE_URL
+    let newUrlStr: string
+    if (tursoUrlStr.startsWith('libsql')) {
+      const tmpUrlStr = "http" + tursoUrlStr.slice(6)
       const tmpUrl = new URL(tmpUrlStr)
       if (tmpUrl.searchParams.get('tls') === '0') {
-        newUrl = tmpUrlStr
+        newUrlStr = tmpUrlStr
       } else if (tmpUrl.searchParams.get('tls') === '1') {
-        newUrl = "https" + newUrl.slice(6)
+        newUrlStr = "https" + tursoUrlStr.slice(6)
       } else if (tkCtx.e.TURSO_DISABLE_TLS === '1' || tkCtx.e.TURSO_DISABLE_TLS === 'true') {
-        newUrl = tmpUrlStr
+        newUrlStr = tmpUrlStr
       } else {
-        newUrl = "https" + newUrl.slice(6)
+        newUrlStr = "https" + tursoUrlStr.slice(6)
       }
+    } else {
+      newUrlStr = tursoUrlStr
     }
-    if (newUrl.endsWith('/')) {
-      newUrl = newUrl.slice(0, newUrl.length - 1)
+    {
+      const tmpUrl2 = new URL(newUrlStr)
+      tmpUrl2.search = ''
+      newUrlStr = tmpUrl2.toString()
     }
-    newUrl = newUrl + resolvedForwardedPath
-    const newReq: Request = new Request(newUrl, {
+    if (newUrlStr.endsWith('/')) {
+      newUrlStr = newUrlStr.slice(0, newUrlStr.length - 1)
+    }
+    newUrlStr = newUrlStr + resolvedForwardedPath
+    const newReq: Request = new Request(newUrlStr, {
       body: await c.req.bytes(),
       headers: c.req.raw.headers,
       method: c.req.raw.method,
     })
     l('oldReq', c.req.raw)
     l('newReq', newReq)
-    const forwardedResp = await fetch(newUrl, newReq)
+    const forwardedResp = await fetch(newUrlStr, newReq)
     l('forwardedResp', forwardedResp)
     c.res = forwardedResp
   })
