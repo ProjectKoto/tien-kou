@@ -6,6 +6,7 @@ SHOULD_INCLUDE_UNRELEASED_ASSETS = '0'
 
 PROCENV_TK_HOARD_SUB_MODE = 'hoardLocalOnly'
 
+# if have subpath: subpath must end with / . hrana v2/pipeline is a relative path (without prefix /) to base url.
 TURSO_DATABASE_URL = "libsql://xxx.turso.io"
 TURSO_AUTH_TOKEN = "xxx"
 # or configure TURSO_EXPOSE_SECRET_PATH as a secret
