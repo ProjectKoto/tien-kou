@@ -426,7 +426,7 @@ const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandle
       const requestCacheKey = cfMakeReqCacheKey(request)
       const tryMatch = await cfCache.match(requestCacheKey, { ignoreMethod: false })
       let eTagHeaderManipulated = false
-      if (tryMatch && !request.url.startsWith('/admin/')) {
+      if (tryMatch && !request.url.startsWith('/admin/') && !request.url.startsWith('/sqlDb/')) {
         l('cf req cache hit', request.url)
         const cachedETag = tryMatch.headers.get('ETag')
         if (cachedETag) {
