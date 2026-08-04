@@ -43,7 +43,7 @@ RUN ["sh", "-xc", "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/turs
 
 WORKDIR /app
 # Copy built application
-# COPY --from=build /app /app
+COPY --from=build /app /app
 COPY --link . .
 
 # Start the server by default, this can be overwritten at runtime
