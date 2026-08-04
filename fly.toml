@@ -57,6 +57,13 @@ tail -f /dev/null
   # processes = ['node_cloud_serve']
   processes = ['mixed']
 
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "40s"
+  method = "GET"
+  timeout = "10s"
+  path = "/"
+
 [[vm]]
   # 256mb not enough
   memory = '1gb'
