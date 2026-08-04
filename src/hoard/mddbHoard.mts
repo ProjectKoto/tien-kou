@@ -282,11 +282,27 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       }
       const tables = await mddb.db.raw(`SELECT * FROM sqlite_master WHERE type='table';`) as { tbl_name: string, sql: string }[]
       tables.sort((a, b) => (tableCreateForceOrder[a.tbl_name] || 0) - (tableCreateForceOrder[b.tbl_name] || 0))
+
+      // first ensure all tables (and all replicas if needed) exist
       for (const t of tables) {
         if (t.tbl_name === 'tk_meta_meta_info') {
           reimportSqlDdlList.push(
             t.sql.replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS'),
           )
+          continue
+        }
+        for (let ensureExistI = 0; ensureExistI < 2; ensureExistI++) {
+          reimportSqlDdlList.push(
+            t.sql
+              .replace(/^(CREATE TABLE `?)([^` ]+)(`?)/i, "$1$2_" + ensureExistI + "$3")
+              .replace(/(\sreferences\s+`?[^` ]+)(`?)/ig, "$1_" + ensureExistI + "$2")
+              .replace('CREATE TABLE', 'CREATE TABLE IF NOT EXISTS')
+          )
+        }
+      }
+
+      for (const t of tables) {
+        if (t.tbl_name === 'tk_meta_meta_info') {
           continue
         }
         reimportSqlDdlList.push(`DROP TABLE IF EXISTS ${t.tbl_name}_${newBufferIndexStr};`)
@@ -297,27 +313,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           ,
           `DELETE FROM ${t.tbl_name}_${newBufferIndexStr};`,
         )
-        reimportSqlDdlList.push(
-          (tkEnv.SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW === "1") ? `DROP TABLE IF EXISTS files` : `DROP VIEW IF EXISTS files`,
-          `CREATE VIEW IF NOT EXISTS files AS
-              SELECT * FROM files_0 WHERE
-                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
-            UNION
-              SELECT * FROM files_1 WHERE
-                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
-          `,
-        )
-        reimportSqlDdlList.push(
-          `DROP VIEW IF EXISTS tk_meta_kv`,
-          `CREATE VIEW IF NOT EXISTS tk_meta_kv AS
-              SELECT * FROM tk_meta_kv_0 WHERE
-                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
-            UNION
-              SELECT * FROM tk_meta_kv_1 WHERE
-                (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
-          `,
-        )
-
+        
         const currTableAllData = (await mddb.db.raw(`SELECT * FROM ${t.tbl_name};`)) as AnyObj[]
         if (currTableAllData.length > 0) {
           const batchSize = 3
@@ -345,6 +341,27 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
         }
       }
+
+      reimportSqlDdlList.push(
+        (tkEnv.SHOULD_HOARD_DROP_REMOTE_FILES_TABLE_INSTEAD_OF_VIEW === "1") ? `DROP TABLE IF EXISTS files` : `DROP VIEW IF EXISTS files`,
+        `CREATE VIEW IF NOT EXISTS files AS
+            SELECT * FROM files_0 WHERE
+              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
+          UNION
+            SELECT * FROM files_1 WHERE
+              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
+        `,
+      )
+      reimportSqlDdlList.push(
+        `DROP VIEW IF EXISTS tk_meta_kv`,
+        `CREATE VIEW IF NOT EXISTS tk_meta_kv AS
+            SELECT * FROM tk_meta_kv_0 WHERE
+              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 0
+          UNION
+            SELECT * FROM tk_meta_kv_1 WHERE
+              (SELECT curr_buffer_index FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1) = 1
+        `,
+      )
 
       const metaMetaTableAllData = (await mddb.db.raw(`SELECT * FROM tk_meta_meta_info ORDER BY id DESC LIMIT 1;`)) as AnyObj[]
       metaMetaTableAllData[0]["curr_buffer_index"] = newBufferIndex
