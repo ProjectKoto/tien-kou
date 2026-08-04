@@ -262,12 +262,12 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               newBufferIndex = currBufferIndex === 0 ? 1 : 0
             }, {
               onFailedAttempt: error => {
-                le(`doSyncToTursoIncr-queryCurrBufferIndex: attempt ${error.attemptNumber} failed ${error?.constructor?.name ?? "<unknown constructor>"} ${error?.message ?? "<no message>"}. Note when the remote db is never initialized this is EXPECTED and will fallback to index 0 after several retries. There are ${error.retriesLeft} retries left.`)
+                le(`doSyncToTursoIncr-queryCurrBufferIndex: attempt ${error.attemptNumber} failed ${error?.constructor?.name ?? "<unknown constructor>"} ${error?.message ?? "<no message>"}.\n\nNote when the remote db is never initialized this is EXPECTED and will fallback to index 0 after several retries.\n\nThere are ${error.retriesLeft} retries left.`)
               },
               retries: 3 }
           )
         } catch (e) {
-          console.error('Fetching remote curr_buffer_index error', e)
+          console.error('Fetching remote curr_buffer_index error;\n\nNote when the remote db is never initialized this is EXPECTED and will fallback to index 0.\n\n', e)
           newBufferIndex = 0
         }
       }
