@@ -41,8 +41,10 @@ RUN apt-get update -qq && \
 
 RUN ["sh", "-xc", "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/libsql/releases/download/libsql-server-v0.24.32/libsql-server-installer.sh | sh"]
 
+WORKDIR /app
 # Copy built application
-COPY --from=build /app /app
+# COPY --from=build /app /app
+COPY --link . .
 
 # Start the server by default, this can be overwritten at runtime
 # CMD [ "sh", "-c", "npm run esbuildNodeCloudRtServe && npm run nodeCloudServe" ]
