@@ -37,7 +37,7 @@ FROM base
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
-    apt-get install -y curl python-is-python3 pkg-config build-essential 
+    apt-get install -y curl busybox python-is-python3 pkg-config build-essential 
 
 RUN ["sh", "-xc", "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/tursodatabase/libsql/releases/download/libsql-server-v0.24.32/libsql-server-installer.sh | sh"]
 
