@@ -20,6 +20,7 @@ markdown.db
 *markdown*.db-shm
 *markdown*.db-journal
 tg_session
+tg_session*
 liveAsset
 
 thirdparty/cloudflare_workers-sdk/**
