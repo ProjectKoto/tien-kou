@@ -8,6 +8,14 @@ PROCENV_TK_HOARD_SUB_MODE = 'hoardLocalOnly'
 
 # if have subpath: subpath must end with / . hrana v2/pipeline is a relative path (without prefix /) to base url.
 TURSO_DATABASE_URL = "libsql://xxx.turso.io"
+# for turso official libsql server: jwt, no prefix needed; for self-hosted libsql-server/sqld
+# using http basic auth: prefix with "basic:", seems any string following is ok (base64 of
+# "user:password" is not enforced by code), and client side doesn't need any handling besides
+# stripping "basic:" (sqld http auth logic: ignore chars before first space, "Bearer", "Basic"
+# both ok; check the following string *contains* (rather than equals) the correct token. and
+# "accept" accepts all)
+# see libsql: libsql-server/src/main.rs, comment of http_auth config field;
+# see libsql: libsql-server/src/auth/user_auth_strategies/http_basic.rs
 TURSO_AUTH_TOKEN = "xxx"
 # or configure TURSO_EXPOSE_SECRET_PATH as a secret
 TURSO_EXPOSE_SECRET_PATH = "my-secret-path"

@@ -36,7 +36,8 @@ primary_region = 'lax'
 (
   while true; do
     echo \\\"\\$(date) sqld start\\\" >&2
-    /root/.cargo/bin/sqld --db-path /persist/sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754
+    echo SQLD_AUTH_JWT_KEY=\\\"\\$(cat /app/.dev.vars | sed -n -E \\\"s/^TURSO_AUTH_TOKEN = \\\\\\\"basic:(.*)\\\\\\\"\\$/\\\\1/p\\\")\\\" >&2
+    SQLD_AUTH_JWT_KEY=\\\"\\$(cat /app/.dev.vars | sed -n -E \\\"s/^TURSO_AUTH_TOKEN = \\\\\\\"basic:(.*)\\\\\\\"\\$/\\\\1/p\\\")\\\" /root/.cargo/bin/sqld --db-path /persist/sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754
     echo \\\"\\$(date) sqld exit \\$? , sleeping 5\\\" >&2
     sleep 5
   done
