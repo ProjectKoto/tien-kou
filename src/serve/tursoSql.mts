@@ -1,6 +1,6 @@
 import * as turso from "@libsql/client"
 import { HC, KD, SqlDbHandler } from './serveDef.mts'
-import { SqlArgValue } from '../lib/common.mts'
+import { cutPrefix, SqlArgValue } from '../lib/common.mts'
 
 export const TursoSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">): Promise<SqlDbHandler> => {
 
@@ -12,8 +12,8 @@ export const TursoSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHa
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
     tursoc = turso.createClient({
       url: ctx0.e.TURSO_DATABASE_URL!,
-      authToken: ctx0.e.TURSO_AUTH_TOKEN!,
-      tls: !((ctx0.e.TURSO_AUTH_TOKEN ?? '') === '1' || (ctx0.e.TURSO_AUTH_TOKEN ?? '') === 'true'),
+      authToken: cutPrefix(ctx0.e.TURSO_AUTH_TOKEN!, 'basic:')[0],
+      tls: !((ctx0.e.TURSO_DISABLE_TLS ?? '') === '1' || (ctx0.e.TURSO_DISABLE_TLS ?? '') === 'true'),
     })
     if (tursocReadyResolver) {
       tursocReadyResolver(tursoc)

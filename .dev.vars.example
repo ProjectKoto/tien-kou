@@ -19,6 +19,7 @@ TURSO_DATABASE_URL = "libsql://xxx.turso.io"
 TURSO_AUTH_TOKEN = "xxx"
 # or configure TURSO_EXPOSE_SECRET_PATH as a secret
 TURSO_EXPOSE_SECRET_PATH = "my-secret-path"
+# TURSO_DISABLE_TLS = "0"
 HTTP_PROXY = "http://127.0.0.1:8118"
 DEBUG = "proxy-agent,knex:query"
 

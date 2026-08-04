@@ -554,3 +554,23 @@ export async function toArrayBuffer(
 
   return bufferConcat(chunks).buffer as ArrayBuffer
 }
+
+export function cutPrefix(s: string, prefix: string): [string, boolean] {
+  if (!(typeof s === 'string')) {
+    return [s, false]
+  }
+  if (s.startsWith(prefix)) {
+    return [s.slice(prefix.length), true]
+  }
+  return [s, false]
+}
+
+export function cutSuffix(s: string, suffix: string): [string, boolean] {
+  if (!(typeof s === 'string')) {
+    return [s, false]
+  }
+  if (s.endsWith(suffix)) {
+    return [s.slice(0, s.length - suffix.length), true]
+  }
+  return [s, false]
+}

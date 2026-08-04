@@ -2,7 +2,7 @@ import * as turso from "@libsql/client"
 import crypto from "crypto"
 import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
-import { allKnownAssetExtNames, AnyObj, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
+import { allKnownAssetExtNames, AnyObj, cutPrefix, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
 import { checkDirExistsAndIsNotEmpty, ensurePathDirExists, makeInitMarkdownDbCommon, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
 import path from 'node:path'
 import escapeStringRegexp from 'escape-string-regexp'
@@ -151,7 +151,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   } else {
     tursoc = turso.createClient({
       url: tkEnv.TURSO_DATABASE_URL!,
-      authToken: tkEnv.TURSO_AUTH_TOKEN,
+      authToken: cutPrefix(tkEnv.TURSO_AUTH_TOKEN!, 'basic:')[0],
       tls: !(tkEnv.TURSO_DISABLE_TLS === '1' || tkEnv.TURSO_DISABLE_TLS === 'true'),
     })
   }
