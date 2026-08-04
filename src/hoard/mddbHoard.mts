@@ -262,7 +262,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               newBufferIndex = currBufferIndex === 0 ? 1 : 0
             }, {
               onFailedAttempt: error => {
-                le(`doSyncToTursoIncr-queryCurrBufferIndex: attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left.`)
+                le(`doSyncToTursoIncr-queryCurrBufferIndex: attempt ${error.attemptNumber} failed ${error?.constructor?.name ?? "<unknown constructor>"} ${error?.message ?? "<no message>"}. Note when the remote db is never initialized this is EXPECTED and will fallback to index 0 after several retries. There are ${error.retriesLeft} retries left.`)
               },
               retries: 3 }
           )
@@ -411,7 +411,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       }, {
         onFailedAttempt: error => {
           le(error.message)
-          le(`doSyncToTurso: attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left.`)
+          le(`doSyncToTurso: attempt ${error.attemptNumber} failed ${error?.constructor?.name ?? "<unknown constructor>"} ${error?.message ?? "<no message>"}. There are ${error.retriesLeft} retries left.`)
         },
         retries: 3 })
     }
@@ -479,7 +479,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         await tursoc.batch(syncSqlList, "write")
       }, {
         onFailedAttempt: error => {
-          le(`doSyncToTursoIncr: attempt ${error.attemptNumber} failed. There are ${error.retriesLeft} retries left.`)
+          le(`doSyncToTursoIncr: attempt ${error.attemptNumber} failed ${error?.constructor?.name ?? "<unknown constructor>"} ${error?.message ?? "<no message>"}. There are ${error.retriesLeft} retries left.`)
         },
         retries: 3 })
     }
