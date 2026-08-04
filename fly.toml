@@ -57,12 +57,15 @@ tail -f /dev/null
   # processes = ['node_cloud_serve']
   processes = ['mixed']
 
-[[http_service.checks]]
-  grace_period = "10s"
-  interval = "40s"
-  method = "GET"
-  timeout = "10s"
-  path = "/"
+# The warning "WARNING The app is not listening on the expected address and will not be reachable by fly-proxy." is EXPECTED and there is no good way to get rid of it.
+# https://github.com/superfly/flyctl/issues/3358
+
+# [[http_service.checks]]
+#   grace_period = "10s"
+#   interval = "40s"
+#   method = "GET"
+#   timeout = "10s"
+#   path = "/hello"
 
 [[vm]]
   # 256mb not enough
