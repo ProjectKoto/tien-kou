@@ -29,4 +29,11 @@
   },
   "keep_names": false,
   "minify": true
+  // for secrets: there seems to be the following secrets to be set:
+  // npx wrangler secret put HEAVY_ASSET_WEB_REDIR_URL_PREFIX
+  // npx wrangler secret put LIQUID_DATE_TIMEZONE_OFFSET_MINUTE
+  // npx wrangler secret put PROFILE_NAME
+  // npx wrangler secret put SHOULD_INCLUDE_UNRELEASED_ASSETS
+  // npx wrangler secret put TURSO_AUTH_TOKEN
+  // npx wrangler secret put TURSO_DATABASE_URL
 }
