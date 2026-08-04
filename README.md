@@ -1,3 +1,8 @@
+
+With the stance of a subtle resistance, the code of this engine, including all custom modifications of thirdparty dependencies, DID NOT, DOES NOT, AND WILL NEVER rely on perceivable Large Language Models' (LLM) help. (But the instance site - tien-kou-kari - already does - in working with HTML/CSS for some pages, and a large part HTML/CSS/JavaScript code of "Style Customizer" page.)
+
+<span lang="zh-Hant-CN">作爲一個微小的反抗立場，本引擎的所有程式碼，包括所有對於第三方依賴項的自訂修改，在過去、現在、將來都不依賴於任何可感知的大語言模型（LLM）之協助。（但其實例網站——“tien-kou-kari”——已經依賴了——在一些頁面的HTML/CSS樣式中有所依賴，以及在“Style Customer”頁面上較大範圍的HTML/CSS/JavaScript程式碼上亦有依賴。）</span>
+
 # How to build
 
 - git clone with submodules. / git pull all submodules. (shorthand: `npm run pull`)
