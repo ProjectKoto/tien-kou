@@ -91,7 +91,7 @@ export const startTgHoard = async (tkCtx: TkContext, onUpdate: () => Promise<voi
       return await input.text("tg phoneNumber?")
     },
     password: async (hint) => await input.text(`tg (2FA, hint=${hint}) password?`),
-    phoneCode: async () => await input.text("tg (should already be sent in active session Telegram service chat. If not, wait for some time, or change phone number format between \"+XX XXX XXX XXXX\" and \"+XXXXXXXXXXXX\", or terminate old userbot sessions, and restart hoard to do login again.) phoneCode?"),
+    phoneCode: async () => await input.text("tg (should already be sent in active session Telegram service chat. If not, wait for some time, backup and remove old tg_session dir, or terminate old userbot sessions, and restart hoard to do login again, or try QR code login.) phoneCode?"),
     emailAddress: async (_isCodeViaApp?: boolean) => await input.text("tg emailAddress?"),
     emailVerification: async (_options) => ({ type: "code", code: await input.text("tg emailVerification.code?") }),
     firstAndLastNames: async () => ([await input.text("tg First Name?"), await input.text("tg Last Name?")]),

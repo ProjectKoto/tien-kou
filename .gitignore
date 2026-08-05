@@ -191,6 +191,8 @@ dist
 /data/staticGen
 /data/staticGen*
 
+/data_nosqlpushtest/
+
 /*lruCache*.sqlite
 /*lruCache*.sqlite-wal
 /*lruCache*.sqlite-shm
