@@ -955,6 +955,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
 
       fileInfo._sourceWithoutMatter = parentSourceLines.join('\n') + '\n'
       fileInfo.asset_raw_bytes = Buffer.from(fileInfo._sourceWithoutMatter)
+      fileInfo.asset_processed_bytes = null
       fileInfo.asset_size = fileInfo.asset_raw_bytes.byteLength
       if (childMaxPubTime !== undefined && childMaxPubTime !== null && fileInfo.publish_time_by_metadata === undefined && fileInfo.publish_time_by_metadata === null) {
         fileInfo.publish_time_by_metadata = childMaxPubTime
