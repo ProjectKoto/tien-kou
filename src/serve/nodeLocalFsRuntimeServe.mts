@@ -82,7 +82,8 @@ const NodeJsLocalFsTienKouAssetFetchHandler = HC<TienKouAssetFetchHandler>()(asy
       
       for (const x of sqlResult) {
         if (x.is_asset_heavy === 1) {
-          if (param.shouldFetchRawBytesIfLight && (x.asset_raw_bytes === undefined || x.asset_raw_bytes === null)) {
+          const assetBytes = x.asset_processed_bytes ?? x.asset_raw_bytes
+          if (param.shouldFetchRawBytesIfLight && (assetBytes === undefined || assetBytes === null)) {
             x.asset_raw_bytes = (await this.fetchLiveHeavyAssetBytes({ originFilePath: x.origin_file_path })).asset_raw_bytes
           }
         }

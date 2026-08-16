@@ -96,7 +96,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
         locatorTopDirs: locatorTopDirsToSearch,
         locatorSubPaths: (subPathTryStrippedExt !== subPath && isInExtensionList(ext, strippedInLocatorExtNames)) ? [subPath, subPathTryStrippedExt] : [subPath],
         shouldIncludeDerivingParent: true,
-        shouldFetchRawBytesIfLight: true,
+        shouldFetchRawBytesIfLight: extraOpt.shouldFetchRawBytesIfLight ?? true,
         shouldIncludeWithoutPubTime: true,
       })
 
@@ -149,7 +149,8 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
       asset = queryResultList[0]
 
       if (asset.is_asset_heavy) {
-        if (asset.asset_raw_bytes === undefined || asset.asset_raw_bytes === null) {
+        const assetBytes = asset.asset_processed_bytes ?? asset.asset_raw_bytes
+        if (assetBytes === undefined || assetBytes === null) {
           if (extraOpt.shouldFetchLiveHeavyAssetBytes && !extraOpt.liveLightOnly) {
             asset = {
               ...asset,
@@ -197,7 +198,8 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
       const matchedTopDir = locatorTopDirsToSearch[asset.top_dir_index]
 
       if (asset.is_asset_heavy) {
-        if ((asset.asset_raw_bytes === undefined || asset.asset_raw_bytes === null) && extraOpt.shouldFetchLiveHeavyAssetBytes) {
+        const assetBytes = asset.asset_processed_bytes ?? asset.asset_raw_bytes
+        if ((assetBytes === undefined || assetBytes === null) && extraOpt.shouldFetchLiveHeavyAssetBytes) {
           asset = {
             ...asset,
             ...await TienKouAssetFetchHandler.fetchLiveHeavyAssetBytes!({

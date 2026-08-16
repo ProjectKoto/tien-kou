@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "lib": [ "ES6" ],
-    "module": "es6",
+    "target": "es2020",
+    "lib": [ "ES2020" ],
+    "module": "es2020",
     /* Specify how TypeScript looks up a file from a given module specifier. */
     "moduleResolution": "bundler",
     /* Enable importing .json files */

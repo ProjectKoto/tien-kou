@@ -5,7 +5,7 @@ import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
-import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
+import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
 export const defaultMarkdowndbDbPath = "markdown.db"
 
@@ -254,6 +254,7 @@ export interface LiquidHandler {
 
 export interface FetchLocatableContentOpt {
   shouldReadOpenAssets?: boolean
+  shouldFetchRawBytesIfLight?: boolean
 }
 
 export interface FetchBackstageAssetOpt {
@@ -801,6 +802,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   has_derived_children AS has_derived_children,
                   deriving_parent_id AS deriving_parent_id,
                   ${shouldFetchRawBytesIfLight ? 'asset_raw_bytes' : 'NULL'} AS asset_raw_bytes,
+                  ${shouldFetchRawBytesIfLight ? 'asset_processed_bytes' : 'NULL'} AS asset_processed_bytes,
                   origin_file_path AS origin_file_path,
                   origin_file_extension AS origin_file_extension,
                   metadata AS metadata,
@@ -834,6 +836,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   NULL AS has_derived_children,
                   NULL AS deriving_parent_id,
                   NULL AS asset_raw_bytes,
+                  NULL AS asset_processed_bytes,
                   NULL AS origin_file_path,
                   NULL AS origin_file_extension,
                   (
@@ -889,6 +892,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   has_derived_children AS has_derived_children,
                   deriving_parent_id AS deriving_parent_id,
                   ${shouldFetchRawBytesIfLight ? 'asset_raw_bytes' : 'NULL'} AS asset_raw_bytes,
+                  ${shouldFetchRawBytesIfLight ? 'asset_processed_bytes' : 'NULL'} AS asset_processed_bytes,
                   origin_file_path AS origin_file_path,
                   origin_file_extension AS origin_file_extension,
                   metadata AS metadata,
@@ -961,6 +965,11 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   WHEN 0 THEN ${shouldFetchRawBytesIfLight ? 'asset_raw_bytes' : 'NULL'}
                   ELSE NULL
                   END AS asset_raw_bytes,
+
+                  CASE slash_index
+                  WHEN 0 THEN ${shouldFetchRawBytesIfLight ? 'asset_processed_bytes' : 'NULL'}
+                  ELSE NULL
+                  END AS asset_processed_bytes,
 
                   CASE slash_index
                   WHEN 0 THEN origin_file_path

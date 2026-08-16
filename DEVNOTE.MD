@@ -27,7 +27,7 @@ static guarded generic: not exists
 static backstage dedicated: not exists
 static backstage generic: site static other resource file, stored in local file system/cloudflare worker assets, not directly served to user browser
 
-x.isDedicated = funcTellIfIsDedicated(x.virtPath)
+x.isDedicated = handleDedicated(x.virtPath)
 isDedicated -> isLiveLight
 !isLiveLight = (isStatic || isLiveHeavy) -> !isDedicated = isGeneric
 isStatic -> !isGuarded

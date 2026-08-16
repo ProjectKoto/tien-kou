@@ -425,11 +425,11 @@ export class TkError extends Error implements TkErrorIntf {
   }
 }
 
-const textDecoder = new TextDecoder('utf-8')
+const textDecoder = new TextDecoder('utf-8', { fatal: false, ignoreBOM: false })
 
-export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | { type: "Buffer" } | unknown) => {
+export const bytesLikeToStringIgnoreError = (bytesLike: string | Buffer | ArrayBuffer | { type: "Buffer" } | unknown) => {
   if (bytesLike === undefined) {
-    throw new TkErrorHttpAware(`bytesLikeToString: input is undefined`)
+    throw new TkErrorHttpAware(`bytesLikeToStringIgnoreError: input is undefined`)
   }
 
   if (typeof(bytesLike) === 'string') {
@@ -437,6 +437,8 @@ export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | { t
   }
 
   if (bytesLike && typeof bytesLike === 'object' && (bytesLike as AnyObj)['type'] === 'Buffer') {
+    // https://nodejs.org/api/buffer.html
+    // equiv to Buffer.from(..., 'utf-8'), replace with replacement char if error
     return Buffer.from(bytesLike as Buffer).toString('utf-8')
   }
   
@@ -445,10 +447,11 @@ export const bytesLikeToString = (bytesLike: string | Buffer | ArrayBuffer | { t
   }
 
   if (isArrayBuffer(bytesLike)) {
+    // see above, fatal: false
     return textDecoder.decode(bytesLike)
   }
 
-  throw new TkErrorHttpAware(`bytesLikeToString: invalid input: ${bytesLike === null ? "<null>" : JSON.stringify(bytesLike)}`)
+  throw new TkErrorHttpAware(`bytesLikeToStringIgnoreError: invalid input: ${bytesLike === null ? "<null>" : JSON.stringify(bytesLike)}`)
 }
 
 // ''; 'a/'; 'a/b/'
@@ -573,4 +576,270 @@ export function cutSuffix(s: string, suffix: string): [string, boolean] {
     return [s.slice(0, s.length - suffix.length), true]
   }
   return [s, false]
+}
+
+// credit: https://stackoverflow.com/questions/33631041/javascript-async-await-in-replace/48032528 Overcl9ck and editors
+export async function replaceAsync(str: string, regex: RegExp, asyncFn: (s: string, ...args: string[]) => Promise<string>) {
+  const promises: Promise<string>[] = []
+  str.replace(regex, (full: string, ...args) => {
+    promises.push(asyncFn(full, ...args))
+    return full
+  })
+  const data = await Promise.all(promises)
+  return str.replace(regex, () => data.shift()!)
+}
+
+// the escaping scheme:
+// <followingChar> -> <followingChar>
+// <specialChar> -> <escapingChar><followingChar>
+// <escapingChar> -> <escapingChar><escapingChar>
+// <escapingChar><followingChar> -> <escapingChar><escapingChar><followingChar>
+// <escapingChar><specialChar> -> <escapingChar><escapingChar><escapingChar><followingChar>
+// <escapingChar><escapingChar><followingChar> -> <escapingChar><escapingChar><escapingChar><escapingChar><followingChar>
+//
+// the unescaping scheme:
+// <followingChar> -> <followingChar>
+// <escapingChar><followingChar> -> <specialChar>
+// <escapingChar><escapingChar> -> <escapingChar>
+// <escapingChar><escapingChar><followingChar> -> <escapingChar><followingChar>
+// <escapingChar><escapingChar><escapingChar><followingChar> -> <escapingChar><specialChar>
+// <escapingChar><escapingChar><escapingChar><escapingChar><followingChar> -> <escapingChar><escapingChar><followingChar>
+//
+// for example, <specialChar> = %, <escapingChar> = \, <followingChar> = p:
+//
+// the escaping scheme:
+// p -> p
+// % -> \p
+// \ -> \\
+// \p -> \\p
+// \% -> \\\p
+// \\p -> \\\\p
+//
+// the unescaping scheme:
+// p -> p
+// \p -> %
+// \\ -> \
+// \\p -> \p
+// \\\p -> \%
+// \\\\p -> \\p
+export function unescapeSimple(s: string, specialChar: string, escapingChar: string, followingChar: string) {
+  if (s === "") {
+    return ""
+  }
+  if (!s) {
+    return s
+  }
+  if (!specialChar || specialChar.length !== 1) {
+    throw new Error(`unescapeSimple: specialChar.length should be 1, got ${specialChar.length}`)
+  }
+  if (!escapingChar || escapingChar.length !== 1) {
+    throw new Error(`unescapeSimple: escapingChar.length should be 1, got ${escapingChar.length}`)
+  }
+  if (escapingChar === specialChar) {
+    throw new Error(`unescapeSimple: escapingChar should not equal specialChar`)
+  }
+  if (!followingChar || followingChar.length !== 1) {
+    throw new Error(`unescapeSimple: followingChar.length should be 1, got ${followingChar.length}`)
+  }
+  if (followingChar === specialChar) {
+    throw new Error(`unescapeSimple: followingChar should not equal specialChar`)
+  }
+  if (followingChar === escapingChar) {
+    throw new Error(`unescapeSimple: followingChar should not equal escapingChar`)
+  }
+  let isInEscape = false
+  let pendingCollectI = 0
+  const collectStrList = []
+  for (let i = 0; i < s.length; i++) {
+    const currChar = s[i]
+    if (currChar === specialChar) {
+      throw new Error(`unescapeSimple: specialChar ${specialChar} should not appear anywhere in s`)
+    }   
+    if (isInEscape) {
+      if (currChar === followingChar) {
+        if (pendingCollectI < i - 1) {
+          collectStrList.push(s.slice(pendingCollectI, i - 1))
+        }
+        collectStrList.push(specialChar)
+        pendingCollectI = i + 1
+        isInEscape = false
+      } else if (currChar === escapingChar) {
+        if (pendingCollectI < i - 1) {
+          collectStrList.push(s.slice(pendingCollectI, i - 1))
+        }
+        collectStrList.push(escapingChar)
+        pendingCollectI = i + 1
+        isInEscape = false
+      } else {
+        // two options:
+
+        // 1. an escaping <escapingChar> + normal char -> literal <escapingChar> + literal char.
+        // isInEscape = false
+
+        // 2. an escaping <escapingChar> + normal char -> this literal normal char (without <escapingChar> prepended).
+        // we uses this, so that we can simply (a) replace \ to \\, (b) replace <any chars that are possible to be escaped> to \+char to generate a string that has unified meaning in all possible escaped sequences.
+        if (pendingCollectI < i - 1) {
+          collectStrList.push(s.slice(pendingCollectI, i - 1))
+        }
+        collectStrList.push(currChar)
+        pendingCollectI = i + 1
+        isInEscape = false
+      }
+    } else {
+      if (currChar === escapingChar) {
+        isInEscape = true
+      } else {
+        // ok
+      }
+    }
+  }
+
+  if (pendingCollectI < s.length) {
+    collectStrList.push(s.slice(pendingCollectI, s.length))
+  }
+  return collectStrList.join('')
+}
+
+
+export const parseDedicatedSourceRegexReplaceRules = async (tkEnv: Record<string, string | undefined>) => {
+  const commonSimpleStrParse = <T,> (s: string | AnyObj | undefined, targetObj: T, put: (targetObj: T, left: string, right: string) => void): T => {
+    if (s === undefined || s === null || (typeof s) !== 'string' && !(s instanceof String)) {
+      return targetObj
+    }
+    s = s.toString()
+    const sParts = s.split(',')
+    for (let part of sParts) {
+      part = unescapeSimple(part, ',', "\\", "c")
+      const partPart = part.split('=')
+      if (partPart.length < 2) {
+        continue
+      }
+      const left = unescapeSimple(partPart[0], '=', "\\", "e")
+      const right = unescapeSimple(partPart[1], '=', "\\", "e")
+      put(targetObj, left, right)
+    }
+    return targetObj
+  }
+
+  const tagCiListStr = tkEnv.DEDICATED_SOURCE_TAG_REPLACE_CASE_INSENSITIVE_LIST
+  const tagCsListStr = tkEnv.DEDICATED_SOURCE_TAG_REPLACE_CASE_SENSITIVE_LIST
+
+  const tagCiListMap = commonSimpleStrParse(tagCiListStr, {} as Record<string, string | undefined>, (target, left, right) => {
+    target[left.toLowerCase()] = right
+  })
+  const tagCsListMap = commonSimpleStrParse(tagCsListStr, {} as Record<string, string | undefined>, (target, left, right) => {
+    target[left] = right
+  })
+
+  const dedicatedSourceRegexReplaceListFuncMap = await (async () => {
+    return {
+      replaceTagHandler: (substring, ...args) => {
+        if (args.length < 3) {
+          return substring
+        }
+        const tag = args[1]
+        const tagLower = tag.toLowerCase()
+        const tryTagLowerSubst = tagCiListMap[tagLower]
+        if (tryTagLowerSubst !== undefined) {
+          return args[0] + '#' + tryTagLowerSubst + args[2]
+        }
+        const tryTagSubst = tagCsListMap[tag]
+        if (tryTagSubst !== undefined) {
+          return args[0] + '#' + tryTagSubst + args[2]
+        }
+      }
+    // JavaScript replacer signature is like this
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as Record<string, ((substring: string, ...args: any[]) => string) | undefined>
+  })()
+
+  const dedicatedSourceRegexReplaceList = await (async () => {
+    const listStr = tkEnv.DEDICATED_SOURCE_REGEX_REPLACE_LIST
+    const rrList = commonSimpleStrParse(listStr, [] as {
+      regExp: RegExp,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      replacement: string | ((substring: string, ...args: any[]) => string)
+    }[], (rrList, regExpSource, replacementStr) => {
+      let regExpFlagStr = 'gs'
+      if (regExpSource.startsWith('/')) {
+        const regexSourceParts = regExpSource.split('/')
+        if (regexSourceParts.length >= 3 && regexSourceParts[0] === '') {
+          regExpSource = regexSourceParts.slice(1, regexSourceParts.length - 1).join('/')
+          regExpFlagStr = regexSourceParts[regexSourceParts.length - 1]
+        }
+      } else if (regExpSource.endsWith('+i')) {
+        regExpSource = regExpSource.slice(0, regExpSource.length - 2)
+        regExpFlagStr = 'gsi'
+      } else {
+        // ok
+      }
+      const regExp = new RegExp(regExpSource, regExpFlagStr)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let replacement: string | ((substring: string, ...args: any[]) => string) = replacementStr
+      if (replacementStr && replacementStr.startsWith('ReplacerFunc(') && replacementStr.endsWith(')')) {
+        const funcName = replacementStr.slice('ReplacerFunc('.length, replacementStr.length - ')'.length)
+        const tryFunc = dedicatedSourceRegexReplaceListFuncMap[funcName]
+        if (!tryFunc) {
+          throw new Error(`dedicatedSourceRegexReplaceList: no ReplacerFunc ${funcName}`)
+        }
+        replacement = tryFunc
+      }
+      rrList.push({ regExp, replacement })
+    })
+    return rrList
+  })()
+
+  return { dedicatedSourceRegexReplaceListFuncMap, dedicatedSourceRegexReplaceList }
+}
+
+export const tellCacheIgnoreUrlPath = (path: string): boolean => {
+  const pathTest = path + '/'
+  if (pathTest.startsWith('/admin/')) {
+    return true
+  }
+  if (pathTest.startsWith('/sqlDb/')) {
+    return true
+  }
+  return false
+}
+
+// credit: https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript/46432113 odinho - Velmont & editors
+export class LruInMemory<K, V> {
+  max: number
+  cache: Map<K, V>
+  constructor(max = 10) {
+    this.max = max
+    this.cache = new Map()
+  }
+
+  get(key: K) {
+    const item = this.cache.get(key)
+    if (item !== undefined) {
+      // refresh key
+      this.cache.delete(key)
+      this.cache.set(key, item)
+    }
+    return item
+  }
+
+  set(key: K, val: V) {
+    // refresh key
+    if (this.cache.has(key)) this.cache.delete(key)
+    // evict oldest
+    else if (this.cache.size === this.max) {
+      const firstKey = this.first()
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey)
+      }
+    }
+    this.cache.set(key, val)
+  }
+
+  delete(key: K) {
+    if (this.cache.has(key)) this.cache.delete(key)
+  }
+
+  first() {
+    return this.cache.keys().next().value
+  }
 }

@@ -7,7 +7,7 @@ import { default as markdownItHashtag } from 'markdown-it-hashtag'
 import { default as markdownItLinkAttributes } from 'markdown-it-link-attributes'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, allKnownAssetExtNames, bytesLikeToString, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash } from "../lib/common.mts"
+import { AnyObj, allKnownAssetExtNames, bytesLikeToStringIgnoreError, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash, replaceAsync, unescapeSimple } from "../lib/common.mts"
 import { AHC, EAH, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HC, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
@@ -224,15 +224,20 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
             if (queryResultList[0].is_asset_heavy === 1) {
               throw new TkAssetIsHeavyError('some related template is heavy:' + fileRelPath).shouldLog()
             }
+
+            let assetBytes = queryResultList[0].asset_processed_bytes
+            if (assetBytes === undefined || assetBytes === null) {
+              assetBytes = queryResultList[0].asset_raw_bytes
+            }
       
-            if (!queryResultList[0].asset_raw_bytes) {
-              throw new TkErrorHttpAware('no asset_raw_bytes').shouldLog()
+            if (assetBytes === undefined || assetBytes === null) {
+              throw new TkErrorHttpAware('no asset_processed_bytes / asset_raw_bytes').shouldLog()
             }
             return queryResultList[0]
           }
         )
   
-        return bytesLikeToString(templateAsset.asset_raw_bytes)
+        return bytesLikeToStringIgnoreError(templateAsset.asset_processed_bytes ?? templateAsset.asset_raw_bytes)
       },
   
       existsSync() {
@@ -409,7 +414,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   
     let result: TkAssetInfo | string = asset
     if (extraOpt.shouldConvertToString) {
-      result = bytesLikeToString(asset.asset_raw_bytes)
+      result = bytesLikeToStringIgnoreError(asset.asset_processed_bytes ?? asset.asset_raw_bytes)
     }
   
     return result
@@ -427,6 +432,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       const extraOpt = parseExtraOptFromLiquidShapeParams<WrapperOpt<FetchLocatableContentOpt>>({
         shouldReadOpenAssets: true,
         shouldThrowIfNotFound: false,
+        shouldFetchRawBytesIfLight: true,
         shouldConvertToString: defaultShouldConvertToString,
       }, rest)
 
@@ -511,7 +517,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     }
 
     if (asset.is_asset_heavy) {
-      if (asset.asset_raw_bytes === undefined || asset.asset_raw_bytes === null) {
+      const assetBytes = asset.asset_processed_bytes ?? asset.asset_raw_bytes
+      if (assetBytes === undefined || assetBytes === null) {
         if (extraOpt.shouldConvertToString) {
           throw new TkAssetIsHeavyError("didn't fetched asset bytes, possibly because asset is heavy")
         }
@@ -533,7 +540,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
 
     let result: TkAssetInfo | string = asset
     if (extraOpt.shouldConvertToString) {
-      result = bytesLikeToString(asset.asset_raw_bytes)
+      result = bytesLikeToStringIgnoreError(asset.asset_processed_bytes ?? asset.asset_raw_bytes)
     }
 
     if (afterFetchHook) {
@@ -669,7 +676,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       rgc.isGenericLocatableAssetHeavy = false
       rgc.isGenericLocatableAssetStatic = true
     } else if (asset.is_asset_heavy) {
-      if (asset.asset_raw_bytes === undefined || asset.asset_raw_bytes === null) {
+      const assetBytes = asset.asset_processed_bytes ?? asset.asset_raw_bytes
+      if (assetBytes === undefined || assetBytes === null) {
         if (extraOpt.shouldConvertToString) {
           throw new TkAssetIsHeavyError("didn't fetched asset bytes, possibly because asset is heavy")
         }
@@ -770,22 +778,22 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   }
 
   LiquidHandler.registerFilterPostCreate("md", async function (a) {
-    const result = md.render(bytesLikeToString(a))
+    const result = md.render(bytesLikeToStringIgnoreError(a))
     return result
   })
 
   LiquidHandler.registerFilterPostCreate("mdInline", async function (a) {
-    const result = md.renderInline(bytesLikeToString(a))
+    const result = md.renderInline(bytesLikeToStringIgnoreError(a))
     return result
   })
 
   LiquidHandler.registerFilterPostCreate("mdSafe", async function (a) {
-    const result = mdSafe.render(bytesLikeToString(a))
+    const result = mdSafe.render(bytesLikeToStringIgnoreError(a))
     return result
   })
 
   LiquidHandler.registerFilterPostCreate("mdSafeInline", async function (a) {
-    const result = mdSafe.renderInline(bytesLikeToString(a))
+    const result = mdSafe.renderInline(bytesLikeToStringIgnoreError(a))
     return result
   })
 
@@ -950,6 +958,16 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     return result
   })
 
+  LiquidHandler.registerFilterPostCreate("coerceToArr", function (a) {
+    if (a === undefined || a === null) {
+      return []
+    }
+    if (Array.isArray(a)) {
+      return a
+    }
+    return a.toString().split(',')
+  })
+
   const makeSetCompatibleWithLiquidContainsOperator = (...args: unknown[]) => {
     const s = new Set(...(args as Array<never>))
     ;(s as AnyObj).indexOf = function(v: unknown) {
@@ -1028,12 +1046,29 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     }
   })
 
+  LiquidHandler.registerFilterPostCreate("objAssign", function (a: AnyObj, b: AnyObj) {
+    return Object.assign(a, b)
+  })
+
+  LiquidHandler.registerFilterPostCreate("objAssignIfAbsent", function (a: AnyObj, b: AnyObj) {
+    for (const [k, v] of Object.entries(b)) {
+      if (a[k] === undefined) {
+        a[k] = v
+      }
+    }
+    return a
+  })
+
   LiquidHandler.registerFilterPostCreate("setToObj", function (v, a: AnyObj, k: string) {
     if (v === undefined) {
       delete a[k]
     } else {
       a[k] = v
     }
+  })
+
+  LiquidHandler.registerFilterPostCreate("cloneObj", function (a: AnyObj) {
+    return {...a}
   })
 
   LiquidHandler.registerFilterPostCreate("setToObjIfAbsent", function (v, a: AnyObj, k: string) {
@@ -1109,10 +1144,15 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     return quickStrHash(rest.join(''))
   })
 
-  LiquidHandler.registerFilterPostCreate("btos", bytesLikeToString)
+  LiquidHandler.registerFilterPostCreate("btos", bytesLikeToStringIgnoreError)
 
   LiquidHandler.registerFilterPostCreate("json", function (o) {
     return jsonPrettyStringify(o)
+  })
+
+  LiquidHandler.registerFilterPostCreate("resolveRelPathInUrlManner", function (a: string, b: string) {
+    const aStartWithSlash = a.startsWith('/')
+    return new URL(b, 'http://example.com' + (aStartWithSlash ? '' : '/') + a).pathname.slice(aStartWithSlash ? 0 : 1)
   })
 
   // Quickmacro wrapper
@@ -1137,12 +1177,11 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     } as liquid.Token
   }
 
-  const processQuickmacroInc = function (this: liquid.Tag & TagImplOptions) {
-    let inc = this.renderTag.file as string | undefined
-    if (inc === undefined || typeof inc !== 'string') {
-      return
+  const decideQuickmacroInfoFromIncStr = function (incStr: string | undefined): { renderFile: string, subMacro: string | undefined } | undefined {
+    if (incStr === undefined || typeof incStr !== 'string') {
+      return undefined
     }
-    let parts = inc.split('?')
+    let parts = incStr.split('?')
     if (parts.length > 1) {
       parts = [parts[0], parts.slice(1).join('?')]
     }
@@ -1150,45 +1189,64 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     let subMacro: string | undefined
 
     if (parts.length === 2) {
-      inc = parts[0]
+      incStr = parts[0]
       subMacro = parts[1]
     } else {
-      let parts = inc.split('#')
+      let parts = incStr.split('#')
       if (parts.length > 1) {
         parts = [parts[0], parts.slice(1).join('#')]
       }
       if (parts.length === 2) {
-        inc = parts[0]
+        incStr = parts[0]
         subMacro = parts[1]
       } else {
-        let firstNonDigit = 0
-        for (; firstNonDigit < inc.length; firstNonDigit++) {
-          const currChar = inc[firstNonDigit]
+        let firstNonDigitOfBaseName = incStr.lastIndexOf('/')
+        if (firstNonDigitOfBaseName >= 0) {
+          firstNonDigitOfBaseName += 1
+        } else {
+          firstNonDigitOfBaseName = 0
+        }
+        for (; firstNonDigitOfBaseName < incStr.length; firstNonDigitOfBaseName++) {
+          const currChar = incStr[firstNonDigitOfBaseName]
           if (!(currChar >= '0' && currChar <= '9')) {
             break
           }
         }
-        if (firstNonDigit < inc.length && firstNonDigit > 0) {
-          inc = inc.substring(0, firstNonDigit)
-          subMacro = inc.substring(firstNonDigit)
+        if (firstNonDigitOfBaseName < incStr.length && firstNonDigitOfBaseName > 0) {
+          incStr = incStr.substring(0, firstNonDigitOfBaseName)
+          subMacro = incStr.substring(firstNonDigitOfBaseName)
         }
       }
     }
 
-    if (!inc) {
-      inc = 'index'
+    if (!incStr) {
+      incStr = 'index'
     }
 
-    if (inc.endsWith('/')) {
-      inc = inc + 'index'
+    if (incStr.endsWith('/')) {
+      incStr = incStr + 'index'
     }
 
-    if (subMacro !== undefined) {
-      liquidRenderTagHashAdd.call(this, 'subMacro', subMacro)
+    const [isEndWith, fileAfterStrip, _] = stripExtensionList(incStr, liquidExtName)
+    return {
+      renderFile: "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : ""),
+      subMacro
+    }
+  }
+
+  const processQuickmacroInc = function (this: liquid.Tag & TagImplOptions) {
+    const incStr = this.renderTag.file as string | undefined
+   
+    const info = decideQuickmacroInfoFromIncStr(incStr)
+    if (info === undefined) {
+      return
     }
 
-    const [isEndWith, fileAfterStrip, _] = stripExtensionList(inc, liquidExtName)
-    this.renderTag.file = "inc/q/" + fileAfterStrip + (isEndWith ? liquidExtName : "")
+    if (info.subMacro !== undefined) {
+      liquidRenderTagHashAdd.call(this, 'subMacro', info.subMacro)
+    }
+
+    this.renderTag.file = info.renderFile
   }
 
   const liquidRenderTagHashFallback = function (this: liquid.Tag & TagImplOptions, key1: string, fallbackToKey: string) {
@@ -1276,6 +1334,62 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     * arguments () {
       yield * (this as AnyObj).renderTag.arguments()
     },
+  })
+
+  // use \h (hat) to represent literal ^
+  // use \c (comma) to represent literal ,
+  const sourceQuickmacroSyntax = /q\^([^^]+)\^([^^]+)\^/gs
+
+  LiquidHandler.registerFilterPostCreate("processSourceQuickmacroSyntax", async function(a: string, shouldProcess: boolean, b: [string, ...unknown[]][] | undefined) {
+    if (!shouldProcess) {
+      return a
+    }
+    return await replaceAsync(a, sourceQuickmacroSyntax, async (theMatch, qName, qParamStr) => {
+      const info = decideQuickmacroInfoFromIncStr(qName)
+      if (info === undefined) {
+        return theMatch
+      }
+      qParamStr = unescapeSimple(qParamStr, '^', "\\", "h")
+      const qParamList = qParamStr.split(',').map(x => unescapeSimple(x, ',', "\\", "c"))
+      const qParamMap = {} as Record<string, string>
+      for (const qParamOneStr of qParamList) {
+        const qParamParts = qParamOneStr.split('=')
+        if (qParamParts.length <= 1) {
+          qParamMap['qInner'] = qParamOneStr
+        } else {
+          const qParamKey = qParamParts[0]
+          const qParamVal = qParamParts.slice(1).join('=')
+          qParamMap[qParamKey] = qParamVal
+        }
+      }
+      if (qParamMap['qInner'] === undefined) {
+        const tryQInner = qParamMap['qi']
+        if (tryQInner !== undefined) {
+          qParamMap['qInner'] = tryQInner
+        }
+      }
+      if (qParamMap['subMacro'] === undefined) {
+        if (info.subMacro !== undefined) {
+          qParamMap['subMacro'] = info.subMacro
+        }
+      }
+      if (qParamMap['subMacro'] === undefined) {
+        const trySubMacro = qParamMap['s']
+        if (trySubMacro !== undefined) {
+          qParamMap['subMacro'] = trySubMacro
+        }
+      }
+
+      try {
+        // from liquidjs src/tags/render.ts render
+        const childCtx = this.context.spawn()
+        const scope = childCtx.bottom()
+        Object.assign(scope, qParamMap)
+        return (await this.liquid.renderFile(info.renderFile, childCtx, this.liquid.options)) as string
+      } catch {
+        return theMatch
+      }
+    })
   })
 
   LiquidHandler.registerTagPostCreate("backpatch", class BackpatchTag extends liquid.Tag {

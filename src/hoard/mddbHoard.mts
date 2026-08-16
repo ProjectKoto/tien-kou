@@ -2,7 +2,7 @@ import * as turso from "@libsql/client"
 import crypto from "crypto"
 import { FileInfo } from "mddb/dist/src/lib/process"
 import pRetry from 'p-retry'
-import { allKnownAssetExtNames, AnyObj, cutPrefix, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
+import { allKnownAssetExtNames, AnyObj, cutPrefix, dedicatedAssetExtNames, isInExtensionList, l, le, markdownExtNames, parseDedicatedSourceRegexReplaceRules, stripExtensionList, strippedInLocatorExtNames } from '../lib/common.mts'
 import { checkDirExistsAndIsNotEmpty, ensurePathDirExists, makeInitMarkdownDbCommon, nodeResolvePath, TkContextHoard } from "../lib/nodeCommon.mts"
 import path from 'node:path'
 import escapeStringRegexp from 'escape-string-regexp'
@@ -1014,6 +1014,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     return aliasMap
   })()
 
+  const { dedicatedSourceRegexReplaceListFuncMap, dedicatedSourceRegexReplaceList } = await parseDedicatedSourceRegexReplaceRules(tkCtx.e)
+
   let watch = false
   if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
     watch = true
@@ -1060,7 +1062,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         }
       },
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      markdownExtraHandler: async (filePath, getSourceFunc, fileInfo, { ast, metadata, links, tags }) => {
+      markdownExtraHandler: undefined,
+      dedicatedExtraHandler: async (filePath, getSourceFunc, fileInfo, { metadata, tags }) => {
         if (metadata) {
           for (const alias of Object.values(metadataFieldAliases)) {
             const aliasVal = metadata[alias.aliasName]
@@ -1072,6 +1075,34 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
                   metadata[def.targetFieldName] = def.targetFieldFixedVal
                 }
               }
+            }
+          }
+
+          {
+            const sourceWithoutMatter = fileInfo._sourceWithoutMatter as string | undefined | null
+            let skip = false
+            const isSkipDedicatedSourceRegexReplace = metadata.isSkipDedicatedSourceRegexReplace as string | undefined
+
+            if (isSkipDedicatedSourceRegexReplace) {
+              const toLower = isSkipDedicatedSourceRegexReplace.toLowerCase()
+              if (toLower !== 'false' && toLower !== '0') {
+                skip = true
+              }
+            }
+
+            let processed = sourceWithoutMatter
+
+            if (!skip && processed !== undefined && processed !== null) {
+              for (const { regExp, replacement } of dedicatedSourceRegexReplaceList) {
+                // https://github.com/microsoft/TypeScript/issues/14107
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                processed = processed.replace(regExp, replacement as any)
+              }
+            }
+
+            if (processed !== undefined && processed !== null && sourceWithoutMatter !== processed) {
+              fileInfo._sourceWithoutMatter = processed
+              fileInfo.asset_processed_bytes = Buffer.from(processed, "utf-8")
             }
           }
         }

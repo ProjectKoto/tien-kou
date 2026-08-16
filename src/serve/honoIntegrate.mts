@@ -5,7 +5,7 @@ import * as honoTypes from "hono/types"
 import * as liquid from "liquidjs"
 import mimeDbJson from 'mime-db/db.json'
 import mimeType from 'mime-types'
-import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, markdownExtNames, TkContext, TkError, TkErrorHttpAware, toArrayBuffer, um } from "../lib/common.mts"
+import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, LruInMemory, markdownExtNames, tellCacheIgnoreUrlPath, TkContext, TkError, TkErrorHttpAware, toArrayBuffer, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
 import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError, MiddleCacheHandler, notImplementedCtx } from "./serveDef.mts"
@@ -267,7 +267,14 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
     if (fetchResult === undefined) {
       throw new TkErrorHttpAware(um`Error fetching asset`)
-    } if (fetchResult.asset_raw_bytes !== undefined && fetchResult.asset_raw_bytes !== null) {
+    }
+
+    let assetBytes = fetchResult.asset_processed_bytes
+    if (assetBytes === undefined || assetBytes === null) {
+      assetBytes = fetchResult.asset_raw_bytes
+    }
+    
+    if (assetBytes !== undefined && assetBytes !== null) {
       // TODO: CONTENT TYPE FROM PATH/EXTENSION/BYTES
       let mime = mimeType.contentType(fetchResult.origin_file_extension || 'bin')
       if (typeof mime === 'boolean') {
@@ -275,7 +282,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
         mime = octetType
       }
       hc.header('Content-Type', mime)
-      return hc.body(fetchResult.asset_raw_bytes)
+      return hc.body(assetBytes)
     } else if (fetchResult.redirect_url) {
       return hc.redirect(fetchResult.redirect_url)
     } else {
@@ -473,6 +480,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       // console.log(`renderResult: ${renderResult}`)
       // l('rgc', rgc)
     
+      // 304 Not Modified
       if (rgc.respSend304) {
         return c.body(null, 304)
       }
@@ -508,6 +516,8 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
 })
 
+const honoReqCacheLru = new LruInMemory<string, Promise<undefined | unknown>>(2500)
+
 export const honoReqCache = async ({
   MiddleCacheHandler
 }: {
@@ -525,10 +535,7 @@ export const honoReqCache = async ({
       if (url.pathname.length > 500) {
         return false
       }
-      if (url.pathname.startsWith('/admin/')) {
-        return false
-      }
-      if (url.pathname.startsWith('/sqlDb/')) {
+      if (tellCacheIgnoreUrlPath(url.pathname)) {
         return false
       }
       if (url.search.length > 500) {
@@ -536,7 +543,18 @@ export const honoReqCache = async ({
       }
       const cacheKey = c.req.method.length.toString() + c.req.method + url.pathname.length.toString() + url.pathname + url.search
       
-      const cachedValue = await MiddleCacheHandler.getInCache(notImplementedCtx, cacheKey)
+      let cachedValue: unknown
+
+      const existingPendingPromise = honoReqCacheLru.get(cacheKey)
+      if (existingPendingPromise !== undefined) {
+        cachedValue = await existingPendingPromise
+      } else {
+        const newPromise = MiddleCacheHandler.getInCache(notImplementedCtx, cacheKey)
+        honoReqCacheLru.set(cacheKey, newPromise)
+        cachedValue = await newPromise
+        honoReqCacheLru.delete(cacheKey)
+      }
+
       if (cachedValue === null || cachedValue === undefined) {
         return {
           cacheKey,

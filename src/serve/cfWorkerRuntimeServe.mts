@@ -1,7 +1,7 @@
 
 import * as hono from 'hono'
 import isArrayBuffer from 'is-array-buffer'
-import { AnyObj, l, LazyVal, lazyValue, le, TkContext, TkError } from '../lib/common.mts'
+import { AnyObj, l, LazyVal, lazyValue, le, LruInMemory, tellCacheIgnoreUrlPath, TkContext, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
 import { AbstractTkSqlLiquidHonoApp, hc, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
@@ -407,7 +407,7 @@ function cfMakeReqCacheKey(request: Request<unknown, IncomingRequestCfProperties
   for (const reqCacheHeader of cachedReqHeaders) {
     const hValue = request.headers.get(reqCacheHeader)
     if (hValue) {
-      requestCacheKeyHeaders[reqCacheHeader] = hValue
+      requestCacheKeyHeaders[reqCacheHeader.toLowerCase()] = hValue
     }
   }
 
@@ -415,18 +415,35 @@ function cfMakeReqCacheKey(request: Request<unknown, IncomingRequestCfProperties
     method: request.method,
     headers: requestCacheKeyHeaders,
   })
-  return requestCacheKey
+  return {
+    requestCacheKey, 
+    strKey: JSON.stringify([
+      request.url,
+      request.method,
+      Object.keys(requestCacheKeyHeaders).sort().map(k => [k, requestCacheKeyHeaders[k]]),
+    ]),
+  }
 }
 
+const cfReqCacheLru = new LruInMemory<string, Promise<Response | undefined>>(2500)
 
 const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandler<CfweT>>): ExportFetchOnlyHandler<CfweT> => {
   return {
     async fetch(request, env, ctx): Promise<Response> {
       let requestToPass = request
-      const requestCacheKey = cfMakeReqCacheKey(request)
-      const tryMatch = await cfCache.match(requestCacheKey, { ignoreMethod: false })
+      const { requestCacheKey, strKey } = cfMakeReqCacheKey(request)
+      let tryMatch: Response | undefined
+      const existingPendingPromise = cfReqCacheLru.get(strKey)
+      if (existingPendingPromise !== undefined) {
+        tryMatch = await existingPendingPromise
+      } else {
+        const newPromise = cfCache.match(requestCacheKey, { ignoreMethod: false })
+        cfReqCacheLru.set(strKey, newPromise)
+        tryMatch = await newPromise
+        cfReqCacheLru.delete(strKey)
+      }
       let eTagHeaderManipulated = false
-      if (tryMatch && !request.url.startsWith('/admin/') && !request.url.startsWith('/sqlDb/')) {
+      if (tryMatch && !tellCacheIgnoreUrlPath(request.url)) {
         l('cf req cache hit', request.url)
         const cachedETag = tryMatch.headers.get('ETag')
         if (cachedETag) {

@@ -25,6 +25,17 @@ DEBUG = "proxy-agent,knex:query"
 
 MARKDOWNDB_DB_PATH = 'markdown.db'
 
+# use backticks. see: https://www.npmjs.com/package/dotenv FAQ: "What rules does the parsing engine follow?"
+# syntax:
+# js regex literal-like: /.../gi (different from js: you dont need to escape "/" inside the regex)
+# without / wrapped, but with optional suffix +i:   ...+i (ignore case)   or  ... (do not ignore case)
+# the right side: ReplacerFunc(...) means using a replacer function.
+# use \c to represent literal comma ",", use \e to represent literl equal sign "=".
+DEDICATED_SOURCE_REGEX_REPLACE_LIST = `(^|\s+|\n+|\r+)#fhn([#"'\s]|$)+i=$1FromHn$2,(^|\s+|\n+|\r+)#til([#"'\s]|$)+i=$1TodayILearned$2,(^|\s+|\n+|\r+)#ril([#"'\s]|$)+i=$1ReadItLater$2`
+# a special shorthand using ReplacerFunc(replaceTagHandler), executed last in DedicatedSourceRegexReplace.
+DEDICATED_SOURCE_TAG_REPLACE_CASE_INSENSITIVE_LIST = `fhn=FromHn,til=TodayILearned,ril=ReadItLater`
+DEDICATED_SOURCE_TAG_REPLACE_CASE_SENSITIVE_LIST = `CoT=ChainOfThought`
+
 HOARD_DB_BATCH_DEBUG_MODE = "0"
 
 HOARD_DATA_UPDATE_CALLBACK_URL_LIST = "http://127.0.0.1:8568/admin/refreshSiteVersion;http://127.0.0.1:8569/admin/refreshSiteVersion;http://127.0.0.1:8571/admin/refreshSiteVersion;https://mysite.dev/admin/refreshSiteVersion"
