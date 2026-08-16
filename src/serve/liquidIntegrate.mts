@@ -1200,21 +1200,22 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
         incStr = parts[0]
         subMacro = parts[1]
       } else {
-        let firstNonDigitOfBaseName = incStr.lastIndexOf('/')
-        if (firstNonDigitOfBaseName >= 0) {
-          firstNonDigitOfBaseName += 1
+        let firstCharIOfBaseName = incStr.lastIndexOf('/')
+        if (firstCharIOfBaseName >= 0) {
+          firstCharIOfBaseName += 1
         } else {
-          firstNonDigitOfBaseName = 0
+          firstCharIOfBaseName = 0
         }
+        let firstNonDigitOfBaseName = firstCharIOfBaseName
         for (; firstNonDigitOfBaseName < incStr.length; firstNonDigitOfBaseName++) {
           const currChar = incStr[firstNonDigitOfBaseName]
           if (!(currChar >= '0' && currChar <= '9')) {
             break
           }
         }
-        if (firstNonDigitOfBaseName < incStr.length && firstNonDigitOfBaseName > 0) {
-          incStr = incStr.substring(0, firstNonDigitOfBaseName)
+        if (firstNonDigitOfBaseName < incStr.length && firstNonDigitOfBaseName > firstCharIOfBaseName) {
           subMacro = incStr.substring(firstNonDigitOfBaseName)
+          incStr = incStr.substring(0, firstNonDigitOfBaseName)
         }
       }
     }
@@ -1336,8 +1337,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     },
   })
 
-  // use \h (hat) to represent literal ^
-  // use \c (comma) to represent literal ,
+  // use %h (hat) to represent literal ^
+  // use %c (comma) to represent literal ,
   const sourceQuickmacroSyntax = /q\^([^^]+)\^([^^]+)\^/gs
 
   LiquidHandler.registerFilterPostCreate("processSourceQuickmacroSyntax", async function(a: string, shouldProcess: boolean, b: [string, ...unknown[]][] | undefined) {
@@ -1349,8 +1350,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       if (info === undefined) {
         return theMatch
       }
-      qParamStr = unescapeSimple(qParamStr, '^', "\\", "h")
-      const qParamList = qParamStr.split(',').map(x => unescapeSimple(x, ',', "\\", "c"))
+      qParamStr = unescapeSimple(qParamStr, '^', "%", "h")
+      const qParamList = qParamStr.split(',').map(x => unescapeSimple(x, ',', "%", "c"))
       const qParamMap = {} as Record<string, string>
       for (const qParamOneStr of qParamList) {
         const qParamParts = qParamOneStr.split('=')
@@ -1386,7 +1387,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
         const scope = childCtx.bottom()
         Object.assign(scope, qParamMap)
         return (await this.liquid.renderFile(info.renderFile, childCtx, this.liquid.options)) as string
-      } catch {
+      } catch (e: unknown) {
+        le('processSourceQuickmacroSyntax', e)
         return theMatch
       }
     })

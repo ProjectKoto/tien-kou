@@ -4,6 +4,10 @@ Dockerfile.fly
 node_modules
 .git
 data
+data_nosqlpushtest
+nosqlpushtest_data
+data_dev
+dev_data
 .markdowndb
 cfDist
 nodeDist
@@ -20,7 +24,7 @@ markdown.db
 *markdown*.db-shm
 *markdown*.db-journal
 tg_session
-tg_session*
+*tg_session*
 liveAsset
 
 thirdparty/cloudflare_workers-sdk/**
@@ -32,3 +36,6 @@ thirdparty/cloudflare_workers-sdk/packages/miniflare/node_modules/**
 *lruCache*.sqlite-wal
 *lruCache*.sqlite-shm
 *lruCache*.sqlite-journal
+
+sqld_data.sqld
+*sqld_data*.sqld

@@ -310,7 +310,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
   honoApp.on("ALL", ['/sqlDb/:secretPath/*'], async c => {
     const { tkCtx } = await processOnHonoCtxReceive(c)
     const secretPath = c.req.param("secretPath")
-    if (!(tkCtx.e.TURSO_EXPOSE_SECRET_PATH && tkCtx.e.TURSO_EXPOSE_SECRET_PATH === secretPath && tkCtx.e.TURSO_DATABASE_URL)) {
+    if (!(tkCtx.e.TURSO_EXPOSE_SECRET_PATH && tkCtx.e.TURSO_EXPOSE_SECRET_PATH === secretPath && (tkCtx.e.TURSO_DATABASE_URL_FOR_SERVE_BACKEND || tkCtx.e.TURSO_DATABASE_URL))) {
       return c.text("path not found", 404)
     }
 
@@ -337,7 +337,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     if (!resolvedForwardedPath || !resolvedForwardedPath.startsWith('/')) {
       return c.text("path not found", 404)
     }
-    const tursoUrlStr = tkCtx.e.TURSO_DATABASE_URL
+    const tursoUrlStr = (tkCtx.e.TURSO_DATABASE_URL_FOR_SERVE_BACKEND || tkCtx.e.TURSO_DATABASE_URL)!
     let newUrlStr: string
     if (tursoUrlStr.startsWith('libsql')) {
       const tmpUrlStr = "http" + tursoUrlStr.slice(6)
@@ -551,8 +551,11 @@ export const honoReqCache = async ({
       } else {
         const newPromise = MiddleCacheHandler.getInCache(notImplementedCtx, cacheKey)
         honoReqCacheLru.set(cacheKey, newPromise)
-        cachedValue = await newPromise
-        honoReqCacheLru.delete(cacheKey)
+        try {
+          cachedValue = await newPromise
+        } finally {
+          honoReqCacheLru.delete(cacheKey)
+        }
       }
 
       if (cachedValue === null || cachedValue === undefined) {

@@ -5,7 +5,7 @@ import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
-import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
+import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
 export const defaultMarkdowndbDbPath = "markdown.db"
 
@@ -369,6 +369,9 @@ export class TkInvalidReqError extends TkReqError {
   }
 }
 
+// TODO: query this env by correct dependency relationship, instead of hard-coded initializing?
+let ctx0Inited_SERVE_SQL_QUERY_DEBUG_LOG = '0'
+
 export const MainTkCtxHandler = HC<TkCtxHandler>()(async (_: KD<never>) => {
   
   let firstCtx: TkContext | undefined = undefined
@@ -415,6 +418,8 @@ export const MainTkCtxHandler = HC<TkCtxHandler>()(async (_: KD<never>) => {
     },
     initByFirstCtx: async (ctx0: TkContext): Promise<void> => {
       firstCtx = ctx0
+      // TODO: query this env by correct dependency relationship, instead of hard-coded initializing?
+      ctx0Inited_SERVE_SQL_QUERY_DEBUG_LOG = ctx0?.e?.SERVE_SQL_QUERY_DEBUG_LOG || ctx0Inited_SERVE_SQL_QUERY_DEBUG_LOG
       await firstCtxArrivedEvent.emitSerial('firstCtxArrived')
       if (firstCtxInitedPromiseResolver) {
         firstCtxInitedPromiseResolver(firstCtx!)
@@ -1175,8 +1180,14 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         sqlArgs.push(pageSize, pageNum * pageSize)
       }
 
-      l("executing sql", truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60), truncateStrByLen(JSON.stringify(sqlArgs), 180))
-      // l("executing sql", sqlFormatForDisp(sqlFragmentList, sqlArgs))
+      const logSqlDesc1 = truncateStrByLen(sqlFragmentList.join(' ').replace(/\s+/g, ' '), 60)
+      const logSqlDesc2 = truncateStrByLen(JSON.stringify(sqlArgs), 180)
+
+      if (ctx0Inited_SERVE_SQL_QUERY_DEBUG_LOG === '1') {
+        l("executing sql", sqlFormatForDisp(sqlFragmentList, sqlArgs))
+      } else {
+        l("executing sql", logSqlDesc1, logSqlDesc2)
+      }
 
       const sqlResult = await SqlDbHandler.sql({
         tkCtx,
@@ -1198,6 +1209,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         }
       }
 
+      l("done sql", logSqlDesc1, logSqlDesc2)
       // l("sqlResult", sqlResult)
       
       return sqlResult

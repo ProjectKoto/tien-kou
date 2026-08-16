@@ -150,7 +150,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     tursoc = undefined
   } else {
     tursoc = turso.createClient({
-      url: tkEnv.TURSO_DATABASE_URL!,
+      url: tkEnv.TURSO_DATABASE_URL_FOR_HOARD_UPLOAD! || tkEnv.TURSO_DATABASE_URL!,
       authToken: cutPrefix(tkEnv.TURSO_AUTH_TOKEN!, 'basic:')[0],
       tls: !(tkEnv.TURSO_DISABLE_TLS === '1' || tkEnv.TURSO_DISABLE_TLS === 'true'),
     })
@@ -680,6 +680,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           currentChildFileInfo._sourceWithoutMatter = currentChildFileInfo._sourceWithoutMatter.substring(0, i + 1)
         }
         currentChildFileInfo.asset_raw_bytes = Buffer.from(currentChildFileInfo._sourceWithoutMatter, "utf-8")
+        currentChildFileInfo.asset_processed_bytes = null
         if (ongoingAssetGroup) {
           if (!currentChildFileInfo.metadata) {
             currentChildFileInfo.metadata = {}
@@ -698,7 +699,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         currentChildFileInfo.declaredTags = (currentChildFileInfo.metadata?.declaredTags || [])
         currentChildFileInfo.asset_size = currentChildFileInfo.asset_raw_bytes.byteLength
 
-        if (childMaxPubTime === undefined || childMaxPubTime < currentChildFileInfo.publish_time_by_metadata) {
+        if (childMaxPubTime === undefined || currentChildFileInfo.publish_time_by_metadata && childMaxPubTime < currentChildFileInfo.publish_time_by_metadata) {
           childMaxPubTime = currentChildFileInfo.publish_time_by_metadata
         }
       }
@@ -719,7 +720,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
             // considering static file generation on Windows
             const childName = replaceAll(replaceAll(line.substring(0, 19), ':', '.'), ' ', '_')
             const validChildDateStr = replaceAll(line.substring(0, 19), '.', ':')
-            const childPublishDate = new Date(validChildDateStr)
+            const childPublishDate = fileInfo?.metadata?.shouldSuppressChildrenPublish ? null : new Date(validChildDateStr)
             let childExtensionWithDot = (fileInfo.origin_file_extension || "").toLowerCase()
             if (childExtensionWithDot) {
               childExtensionWithDot = "." + childExtensionWithDot
@@ -750,7 +751,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               asset_type: undefined,
               // metadata: structuredClone(fileInfo.metadata) || {},
               metadata: {
-                publishTime: childPublishDate.getTime(),
+                publishTime: childPublishDate ? childPublishDate.getTime() : null,
               },
               // will assign later
               referencedTags: [],
@@ -758,7 +759,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
               links: [],
               tasks: [],
               asset_size: undefined,
-              publish_time_by_metadata: childPublishDate.getTime(),
+              publish_time_by_metadata: childPublishDate ? childPublishDate.getTime() : null,
               has_derived_children: false,
               deriving_parent_id: fileInfo._id,
               // deriving_parent: fileInfo.asset_path,
@@ -955,7 +956,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       fileInfo._sourceWithoutMatter = parentSourceLines.join('\n') + '\n'
       fileInfo.asset_raw_bytes = Buffer.from(fileInfo._sourceWithoutMatter)
       fileInfo.asset_size = fileInfo.asset_raw_bytes.byteLength
-      if (childMaxPubTime !== undefined && fileInfo.publish_time_by_metadata === undefined) {
+      if (childMaxPubTime !== undefined && childMaxPubTime !== null && fileInfo.publish_time_by_metadata === undefined && fileInfo.publish_time_by_metadata === null) {
         fileInfo.publish_time_by_metadata = childMaxPubTime
       }
       const filtered = childFileInfoList.filter(f => !f.should_discard)
@@ -1014,7 +1015,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
     return aliasMap
   })()
 
-  const { dedicatedSourceRegexReplaceListFuncMap, dedicatedSourceRegexReplaceList } = await parseDedicatedSourceRegexReplaceRules(tkCtx.e)
+  const { dedicatedSourceRegexReplaceListFuncMap: _dedicatedSourceRegexReplaceListFuncMap, dedicatedSourceRegexReplaceList } = await parseDedicatedSourceRegexReplaceRules(tkCtx.e)
 
   let watch = false
   if ((tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardOnce' && (tkEnv.PROCENV_TK_HOARD_SUB_MODE || '') !== 'hoardLocalOnlyOnce') {
@@ -1061,9 +1062,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           yield fi
         }
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       markdownExtraHandler: undefined,
-      dedicatedExtraHandler: async (filePath, getSourceFunc, fileInfo, { metadata, tags }) => {
+      dedicatedExtraHandler: async (filePath, getSourceFunc, fileInfo, { metadata }) => {
         if (metadata) {
           for (const alias of Object.values(metadataFieldAliases)) {
             const aliasVal = metadata[alias.aliasName]

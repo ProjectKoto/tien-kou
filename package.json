@@ -82,6 +82,7 @@
     "3b3u": "npm run buildThirdpartyForkDep && npm run upgradeBuiltThirdpartyForkDep",
     "typeCheck": "tsc -noEmit",
     "t": "tsc -noEmit",
+    "runSqld": "cross-env SQLD_HTTP_AUTH=basic:dXNlcjpwYXNzd29yZA== sqld --db-path ./dev_sqld_data.sqld --http-listen-addr 127.0.0.1:7753 --admin-listen-addr 127.0.0.1:7754",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

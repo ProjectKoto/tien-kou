@@ -11,7 +11,7 @@ export const TursoSqlDbHandler = HC<SqlDbHandler>()(async ({ TkFirstCtxProvideHa
 
   TkFirstCtxProvideHandler.listenOnFirstCtxForInit(async ctx0 => {
     tursoc = turso.createClient({
-      url: ctx0.e.TURSO_DATABASE_URL!,
+      url: (ctx0.e.TURSO_DATABASE_URL_FOR_SERVE_BACKEND || ctx0.e.TURSO_DATABASE_URL)!,
       authToken: cutPrefix(ctx0.e.TURSO_AUTH_TOKEN!, 'basic:')[0],
       tls: !((ctx0.e.TURSO_DISABLE_TLS ?? '') === '1' || (ctx0.e.TURSO_DISABLE_TLS ?? '') === 'true'),
     })

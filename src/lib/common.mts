@@ -709,13 +709,13 @@ export const parseDedicatedSourceRegexReplaceRules = async (tkEnv: Record<string
     s = s.toString()
     const sParts = s.split(',')
     for (let part of sParts) {
-      part = unescapeSimple(part, ',', "\\", "c")
+      part = unescapeSimple(part, ',', "%", "c")
       const partPart = part.split('=')
       if (partPart.length < 2) {
         continue
       }
-      const left = unescapeSimple(partPart[0], '=', "\\", "e")
-      const right = unescapeSimple(partPart[1], '=', "\\", "e")
+      const left = unescapeSimple(partPart[0], '=', "%", "e")
+      const right = unescapeSimple(partPart[1], '=', "%", "e")
       put(targetObj, left, right)
     }
     return targetObj
@@ -734,19 +734,20 @@ export const parseDedicatedSourceRegexReplaceRules = async (tkEnv: Record<string
   const dedicatedSourceRegexReplaceListFuncMap = await (async () => {
     return {
       replaceTagHandler: (substring, ...args) => {
-        if (args.length < 3) {
+        if (args.length < 2) {
           return substring
         }
         const tag = args[1]
         const tagLower = tag.toLowerCase()
         const tryTagLowerSubst = tagCiListMap[tagLower]
         if (tryTagLowerSubst !== undefined) {
-          return args[0] + '#' + tryTagLowerSubst + args[2]
+          return args[0] + '#' + tryTagLowerSubst
         }
         const tryTagSubst = tagCsListMap[tag]
         if (tryTagSubst !== undefined) {
-          return args[0] + '#' + tryTagSubst + args[2]
+          return args[0] + '#' + tryTagSubst
         }
+        return substring
       }
     // JavaScript replacer signature is like this
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -754,7 +755,8 @@ export const parseDedicatedSourceRegexReplaceRules = async (tkEnv: Record<string
   })()
 
   const dedicatedSourceRegexReplaceList = await (async () => {
-    const listStr = tkEnv.DEDICATED_SOURCE_REGEX_REPLACE_LIST
+    let listStr = tkEnv.DEDICATED_SOURCE_REGEX_REPLACE_LIST || ''
+    listStr = listStr + (listStr ? ',' : '') + /(^|\s+|\n+|\r+)#([^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source + '=ReplacerFunc(replaceTagHandler)'
     const rrList = commonSimpleStrParse(listStr, [] as {
       regExp: RegExp,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

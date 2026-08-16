@@ -439,8 +439,11 @@ const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandle
       } else {
         const newPromise = cfCache.match(requestCacheKey, { ignoreMethod: false })
         cfReqCacheLru.set(strKey, newPromise)
-        tryMatch = await newPromise
-        cfReqCacheLru.delete(strKey)
+        try {
+          tryMatch = await newPromise
+        } finally {
+          cfReqCacheLru.delete(strKey)
+        }
       }
       let eTagHeaderManipulated = false
       if (tryMatch && !tellCacheIgnoreUrlPath(request.url)) {

@@ -16,6 +16,10 @@ TURSO_DATABASE_URL = "libsql://xxx.turso.io"
 # "accept" accepts all)
 # see libsql: libsql-server/src/main.rs, comment of http_auth config field;
 # see libsql: libsql-server/src/auth/user_auth_strategies/http_basic.rs
+
+# TURSO_DATABASE_URL_FOR_HOARD_UPLOAD = "libsql://..."
+# TURSO_DATABASE_URL_FOR_SERVE_BACKEND = "libsql://..."
+
 TURSO_AUTH_TOKEN = "xxx"
 # or configure TURSO_EXPOSE_SECRET_PATH as a secret
 TURSO_EXPOSE_SECRET_PATH = "my-secret-path"
@@ -30,8 +34,8 @@ MARKDOWNDB_DB_PATH = 'markdown.db'
 # js regex literal-like: /.../gi (different from js: you dont need to escape "/" inside the regex)
 # without / wrapped, but with optional suffix +i:   ...+i (ignore case)   or  ... (do not ignore case)
 # the right side: ReplacerFunc(...) means using a replacer function.
-# use \c to represent literal comma ",", use \e to represent literl equal sign "=".
-DEDICATED_SOURCE_REGEX_REPLACE_LIST = `(^|\s+|\n+|\r+)#fhn([#"'\s]|$)+i=$1FromHn$2,(^|\s+|\n+|\r+)#til([#"'\s]|$)+i=$1TodayILearned$2,(^|\s+|\n+|\r+)#ril([#"'\s]|$)+i=$1ReadItLater$2`
+# use %c to represent literal comma ",", use %e to represent literl equal sign "=".
+DEDICATED_SOURCE_REGEX_REPLACE_LIST = ``
 # a special shorthand using ReplacerFunc(replaceTagHandler), executed last in DedicatedSourceRegexReplace.
 DEDICATED_SOURCE_TAG_REPLACE_CASE_INSENSITIVE_LIST = `fhn=FromHn,til=TodayILearned,ril=ReadItLater`
 DEDICATED_SOURCE_TAG_REPLACE_CASE_SENSITIVE_LIST = `CoT=ChainOfThought`
@@ -41,6 +45,7 @@ HOARD_DB_BATCH_DEBUG_MODE = "0"
 HOARD_DATA_UPDATE_CALLBACK_URL_LIST = "http://127.0.0.1:8568/admin/refreshSiteVersion;http://127.0.0.1:8569/admin/refreshSiteVersion;http://127.0.0.1:8571/admin/refreshSiteVersion;https://mysite.dev/admin/refreshSiteVersion"
 HOARD_DATA_UPDATE_RECACHE_URL_LIST = "http://127.0.0.1:8568/precache;http://127.0.0.1:8569/precache;http://127.0.0.1:8571/precache;https://mysite.dev/precache"
 
+# run hoard in an interactive shell once to ensure all information set up required for log in to telegram.
 TELEGRAM_API_ID = "11111"
 TELEGRAM_API_HASH = "xxxxxx"
 # socks
@@ -64,6 +69,8 @@ NODE_CLOUD_RT_LISTEN_HOST = '127.0.0.1'
 NODE_CLOUD_RT_LISTEN_PORT = '8571'
 NODE_LOCAL_FS_RT_LISTEN_HOST = '127.0.0.1'
 NODE_LOCAL_FS_RT_LISTEN_PORT = '8569'
+
+SERVE_SQL_QUERY_DEBUG_LOG = '0'
 
 HEAVY_ASSET_WEB_REDIR_URL_PREFIX = "https://my.static.asset.site/sub/path/"
 
@@ -94,6 +101,16 @@ LIQUID_DATE_TIMEZONE_OFFSET_MINUTE = '480'
 
 HOARD_GIT_LOCAL_LIVE_ASSET_BARE_REPO_PATH = '/path/to/repo.git'
 HOARD_GIT_LOCAL_STATIC_GEN_BARE_REPO_PATH = '/path/to/static-gen-repo.git'
+
+# run hoard in an interactive shell once to ensure credential correctly set up.
+# use GIT_CONFIG to specify alternative config file path, or use GIT_SSH_COMMAND to
+# append command line options to ssh invoked by git.
+# also it is recommended to set up:
+# GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=store
+# or:
+# GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=cache
+# or:
+# GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=credential.https://example.com.username GIT_CONFIG_VALUE_0=x-access-token GIT_CONFIG_KEY_1=credential.https://example.com.helper GIT_CONFIG_VALUE_1='!f() { test "$1" = get && echo "password=my-github-token"; }; f'
 
 HOARD_GIT_LIVE_ASSET_REMOTE = 'ssh://xxx'
 HOARD_GIT_STATIC_GEN_REMOTE = 'ssh://xxx2'

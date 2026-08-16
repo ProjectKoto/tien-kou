@@ -174,7 +174,7 @@ dist
 **/node_modules/
 /.wrangler/
 /tg_session/
-/tg_session*/
+/*tg_session*/
 # .vscode/
 /.markdowndb/
 
@@ -192,8 +192,14 @@ dist
 /data/staticGen*
 
 /data_nosqlpushtest/
+/nosqlpushtest_data/
+/data_dev/
+/dev_data/
 
 /*lruCache*.sqlite
 /*lruCache*.sqlite-wal
 /*lruCache*.sqlite-shm
 /*lruCache*.sqlite-journal
+
+/sqld_data.sqld
+/*sqld_data*.sqld
