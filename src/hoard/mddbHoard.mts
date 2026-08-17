@@ -679,8 +679,8 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
           }
           currentChildFileInfo._sourceWithoutMatter = currentChildFileInfo._sourceWithoutMatter.substring(0, i + 1)
         }
-        currentChildFileInfo.asset_raw_bytes = Buffer.from(currentChildFileInfo._sourceWithoutMatter, "utf-8")
-        currentChildFileInfo.asset_processed_bytes = null
+        currentChildFileInfo.asset_raw_bytes = null
+        currentChildFileInfo.asset_processed_bytes = Buffer.from(currentChildFileInfo._sourceWithoutMatter, "utf-8")
         if (ongoingAssetGroup) {
           if (!currentChildFileInfo.metadata) {
             currentChildFileInfo.metadata = {}
@@ -697,7 +697,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
         }
         currentChildFileInfo.asset_type = currentChildFileInfo.metadata?.type || null
         currentChildFileInfo.declaredTags = (currentChildFileInfo.metadata?.declaredTags || [])
-        currentChildFileInfo.asset_size = currentChildFileInfo.asset_raw_bytes.byteLength
+        currentChildFileInfo.asset_size = currentChildFileInfo.asset_processed_bytes.byteLength
 
         if (childMaxPubTime === undefined || currentChildFileInfo.publish_time_by_metadata && childMaxPubTime < currentChildFileInfo.publish_time_by_metadata) {
           childMaxPubTime = currentChildFileInfo.publish_time_by_metadata
@@ -954,9 +954,9 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       endOneChild()
 
       fileInfo._sourceWithoutMatter = parentSourceLines.join('\n') + '\n'
-      fileInfo.asset_raw_bytes = Buffer.from(fileInfo._sourceWithoutMatter)
-      fileInfo.asset_processed_bytes = null
-      fileInfo.asset_size = fileInfo.asset_raw_bytes.byteLength
+      fileInfo.asset_raw_bytes = null
+      fileInfo.asset_processed_bytes = Buffer.from(fileInfo._sourceWithoutMatter)
+      fileInfo.asset_size = fileInfo.asset_processed_bytes.byteLength
       if (childMaxPubTime !== undefined && childMaxPubTime !== null && fileInfo.publish_time_by_metadata === undefined && fileInfo.publish_time_by_metadata === null) {
         fileInfo.publish_time_by_metadata = childMaxPubTime
       }
