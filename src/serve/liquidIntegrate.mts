@@ -12,7 +12,8 @@ import { AHC, EAH, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchL
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
 import { FilterHandler, FilterOptions, TagClass, TagImplOptions } from "liquidjs/dist/template"
-import { IdentifierToken, QuotedToken } from "liquidjs/dist/tokens"
+import * as liquidTokensType from "liquidjs/dist/tokens"
+// import * as liquidjsJs from "liquidjs"
 
 export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
@@ -315,6 +316,15 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       logArgs = [rest[1], rest[0], ...rest.slice(2)]
     }
     l('liquidLog', ...logArgs)
+  })
+
+  LiquidHandler.registerFilterPostCreate("pageLog", async function (...rest) {
+    let logArgs = rest
+    if (logArgs && logArgs.length >= 2) {
+      logArgs = [rest[1], rest[0], ...rest.slice(2)]
+    }
+    l('liquidPageLog', ...logArgs)
+    throw new Error('pageLog as a liquid filter is not supported. please use the "tag" version.')
   })
 
   // - Liquid result gen related functions/filters
@@ -837,22 +847,33 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       throw new TkErrorHttpAware('assetLocators is not an array')
     }
 
-    const extraOpt = parseExtraOptFromLiquidShapeParams<WrapperOpt<QueryLiveAssetCommonParam>>({
+    const extraOpt = parseExtraOptFromLiquidShapeParams<QueryLiveAssetCommonParam>({
       tkCtx: rgc.tkCtx(),
       locatorSubPaths: assetLocators,
       locatorTopDirs: ["guarded/", "open/"],
       shouldIncludeDerivingParent: true,
       shouldFetchRawBytesIfLight: true,
-      shouldThrowIfNotFound: false,
-      shouldConvertToString: true,
       shouldIncludeWithoutPubTime: true,
     }, rest, {
       locatorPaths: 'locatorSubPaths',
     })
 
-
     const result = await TienKouAssetFetchHandler.queryLiveAsset(extraOpt)
+
     return result
+  })
+
+  LiquidHandler.registerFilterPostCreate("removeLocatableAssetPathTopDir", async function (a: string) {
+    if (a === null || a === undefined) {
+      return a
+    }
+    if (a.startsWith("guarded/")) {
+      return a.slice("guarded/".length)
+    }
+    if (a.startsWith("open/")) {
+      return a.slice("open/".length)
+    }
+    throw new TkErrorHttpAware('removeLocatableAssetPathTopDir: path does not start with a supported topDir: ' + a)
   })
 
   LiquidHandler.registerFilterPostCreate("arrToObjByKey", function (a: AnyObj[], k1: string, k2: string | undefined) {
@@ -1396,7 +1417,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
 
   LiquidHandler.registerTagPostCreate("backpatch", class BackpatchTag extends liquid.Tag {
     
-    identifier: IdentifierToken | QuotedToken
+    identifier: liquidTokensType.IdentifierToken | liquidTokensType.QuotedToken
     backpatchName: string
 
     constructor(tagToken: liquid.TagToken, remainingTokens: liquid.TopLevelToken[], liquid: Liquid) {
@@ -1405,8 +1426,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       this.backpatchName = this.identifier.content
     }
     // modified from Liquid.js capture tag
-    private readBackpatchName (): IdentifierToken | QuotedToken {
-      let ident = this.tokenizer.readIdentifier() as IdentifierToken | undefined
+    private readBackpatchName (): liquidTokensType.IdentifierToken | liquidTokensType.QuotedToken {
+      let ident = this.tokenizer.readIdentifier() as liquidTokensType.IdentifierToken | undefined
       if (ident?.content) return ident
       ident = this.tokenizer.readQuoted()
       if (ident) return ident
@@ -1428,7 +1449,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
 
   // modified from Liquid.js capture tag
   const backpatchValTagClass = class BackpatchValTag extends liquid.Tag {
-    identifier: IdentifierToken | QuotedToken
+    identifier: liquidTokensType.IdentifierToken | liquidTokensType.QuotedToken
     backpatchName: string
     templates: liquid.Template[] = []
     constructor (tagToken: liquid.TagToken, remainTokens: liquid.TopLevelToken[], liqInst: Liquid, parser: liquid.Parser) {
@@ -1449,8 +1470,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       throw new Error(`tag ${tagToken.getText()} not closed`)
     }
 
-    private readBackpatchName (): IdentifierToken | QuotedToken {
-      let ident: IdentifierToken | QuotedToken | undefined = this.tokenizer.readIdentifier()
+    private readBackpatchName (): liquidTokensType.IdentifierToken | liquidTokensType.QuotedToken {
+      let ident: liquidTokensType.IdentifierToken | liquidTokensType.QuotedToken | undefined = this.tokenizer.readIdentifier()
       if (ident.content) return ident
       ident = this.tokenizer.readQuoted()
       if (ident) return ident
@@ -1471,7 +1492,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       return this.templates
     }
 
-    public * localScope (): Iterable<string | IdentifierToken | QuotedToken> {
+    public * localScope (): Iterable<string | liquidTokensType.IdentifierToken | liquidTokensType.QuotedToken> {
       yield this.identifier
     }
   }
@@ -1492,6 +1513,73 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
 
     public * arguments (): liquid.Arguments {
       yield this.value
+    }
+
+  })
+
+  LiquidHandler.registerTagPostCreate("l", class TagL extends liquid.Tag {
+    private rawValue: liquid.Value
+
+    constructor (token: liquid.TagToken, remainTokens: liquid.TopLevelToken[], liquidInst: Liquid) {
+      super(token, remainTokens, liquidInst)
+      const fv = this.tokenizer.readFilteredValue()
+      this.rawValue = new liquid.Value(fv, this.liquid)
+    }
+    * render (ctx: liquid.Context): Generator<unknown, void, unknown> {
+      const rawVal = yield this.rawValue.value(ctx, this.liquid.options.lenientIf)
+      l('liquidLogT', rawVal)
+    }
+
+    public * arguments (): liquid.Arguments {
+      yield this.rawValue
+    }
+  })
+
+  // liquid does not export FilterToken...
+  class LiquidMockFilterToken2 extends liquid.Token {
+    public constructor(
+      public name: string,
+      public args: liquid.ValueToken | ([string?, liquid.ValueToken?])[],
+      input: string,
+      begin: number,
+      end: number,
+      file?: string
+    ) {
+      super(liquid.TokenKind.Filter, input, begin, end, file)
+    }
+  }
+
+  LiquidHandler.registerTagPostCreate("pageLog", class TagPageLog extends liquid.Tag {
+    private rawValue: liquid.Value
+    private escapedValue: liquid.Value
+
+    constructor (token: liquid.TagToken, remainTokens: liquid.TopLevelToken[], liquidInst: Liquid) {
+      super(token, remainTokens, liquidInst)
+      const fv = this.tokenizer.readFilteredValue()
+      this.rawValue = new liquid.Value(fv, this.liquid)
+      this.escapedValue = new liquid.Value(fv, this.liquid)
+      // copied from liquidjs template/output.ts
+      const filters = this.escapedValue.filters
+      const outputEscape = this.liquid.options.outputEscape
+      if (!filters[filters.length - 1]?.raw && outputEscape) {
+        // unaligned package of ts/js in liquidjs?
+        // // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // const token = new (liquidjsJs as any).FilterToken(outputEscape.toString(), [], '', 0, 0)
+        const token = new LiquidMockFilterToken2(outputEscape.toString(), [], '', 0, 0)
+        // liquid does not export FilterToken...
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        filters.push(new liquid.Filter(token as any, outputEscape, this.liquid))
+      }
+    }
+    * render (ctx: liquid.Context, emitter: liquid.Emitter): Generator<unknown, void, unknown> {
+      const rawVal = yield this.rawValue.value(ctx, this.liquid.options.lenientIf)
+      const escapedVal = yield this.escapedValue.value(ctx, this.liquid.options.lenientIf)
+      l('liquidPageLogT', rawVal)
+      emitter.write('<div class="liquid-page-log">' + escapedVal + '</div>')
+    }
+
+    public * arguments (): liquid.Arguments {
+      yield this.rawValue
     }
 
   })
