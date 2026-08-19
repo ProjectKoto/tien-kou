@@ -5,7 +5,7 @@ import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
-import { AnyObj, Ao, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
+import { AnyObj, Ao, cutPrefix, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
 export const defaultMarkdowndbDbPath = "markdown.db"
 
@@ -1188,6 +1188,13 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
       if (ctx0Inited_SERVE_SQL_QUERY_DEBUG_LOG === '1') {
         l("executing sql", sqlFormatForDisp(sqlFragmentList, sqlArgs))
+        if (tkCtx) {
+          l("exec sql: curr liquid context: ", (tkCtx as unknown as Record<string, string>)['liquidLastFic'], '')
+        } else {
+          l("exec sql: no curr liquid context, seems tkCtx is undefined")
+        }
+        const pseudoErrStack = new Error().stack
+        l("exec sql: curr stack:", pseudoErrStack !== undefined && pseudoErrStack !== null ? cutPrefix(pseudoErrStack, 'Error')[0] : pseudoErrStack)
       } else {
         l("executing sql", logSqlDesc1, logSqlDesc2)
       }
