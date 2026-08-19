@@ -8,8 +8,14 @@ export const makeEsbuildConfig = async (programName) => { return {
   bundle: true,
   keepNames: true,
   
-  target: 'es6',
-  sourcemap: true,
+  // target: 'es6',
+  
+  // this uses native async/await instead of polyfill impl, support better async stack trace
+  target: 'es2020',
+
+  // sourcemap: true,
+  sourcemap: 'both',
+
   metafile: true,
   alias: jsonc.parse(await fs.readFile('./wrangler.jsonc', {encoding: 'utf-8'})).alias,
   loader: {
