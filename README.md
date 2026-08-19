@@ -1,11 +1,16 @@
 
-With the stance of a subtle resistance, the code of this engine, including all custom modifications of thirdparty dependencies, ~~DID NOT~~ DID ONLY MINIMALLY, DOES NOT, AND WILL NEVER rely on perceivable Large Language Models' (LLM) help. (But the instance site - tien-kou-kari - already does - in working with HTML/CSS for some pages, and a large part HTML/CSS/JavaScript code of "Style Customizer" page.)
+2026-08: With the stance of a subtle resistance, the code of this engine, including all custom modifications of thirdparty dependencies, WILL NEVER rely on perceivable Large Language Models' (LLM) help in the future.
 
-<span lang="zh-Hant-CN">作爲一個微小的反抗立場，本引擎的所有程式碼，包括所有對於第三方依賴項的自訂修改，在過去僅以最低程度依賴，並在現在、將來不依賴於任何可感知的大語言模型（LLM）之協助。（但其實例網站——“tien-kou-kari”——已經依賴了——在一些頁面的HTML/CSS樣式中有所依賴，以及在“Style Customer”頁面上較大範圍的HTML/CSS/JavaScript程式碼上亦有依賴。）</span>
+<span lang="zh-Hant-CN">2026-08: 作爲一個微小的反抗立場，本引擎的所有程式碼，包括所有對於第三方依賴項的自訂修改，在將來将不依賴於任何可感知的大語言模型（LLM）之協助。</span>
 
 Declaration of past LLM usage:
 
-- 2025-08-25 Asked DeepSeek V3 (officially hosted) about how to do Cloudflare KV cache manipulation in a llibrary callback without access to Cloudflare Workers ctx/env. **No tien-kou specific code/description fed into it; the question is a generic one and the answer is more of a trivial solution, not rather helpful addressing the problem and is not used in actual engine code implementation.**
+- 2025 Asked DeepSeek V3 (officially hosted) about JavaScript basic syntax, TypeScript type gymnastics, some simple generic impl of TypeScript methods, and some naming advice of some methods. That helped in some trivial and tedious work in the initial framework of tien-kou.
+- 2025 Asked DeepSeek V3 (officially hosted) about ETag-based caching logic. This helped building the ETag caching mechanism of Cloudflare Workers deployment.
+- 2025 DeepSeek V3 (officially hosted) was heavily used in writing senderApi, and the Style Customizer of tien-kou site instance. They both fall outside of the range of tien-kou engine.
+- 2025 Asked DeepSeek V3 (officially hosted) about a generic Telegram API question. That helped building the instance site, which falls outside of the range of tien-kou engine.
+- 2025 Asked DeepSeek V3 (officially hosted) about esbuild script writing. No tien-kou specific code/description fed into it; the question is a generic one. The response is heavily reviewed, inspected, tailored modified to fit the need of the project.
+- 2025 Asked DeepSeek V3 (officially hosted) about how to do Cloudflare KV cache manipulation in a llibrary callback without access to Cloudflare Workers ctx/env. No tien-kou specific code/description fed into it; the question is a generic one and the answer is more of a trivial solution, not rather helpful addressing the problem and is not used in actual engine code implementation.
 
 # How to build
 
