@@ -575,7 +575,7 @@ export const honoReqCache = async ({
       await next()
     } else {
       if (cacheFetchResult.val) {
-        l('cache hit')
+        l('cache hit', c.req.url)
         const resp = cacheFetchResult.val as {
           headers: [n: string, v: string][],
           status: number,
