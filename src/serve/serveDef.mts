@@ -777,7 +777,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
       sqlFragmentList.push(`
       SELECT *${extraColumnSqlSegment ?? ''} FROM (
-        SELECT *, MIN(top_dir_index) FROM (
+        SELECT *, MIN(top_dir_full_match_prior_index) FROM (
       `)
 
       if (extraColumnSqlSegment) {
@@ -798,7 +798,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
             multipleConditionsSqlFragments.push(`
               SELECT * FROM
-              (SELECT ${i} AS top_dir_index, ${j} AS second_cond_index) idx INNER JOIN (
+              (SELECT ${i * 10} AS top_dir_full_match_prior_index, ${j} AS second_cond_index) idx INNER JOIN (
                 SELECT
                   FALSE AS is_directory,
                   asset_raw_path AS asset_raw_path,
@@ -832,14 +832,14 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
             multipleConditionsSqlFragments.push(`
               SELECT * FROM
-              (SELECT ${i} AS top_dir_index, ${j} AS second_cond_index) idx INNER JOIN (
+              (SELECT ${i * 10 + 1} AS top_dir_full_match_prior_index, ${j} AS second_cond_index) idx INNER JOIN (
                 SELECT
                   TRUE AS is_directory,
                   NULL AS asset_raw_path,
                   ? AS asset_locator,
                   'directory' AS asset_type,
                   NULL AS asset_store_tag,
-                  asset_size AS asset_size,
+                  NULL AS asset_size,
                   FALSE AS is_asset_heavy,
                   NULL AS has_derived_children,
                   NULL AS deriving_parent_id,
@@ -865,13 +865,12 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
                   ) AS metadata,
                   NULL AS links,
                   NULL AS publish_time_by_metadata,
-                  is_deleted_by_hoard AS is_deleted_by_hoard,
-                  update_time_by_hoard AS update_time_by_hoard
+                  0 AS is_deleted_by_hoard,
+                  MAX(update_time_by_hoard) AS update_time_by_hoard
                 FROM files WHERE
                   asset_locator GLOB ?
                 AND (is_deleted_by_hoard IS NULL OR is_deleted_by_hoard != 1)
                 ORDER BY update_time_by_hoard DESC
-                LIMIT 1
               ) d
             `)
 
@@ -888,7 +887,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
           for (let j = 0; j < locatorSubAncestors.length; j++) {
             multipleConditionsSqlFragments.push(`
               SELECT * FROM
-              (SELECT ${i} AS top_dir_index, ${j} AS second_cond_index) idx INNER JOIN (
+              (SELECT ${i * 10} AS top_dir_full_match_prior_index, ${j} AS second_cond_index) idx INNER JOIN (
                 SELECT
                   FALSE AS is_directory,
                   asset_raw_path AS asset_raw_path,
@@ -925,7 +924,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
           for (let j = 0; j < locatorSubParents.length; j++) {
             multipleConditionsSqlFragments.push(`
               SELECT * FROM
-              (SELECT ${i} AS top_dir_index, ${j} AS second_cond_index) idx INNER JOIN (
+              (SELECT ${i * 10} AS top_dir_full_match_prior_index, ${j} AS second_cond_index) idx INNER JOIN (
                 SELECT
                   CASE slash_index
                   WHEN 0 THEN FALSE
@@ -1023,9 +1022,13 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
                   update_time_by_hoard AS update_time_by_hoard
                 FROM
-                (
+                (` + /* we want: if derivingParent case, the parent should be the prioritized match (MIN(INSTR(following_locator, '/'))), then publish_time_by_metadata, then update_time_by_hoard
+                
+                the milder version: SELECT MIN(INSTR(SUBSTR(asset_locator, ?), '/')), _id AS _id, SUBSTR(asset_locator, ?) AS following_locator FROM files WHERE
+                
+                */ `
                   SELECT f.*, SUBSTR(f.asset_locator, 1, ?) AS parent_concat_locator, following_locator, INSTR(following_locator, '/') AS slash_index FROM (
-                    SELECT MAX(update_time_by_hoard), _id AS _id, SUBSTR(asset_locator, ?) AS following_locator FROM files WHERE
+                    SELECT MIN(SUBSTR('00000000000000000000' || CAST(INSTR(SUBSTR(asset_locator, ?), '/') AS TEXT), -20, 20) || SUBSTR('00000000000000000000' || CAST(IFNULL(publish_time_by_metadata, 0) AS TEXT), -20, 20) || SUBSTR('00000000000000000000' || CAST(IFNULL(update_time_by_hoard, 0) AS TEXT), -20, 20)), _id AS _id, SUBSTR(asset_locator, ?) AS following_locator FROM files WHERE
                         asset_locator GLOB ?
                       AND (is_deleted_by_hoard IS NULL OR is_deleted_by_hoard != 1)
                     GROUP BY
@@ -1040,6 +1043,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
             const parentConcatLocatorLen = [...(locatorTopDirs[i] + locatorSubParents[j])].length
             sqlArgs.push(
               parentConcatLocatorLen,
+              parentConcatLocatorLen + 1,
               parentConcatLocatorLen + 1,
               sqlGlobPatternEscape(locatorTopDirs[i] + locatorSubParents[j]) + '*',
             )
