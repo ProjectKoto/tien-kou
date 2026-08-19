@@ -93,6 +93,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
       const [_, subPathTryStrippedExt, ext] = stripExtensionList(subPath, allKnownAssetExtNames)
 
       const queryResultList = await TienKouAssetFetchHandler.queryLiveAsset({
+        tkCtx: extraOpt?.tkCtx,
         locatorTopDirs: locatorTopDirsToSearch,
         locatorSubPaths: (subPathTryStrippedExt !== subPath && isInExtensionList(ext, strippedInLocatorExtNames)) ? [subPath, subPathTryStrippedExt] : [subPath],
         shouldIncludeDerivingParent: true,
@@ -124,6 +125,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
     // throws: TkAssetNotFoundError
     fetchBackstageAsset: async (subPath: string, extraOpt: FetchBackstageAssetOpt): Promise<TkAssetInfo> => {
       const queryResultList = await TienKouAssetFetchHandler.queryLiveAsset({
+        tkCtx: extraOpt?.tkCtx,
         locatorTopDirs: ["backstage/"],
         locatorSubPaths: [subPath],
         shouldIncludeDerivingParent: true,
@@ -174,6 +176,7 @@ export const TkSqlAssetCategoryLogicHandler = HC<TienKouAssetCategoryLogicHandle
       const locatorTopDirsToSearch = ["guarded/", "open/"]
 
       const result = await TienKouAssetFetchHandler.queryLiveAsset({
+        tkCtx: extraOpt?.tkCtx,
         locatorTopDirs: locatorTopDirsToSearch,
         locatorSubPaths: [subPath],
         shouldIncludeDerivingParent: false,

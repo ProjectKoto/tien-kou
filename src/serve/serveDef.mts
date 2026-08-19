@@ -253,16 +253,19 @@ export interface LiquidHandler {
 }
 
 export interface FetchLocatableContentOpt {
+  tkCtx?: TkContext
   shouldReadOpenAssets?: boolean
   shouldFetchRawBytesIfLight?: boolean
 }
 
 export interface FetchBackstageAssetOpt {
+  tkCtx?: TkContext
   shouldFetchLiveHeavyAssetBytes?: boolean
   liveLightOnly?: boolean
 }
 
 export interface FetchGenericLocatableAssetOpt {
+  tkCtx?: TkContext
   shouldFetchLiveHeavyAssetBytes?: boolean
 }
 

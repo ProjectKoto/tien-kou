@@ -19,6 +19,59 @@ export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
   return (asset.fetched_asset_type as string).endsWith('Open')
 }
 
+// copied and modified from liquidjs error.ts
+function mkLiquidFilePosContext(token: liquid.Token) {
+  
+
+
+  const [line, col] = token.getPosition()
+  const lines = token.input.split('\n')
+  const begin = Math.max(line - 2, 1)
+  const end = Math.min(line + 3, lines.length)
+
+  const iRange: (number)[] = [-2]
+  for (let i = begin; i <= end; i++) {
+    iRange.push(i)
+  }
+  iRange.push(-1)
+  
+  const context = iRange
+    .map(lineNumber => {
+      if (lineNumber === -2) {
+        let msg = '\n'
+        if (token.file) msg += `liquid token context, file: ${token.file}`
+        const [line, col] = token.getPosition()
+        msg += `, line: ${line}, col: ${col}\n`
+        return msg
+      }
+      if (lineNumber === -1) {
+        return ''
+      }
+      const rowIndicator = (lineNumber === line) ? '>> ' : '   '
+      const num = String(lineNumber).padStart(String(end).length)
+      let text = `${rowIndicator}${num}| `
+
+      const colIndicator = lineNumber === line
+        ? '\n' + '^'.padStart(col + text.length)
+        : ''
+
+      text += lines[lineNumber - 1]
+      text += colIndicator
+      return text
+    })
+    .join('\n')
+
+  return context
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const liquidFilterCommonProcessGetRgc = (liquidFilterImplThis: any /* liquidjs/dist/template FilterImpl */) => {
+  const rgc = liquidFilterImplThis.context.getSync(['rgc']) as ResultGenContext
+  // Fic: filter invocation context
+  ;(rgc.tkCtx() as unknown as Record<string, string>)['liquidLastFic'] = mkLiquidFilePosContext(liquidFilterImplThis.token)
+  return rgc
+}
+
 export const MainLiquidHandler = HC<LiquidHandler>()(async ({ TkFirstCtxProvideHandler }: KD<"TkFirstCtxProvideHandler">) => {
 
   let liquid: Liquid | undefined = undefined
@@ -347,6 +400,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       isAssetHeavy?: boolean,
     }
     extraOpt = extraOpt ?? {}
+
+    extraOpt.tkCtx = extraOpt.tkCtx ?? rgcOptional?.tkCtx()
   
     let asset: TkAssetInfo
     try {
@@ -432,7 +487,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
 
   {
     const filterFuncCommon: (defaultShouldConvertToString: boolean) => liquid.FilterImplOptions = (defaultShouldConvertToString) => async function (a, ...rest) {
-      const rgc = this.context.getSync(['rgc']) as ResultGenContext
+      const rgc = liquidFilterCommonProcessGetRgc(this)
       const subPath = a ?? this.context.getSync(['locatableContentSubPath'])
 
       if (typeof subPath !== 'string') {
@@ -479,6 +534,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     const pseudoRgc = {}
     const rgc = (rgcOptional ?? pseudoRgc) as AnyObj
     extraOpt = extraOpt ?? {}
+
+    extraOpt.tkCtx = extraOpt.tkCtx ?? rgcOptional?.tkCtx()
 
     if (pathClassValidator) {
       if (!pathClassValidator(subPath)) {
@@ -615,7 +672,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
 
   {
     const filterFuncCommon: (defaultShouldConvertToString: boolean, classCallInfo: { className: string, subPathFieldName: string, func: (rgcOptional: ResultGenContext, subPath: string, extraOpt: WrapperOpt<FetchBackstageAssetOpt>) => Promise<string | AnyObj | undefined>}) => liquid.FilterImplOptions = (defaultShouldConvertToString, classCallInfo) => async function (a, ...rest) {
-      const rgc = this.context.getSync(['rgc']) as ResultGenContext
+      const rgc = liquidFilterCommonProcessGetRgc(this)
       const subPath = a ?? this.context.getSync([classCallInfo.subPathFieldName])
 
       if (typeof subPath !== 'string') {
@@ -653,6 +710,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       isGenericLocatableAssetFound?: boolean,
     }
     extraOpt = extraOpt ?? {}
+
+    extraOpt.tkCtx = extraOpt.tkCtx ?? rgcOptional?.tkCtx()
 
     let asset: TkAssetInfo
     try {
@@ -715,7 +774,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   {
     LiquidHandler.registerFilterPostCreate("fetchGenericLocatableAsset", async function (a, ...rest) {
 
-      const rgc = this.context.getSync(['rgc']) as ResultGenContext
+      const rgc = liquidFilterCommonProcessGetRgc(this)
       const subPath = a ?? this.context.getSync(['genericLocatableAssetSubPath'])
 
       if (typeof subPath !== 'string') {
@@ -820,7 +879,9 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   
 
   LiquidHandler.registerFilterPostCreate("listAssetChildren", async function (parent, shouldIncludeDirectories, shouldIncludeDerivingParent, extensionListStr, orderBy, pageNum, pageSize, customSql, ...customSqlArgs) {
+    const rgc = liquidFilterCommonProcessGetRgc(this)
     const result = await TienKouAssetFetchHandler.queryLiveAsset({
+      tkCtx: rgc.tkCtx(),
       locatorTopDirs: ["guarded/", "open/"],
       locatorSubParents: [parent],
       shouldIncludeDirectories,
@@ -839,7 +900,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   })
 
   LiquidHandler.registerFilterPostCreate("queryLiveAssetByRawLocators", async function (a, ...rest) {
-    const rgc = this.context.getSync(['rgc']) as ResultGenContext
+    const rgc = liquidFilterCommonProcessGetRgc(this)
     const assetLocators = a ?? this.context.getSync(['liveAssetLocators'])
 
     if (assetLocators !== undefined && (typeof assetLocators !== 'object' || !Array.isArray(assetLocators))) {
@@ -1104,7 +1165,9 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   })
 
   LiquidHandler.registerFilterPostCreate("listAssetDescendants", async function (ancestor, shouldIncludeDerivingParent, orderBy, pageNum, pageSize, customSql, ...customSqlArgs) {
+    const rgc = liquidFilterCommonProcessGetRgc(this)
     return await TienKouAssetFetchHandler.queryLiveAsset({
+      tkCtx: rgc.tkCtx(),
       locatorTopDirs: ["guarded/", "open/"],
       locatorSubAncestors: [ancestor],
       shouldIncludeDerivingParent,
