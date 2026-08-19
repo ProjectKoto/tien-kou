@@ -1021,20 +1021,18 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
 
                   is_deleted_by_hoard AS is_deleted_by_hoard,
 
-                  MAX(update_time_by_hoard) AS update_time_by_hoard
+                  update_time_by_hoard AS update_time_by_hoard
                 FROM
                 (
-                  SELECT
-                    INSTR(following_locator, '/') AS slash_index,
-                    *
-                  FROM
-                  (
-                    SELECT *, SUBSTR(asset_locator, 1, ?) AS parent_concat_locator, SUBSTR(asset_locator, ?) AS following_locator FROM files WHERE
-                      asset_locator GLOB ?
-                    AND (is_deleted_by_hoard IS NULL OR is_deleted_by_hoard != 1)
-                  ) with_following_locator
-                ) with_slash_index
-                GROUP BY asset_locator
+                  SELECT f.*, SUBSTR(f.asset_locator, 1, ?) AS parent_concat_locator, following_locator, INSTR(following_locator, '/') AS slash_index FROM (
+                    SELECT MAX(update_time_by_hoard), _id AS _id, SUBSTR(asset_locator, ?) AS following_locator FROM files WHERE
+                        asset_locator GLOB ?
+                      AND (is_deleted_by_hoard IS NULL OR is_deleted_by_hoard != 1)
+                    GROUP BY
+                      SUBSTR(following_locator, 1, IFNULL(NULLIF(INSTR(following_locator, '/') - 1, -1), LENGTH(following_locator)))
+                  ) direct_children_in_dir
+                    INNER JOIN files f ON direct_children_in_dir._id = f._id
+                ) direct_children_split
               ) d
             `)
 
