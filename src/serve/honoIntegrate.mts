@@ -5,7 +5,7 @@ import * as honoTypes from "hono/types"
 import * as liquid from "liquidjs"
 import mimeDbJson from 'mime-db/db.json'
 import mimeType from 'mime-types'
-import { AnyObj, dedicatedAssetExtNames, l, lazyValue, le, listableAssetExtNames, LruInMemory, markdownExtNames, tellCacheIgnoreUrlPath, TkContext, TkError, TkErrorHttpAware, toArrayBuffer, um } from "../lib/common.mts"
+import { AnyObj, dedicatedAssetExtNames, isTienKouResponseCacheable, l, lazyValue, le, listableAssetExtNames, LruInMemory, markdownExtNames, tellCacheIgnoreUrlPath, TkContext, TkError, TkErrorHttpAware, toArrayBuffer, um } from "../lib/common.mts"
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
 import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError, MiddleCacheHandler, notImplementedCtx } from "./serveDef.mts"
@@ -590,7 +590,7 @@ export const honoReqCache = async ({
         })
       } else {
         await next()
-        if (c.res.body !== null) {
+        if (c.res.body !== null && isTienKouResponseCacheable(c.res)) {
           const respClone = c.res.clone()
           const respToCache = new Response(respClone.body, respClone)
           respToCache.headers.delete('Cache-Control')

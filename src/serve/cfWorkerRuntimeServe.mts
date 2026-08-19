@@ -1,7 +1,7 @@
 
 import * as hono from 'hono'
 import isArrayBuffer from 'is-array-buffer'
-import { AnyObj, l, LazyVal, lazyValue, le, LruInMemory, tellCacheIgnoreUrlPath, TkContext, TkError } from '../lib/common.mts'
+import { AnyObj, isTienKouResponseCacheable, l, LazyVal, lazyValue, le, LruInMemory, tellCacheIgnoreUrlPath, TkContext, TkError } from '../lib/common.mts'
 import { HonoWithErrorHandler } from '../lib/hack.mts'
 import { AbstractTkSqlLiquidHonoApp, hc, HonoEnvTypeWithTkCtx, HonoProvideHandler, MainHonoProvideHandler, TkContextHl, TkContextHlGetTkEnvHandler } from './honoIntegrate.mts'
 import { RuntimeCachedLiquidHandler } from './liquidIntegrate.mts'
@@ -465,7 +465,7 @@ const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandle
         l('cf etag test resp is 304, return cached resp')
         return tryMatch
       }
-      if (resp.status == 200) {
+      if (isTienKouResponseCacheable(resp)) {
         l('cf put resp in cache')
         const respClone = resp.clone()
         const respToCache = new Response(respClone.body, respClone)

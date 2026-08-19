@@ -845,3 +845,7 @@ export class LruInMemory<K, V> {
     return this.cache.keys().next().value
   }
 }
+
+export const isTienKouResponseCacheable = (resp: Response): boolean => {
+  return resp.status === 200 // || ...
+}
