@@ -5,7 +5,7 @@ With the stance of a subtle resistance, the code of this engine, including all c
 
 Declaration of past LLM usage:
 
-- 2025-08-25 Asked DeepSeek V3 about how to do Cloudflare KV cache manipulation in a llibrary callback. **The answer is more of a trivial solution, not rather helpful addressing the problem and is not used in actual engine code implementation.**
+- 2025-08-25 Asked DeepSeek V3 (officially hosted) about how to do Cloudflare KV cache manipulation in a llibrary callback. **No tien-kou specific code/description fed into it; the question is a generic one and the answer is more of a trivial solution, not rather helpful addressing the problem and is not used in actual engine code implementation.**
 
 # How to build
 
