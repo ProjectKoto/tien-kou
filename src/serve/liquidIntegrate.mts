@@ -823,7 +823,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
         const attrs = tokens[idx].attrs
         if (attrs) {
           const existingVal = attrs[attrIndex][1]
-          if (existingVal) {
+          if (existingVal && existingVal.startsWith('/')) {
             attrs[attrIndex][1] = env.rgc.urlPrefixWhenIsRss + existingVal
           }
         }
