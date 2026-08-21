@@ -7,7 +7,7 @@ import { default as markdownItHashtag } from 'markdown-it-hashtag'
 import { default as markdownItLinkAttributes } from 'markdown-it-link-attributes'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, allKnownAssetExtNames, bytesLikeToStringIgnoreError, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash, replaceAsync, unescapeSimple } from "../lib/common.mts"
+import { AnyObj, allKnownAssetExtNames, bytesLikeToStringIgnoreError, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash, replaceAsync, unescapeSimple, removeLocatableAssetPathTopDir } from "../lib/common.mts"
 import { AHC, EAH, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HC, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
@@ -928,13 +928,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     if (a === null || a === undefined) {
       return a
     }
-    if (a.startsWith("guarded/")) {
-      return a.slice("guarded/".length)
-    }
-    if (a.startsWith("open/")) {
-      return a.slice("open/".length)
-    }
-    throw new TkErrorHttpAware('removeLocatableAssetPathTopDir: path does not start with a supported topDir: ' + a)
+    return removeLocatableAssetPathTopDir(a)
   })
 
   LiquidHandler.registerFilterPostCreate("arrToObjByKey", function (a: AnyObj[], k1: string, k2: string | undefined) {

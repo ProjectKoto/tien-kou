@@ -158,6 +158,24 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       return Object.fromEntries(urlGetter().searchParams.entries())
     })
 
+    const urlSchemeHostGetter = lazyValue(() => {
+      const origUrl = urlGetter()
+      const urlSchemeHostOnly = new URL('https://www.example.com')
+      urlSchemeHostOnly.host = origUrl.host
+      urlSchemeHostOnly.hostname = origUrl.hostname
+      urlSchemeHostOnly.pathname = '/'
+      urlSchemeHostOnly.password = ''
+      urlSchemeHostOnly.hash = ''
+      urlSchemeHostOnly.port = origUrl.port
+      urlSchemeHostOnly.protocol = origUrl.protocol
+      urlSchemeHostOnly.search = ''
+      let urlSchemeHostOnlyStr = urlSchemeHostOnly.href
+      if (urlSchemeHostOnlyStr.endsWith('/')) {
+        urlSchemeHostOnlyStr = urlSchemeHostOnlyStr.slice(0, urlSchemeHostOnlyStr.length - 1)
+      }
+      return urlSchemeHostOnlyStr
+    })
+
     const queryMultiValueGetter = lazyValue(() => {
       const result:{ [x: string]: string[] } = {}
       for (const [k, v] of urlGetter().searchParams.entries()) {
@@ -200,6 +218,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       tkCtx: () => tkCtx,
       rgc: undefined as unknown as ResultGenContextHl<HE>,
       reqUrl: honoCtx.req.url,
+      reqUrlSchemeHostOnly: () => { return urlSchemeHostGetter() },
       reqPath,
       reqPathTidy: reqPath.split('/').filter(x => x !== '').join('/'),
       reqQuery: () => { return queryGetter() },
