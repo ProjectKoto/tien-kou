@@ -3,6 +3,7 @@ import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { LiquidCache } from "liquidjs/dist/cache"
 import { default as markdownit } from 'markdown-it'
+import { Options as MditOptions } from 'markdown-it'
 import { default as markdownItHashtag } from 'markdown-it-hashtag'
 import { default as markdownItLinkAttributes } from 'markdown-it-link-attributes'
 import { sed } from "sed-lite"
@@ -13,6 +14,8 @@ import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
 import { FilterHandler, FilterOptions, TagClass, TagImplOptions } from "liquidjs/dist/template"
 import * as liquidTokensType from "liquidjs/dist/tokens"
+import * as mditRenderer from "markdown-it/lib/renderer.mjs"
+import * as mditToken from "markdown-it/lib/token.mjs"
 // import * as liquidjsJs from "liquidjs"
 
 export const isSqlAssetOpen = (asset: TkAssetInfo): boolean => {
@@ -801,6 +804,73 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   LiquidHandler.registerFilterPostCreate("isAssetExtensionInList", isAssetExtensionInList)
   LiquidHandler.registerFilterPostCreate("isAssetExtension", isAssetExtensionInList)
 
+  // from markdownItLinkAttributes source code
+  const markdownPrependUrlPrefix = function (md: markdownit) {
+    const defaultRender = md.renderer.rules.link_open || function (
+      tokens,
+      idx,
+      options,
+      env,
+      self
+    ) {
+      return self.renderToken(tokens, idx, options)
+    }
+
+    md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+      const attrIndex = tokens[idx].attrIndex('href')
+
+      if (attrIndex >= 0) {
+        const attrs = tokens[idx].attrs
+        if (attrs) {
+          const existingVal = attrs[attrIndex][1]
+          if (existingVal) {
+            attrs[attrIndex][1] = env.rgc.urlPrefixWhenIsRss + existingVal
+          }
+        }
+      }
+
+      // pass token to default renderer.
+      return defaultRender(tokens, idx, options, env, self)
+    }
+  }
+
+  const markdownPrependUrlPrefixForHtml = function (md: markdownit) {
+    const htmlBlockDefaultRender = md.renderer.rules.html_block || function (
+      tokens,
+      idx,
+      options,
+      env,
+      self
+    ) {
+      return self.renderToken(tokens, idx, options)
+    }
+    const htmlInlineDefaultRender = md.renderer.rules.html_inline || function (
+      tokens,
+      idx,
+      options,
+      env,
+      self
+    ) {
+      return self.renderToken(tokens, idx, options)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const commonHtmlHandlerGen = (origRenderRule: mditRenderer.RenderRule) => function (tokens: mditToken.default[], idx: number, options: MditOptions, env: any, self: mditRenderer.default) {
+      const existingContent = tokens[idx].content
+
+      if (existingContent) {
+        let newContent = replaceAll(existingContent, 'tien-kou-marker-for-url-prefix-replace="1" href="/', 'tien-kou-marker-for-url-prefix-replace="1" href="' + env.rgc.urlPrefixWhenIsRss + '/')
+        newContent = replaceAll(newContent, 'tien-kou-marker-for-url-prefix-replace="1" src="/', 'tien-kou-marker-for-url-prefix-replace="1" src="' + env.rgc.urlPrefixWhenIsRss + '/')
+
+        tokens[idx].content = newContent
+      }
+
+      return origRenderRule(tokens, idx, options, env, self)
+    }
+
+    md.renderer.rules.html_block = commonHtmlHandlerGen(htmlBlockDefaultRender)
+    md.renderer.rules.html_inline = commonHtmlHandlerGen(htmlInlineDefaultRender)
+  }
 
   const md = markdownit({
     html: true,
@@ -812,6 +882,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       hashtagRegExp: /(?:[^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source,
       preceding:     /^|\s+|\n+|\r+/.source,
     })
+    .use(markdownPrependUrlPrefix)
+    .use(markdownPrependUrlPrefixForHtml)
     .use(markdownItLinkAttributes, {
       attrs: {
         target: '_blank',
@@ -819,9 +891,9 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       }
     })
 
-  md.renderer.rules.hashtag_open = function(tokens, idx) {
+  md.renderer.rules.hashtag_open = function(tokens, idx, _options, env) {
     const tagName = tokens[idx].content
-    return '<a target="_blank" href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
+    return '<a  target="_blank" href="' + encodeURI(env.rgc.urlPrefixWhenIsRss) + '/tag/' + encodeURIComponent(tagName) + '" class="tag">'
   }
 
   const mdSafe = markdownit({
@@ -834,6 +906,8 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       hashtagRegExp: /(?:[^#"'\s]*[^#"'\s0-9][^#"'\s]*)/.source,
       preceding:     /^|\s+|\n+|\r+/.source,
     })
+    .use(markdownPrependUrlPrefix)
+    .use(markdownPrependUrlPrefixForHtml)
     .use(markdownItLinkAttributes, {
       attrs: {
         target: '_blank',
@@ -841,28 +915,32 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
       }
     })
 
-  md.renderer.rules.hashtag_open = function(tokens, idx) {
+  md.renderer.rules.hashtag_open = function(tokens, idx, _options, env) {
     const tagName = tokens[idx].content
-    return '<a  target="_blank" href="/tag/' + encodeURIComponent(tagName) + '" class="tag">'
+    return '<a  target="_blank" href="' + encodeURI(env.rgc.urlPrefixWhenIsRss) + '/tag/' + encodeURIComponent(tagName) + '" class="tag">'
   }
 
   LiquidHandler.registerFilterPostCreate("md", async function (a) {
-    const result = md.render(bytesLikeToStringIgnoreError(a))
+    const rgc = liquidFilterCommonProcessGetRgc(this)
+    const result = md.render(bytesLikeToStringIgnoreError(a), { rgc })
     return result
   })
 
   LiquidHandler.registerFilterPostCreate("mdInline", async function (a) {
-    const result = md.renderInline(bytesLikeToStringIgnoreError(a))
+    const rgc = liquidFilterCommonProcessGetRgc(this)
+    const result = md.renderInline(bytesLikeToStringIgnoreError(a), { rgc })
     return result
   })
 
   LiquidHandler.registerFilterPostCreate("mdSafe", async function (a) {
-    const result = mdSafe.render(bytesLikeToStringIgnoreError(a))
+    const rgc = liquidFilterCommonProcessGetRgc(this)
+    const result = mdSafe.render(bytesLikeToStringIgnoreError(a), { rgc })
     return result
   })
 
   LiquidHandler.registerFilterPostCreate("mdSafeInline", async function (a) {
-    const result = mdSafe.renderInline(bytesLikeToStringIgnoreError(a))
+    const rgc = liquidFilterCommonProcessGetRgc(this)
+    const result = mdSafe.renderInline(bytesLikeToStringIgnoreError(a), { rgc })
     return result
   })
 
