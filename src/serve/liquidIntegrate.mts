@@ -928,7 +928,7 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     if (a === null || a === undefined) {
       return a
     }
-    return removeLocatableAssetPathTopDir(a)
+    return removeLocatableAssetPathTopDir(a, true)
   })
 
   LiquidHandler.registerFilterPostCreate("arrToObjByKey", function (a: AnyObj[], k1: string, k2: string | undefined) {

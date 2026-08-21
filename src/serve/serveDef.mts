@@ -1211,9 +1211,14 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
         if (x.asset_locator) {
           // orig impl:
           // x.web_url_path_tidy = x.asset_locator.split('/').slice(1).join('/')
-          x.web_url_path_tidy = removeLocatableAssetPathTopDir(x.asset_locator)
-          x.web_url_path_unencoded = '/' + x.web_url_path_tidy
-          x.web_url_path = '/' + x.asset_locator.split('/').slice(1).map(encodeURI).join('/')
+          x.web_url_path_tidy = removeLocatableAssetPathTopDir(x.asset_locator, false)
+          if (x.web_url_path_tidy) {
+            x.web_url_path_unencoded = '/' + x.web_url_path_tidy
+            x.web_url_path = '/' + x.asset_locator.split('/').slice(1).map(encodeURI).join('/')
+          } else {
+            x.web_url_path_unencoded = undefined
+            x.web_url_path = undefined
+          }
         }
         if (x.metadata) {
           x.metadata = JSON.parse(x.metadata)

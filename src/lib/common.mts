@@ -850,14 +850,17 @@ export const isTienKouResponseCacheable = (resp: Response): boolean => {
   return resp.status === 200 // || ...
 }
 
-export const removeLocatableAssetPathTopDir = (a: string): string => {
+export const removeLocatableAssetPathTopDir = (a: string, throwIfUnexpectedTopDir: boolean): string | undefined => {
   if (a.startsWith("guarded/")) {
     return a.slice("guarded/".length)
   }
   if (a.startsWith("open/")) {
     return a.slice("open/".length)
   }
-  throw new TkErrorHttpAware('removeLocatableAssetPathTopDir: path does not start with a supported topDir: ' + a)
+  if (throwIfUnexpectedTopDir) {
+    throw new TkErrorHttpAware('removeLocatableAssetPathTopDir: path does not start with a supported topDir: ' + a)
+  }
+  return undefined
 }
 
 
