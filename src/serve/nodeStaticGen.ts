@@ -2,7 +2,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { le, TkErrorHttpAware, toArrayBuffer } from "../lib/common.mts"
-import { defaultStaticGenBaseDir, ensureParentDirExists, ensurePathDirExists } from "../lib/nodeCommon.mts"
+import { defaultStaticGenBaseDir, defaultStaticGenUrlBase, ensureParentDirExists, ensurePathDirExists } from "../lib/nodeCommon.mts"
 import { HonoProvideHandler, TkContextHl } from "./honoIntegrate.mts"
 import { ResultGenContext } from "./liquidIntegrate.mts"
 import { HC, KD, LiquidFilterRegisterHandler, TkAppStartInfo, TkCtxHandler } from "./serveDef.mts"
@@ -24,6 +24,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
         const honoApp = HonoProvideHandler.getHono()
         const rgc = this.context.getSync(['rgc']) as ResultGenContext
         const staticGenBaseDir = (rgc.tkCtx() as TkContextHl<never>).tkEnv.NODE_STATIC_GEN_BASE_PATH || defaultStaticGenBaseDir
+        const staticGenUrlBase = (rgc.tkCtx() as TkContextHl<never>).tkEnv.NODE_STATIC_GEN_URL_BASE || defaultStaticGenUrlBase
         const honoEnv = (rgc.tkCtx() as TkContextHl<never>).honoCtx.env
           
 
@@ -54,7 +55,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
             }
           }
 
-          const currUrl = new URL('http://pseudo-tien-kou-app.home.arpa/' + encodeURI(pathTidy) + (search || ''))
+          const currUrl = new URL(staticGenUrlBase + '/' + encodeURI(pathTidy) + (search || ''))
           const resp = await honoApp.fetch(new Request(currUrl), honoEnv)
 
           if (resp.status === 302) {
@@ -116,7 +117,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const nodeGenStatic = (tkEnv: Record<string, string | undefined>, TkCtxHandler: TkCtxHandler, honoApp: Hono<any> | HonoWithErrorHandler<any, any, any>, postTask: () => Promise<void>) => async (): Promise<TkAppStartInfo<undefined>> => {
-  const genStaticUrl = new URL('http://pseudo-tien-kou-app.home.arpa/admin/genStatic')
+  const genStaticUrl = new URL((tkEnv.NODE_STATIC_GEN_URL_BASE || defaultStaticGenUrlBase) + '/admin/genStatic')
 
   TkCtxHandler.appSharedCtxCurrInstOnly.isStaticGenFeatureEnabled = true
 

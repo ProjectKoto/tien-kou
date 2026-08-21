@@ -60,6 +60,7 @@ export const calcValidateFileSystemPathSync = (basePath: string, assetOriginFile
 }
 
 export const defaultStaticGenBaseDir = './data/staticGen'
+export const defaultStaticGenUrlBase = "https://pseudo-tien-kou-app.home.arpa"
 
 
 export const KeyvMiddleCacheHandler = HC<MiddleCacheHandler>()(async (_: KD<never>) => {
