@@ -200,6 +200,9 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     return honoCookie.deleteCookie(honoCtx, cookieName, cookieOptions)
   })
 
+  const serverStartTime = Date.now()
+  const serverVersionFallback = "v" + serverStartTime.toString()
+
   const convertHonoCtxToTkCtx = async (honoCtx: hono.Context<HE>) => {
     // hono already done urldecode to this.
     const reqPath = honoCtx.req.path
@@ -298,8 +301,6 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       return honoCtx.req.header('If-None-Match')
     })
 
-    const serverStartTime = Date.now()
-    const serverVersionFallback = "v" + serverStartTime.toString()
     const serverDeployVersionGetter = lazyValue<string>(() => {
       const he = honoCtx?.env
       if (he) {
