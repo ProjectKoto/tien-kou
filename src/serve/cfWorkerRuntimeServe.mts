@@ -465,7 +465,9 @@ const proxyPromiseFetchHandlerAsSync = <CfweT,>(a: Promise<ExportFetchOnlyHandle
         l('cf etag test resp is 304, return cached resp')
         return tryMatch
       }
-      if (isTienKouResponseCacheable(resp)) {
+      const isRespCacheable = isTienKouResponseCacheable(requestToPass, resp)
+      resp.headers.delete('Tk-Internal-Resp-Do-Not-Cache')
+      if (isRespCacheable) {
         l('cf put resp in cache')
         const respClone = resp.clone()
         const respToCache = new Response(respClone.body, respClone)

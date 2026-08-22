@@ -9,6 +9,9 @@ import { AnyObj, dedicatedAssetExtNames, isTienKouResponseCacheable, l, lazyValu
 import { HonoWithErrorHandler } from "../lib/hack.mts"
 import { AbstractTkSqlLiquidApp, ResultGenContext } from "./liquidIntegrate.mts"
 import { AEAH, AHC, HC, KD, TienKouApp, TkInvalidReqError, MiddleCacheHandler, notImplementedCtx } from "./serveDef.mts"
+import * as honoCookie from 'hono/cookie'
+import * as honoUtilsCookie from "hono/utils/cookie"
+import * as jshttpContentType from "content-type"
 
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
   getTkEnvGetter: () => Promise<(honoCtx: hono.Context<HE>) => Record<string, string | undefined>>
@@ -58,7 +61,7 @@ export const hc = <T extends hono.Env,>(ctx: TkContext | undefined): hono.Contex
 }
 
 export type HonoEnvVariablesType<HE extends hono.Env> = {
-  tkCtx: TkContextHl<HE>
+  tkCtx: TkContextHl<HE>,
 }
 
 export type HonoEnvTypeWithTkCtx<B extends object> = {
@@ -146,6 +149,57 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     return origHonoErrorHandler.apply(honoApp, [err, c])
   })
 
+  LiquidHandler.registerFilterPostCreate("reqGetHeader", async function (headerName: string) {
+    const rgc = (this.context.globals as AnyObj)['rgc']
+    if (!rgc) {
+      throw new TkErrorHttpAware('no rgc')
+    }
+    const honoReq = rgc.honoReq as hono.HonoRequest
+    return honoReq.header(headerName)
+  })
+
+  LiquidHandler.registerFilterPostCreate("reqGetCookie", async function (cookieName: string, ...rest) {
+    const rgc = (this.context.globals as AnyObj)['rgc']
+    if (!rgc) {
+      throw new TkErrorHttpAware('no rgc')
+    }
+    const honoCtx = (rgc.tkCtx() as TkContextHl<hono.Env>).honoCtx
+    return honoCookie.getCookie(honoCtx, cookieName, ...rest)
+  })
+
+  const commonHonoSetCookieCheck: (c: hono.Context, name: string, value: string, opt?: honoUtilsCookie.CookieOptions) => void = (c: hono.Context, name: string, value: string, opt?: honoUtilsCookie.CookieOptions) => {
+    if (value && encodeURIComponent(value).length > 4090) {
+      throw new TkErrorHttpAware(um("error: setting cookie " + name + ": encoded cookie value reaches 4090 bytes, can't set"), 400)
+    }
+    honoCookie.setCookie(c, name, value, opt)
+  }
+
+  LiquidHandler.registerFilterPostCreate("respSetCookie", async function (value: string, cookieName: string, ...rest) {
+    const rgc = (this.context.globals as AnyObj)['rgc']
+    if (!rgc) {
+      throw new TkErrorHttpAware('no rgc')
+    }
+    const honoCtx = (rgc.tkCtx() as TkContextHl<hono.Env>).honoCtx
+    const cookieOptions: honoUtilsCookie.CookieOptions = {}
+    for (let oi = 1; oi < rest.length; oi += 2) {
+      (cookieOptions as AnyObj)[rest[oi - 1] as string] = rest[oi]
+    }
+    return commonHonoSetCookieCheck(honoCtx, cookieName, value, cookieOptions)
+  })
+
+  LiquidHandler.registerFilterPostCreate("respDeleteCookie", async function (cookieName: string, ...rest) {
+    const rgc = (this.context.globals as AnyObj)['rgc']
+    if (!rgc) {
+      throw new TkErrorHttpAware('no rgc')
+    }
+    const honoCtx = (rgc.tkCtx() as TkContextHl<hono.Env>).honoCtx
+    const cookieOptions: honoUtilsCookie.CookieOptions = {}
+    for (let oi = 1; oi < rest.length; oi += 2) {
+      (cookieOptions as AnyObj)[rest[oi - 1] as string] = rest[oi]
+    }
+    return honoCookie.deleteCookie(honoCtx, cookieName, cookieOptions)
+  })
+
   const convertHonoCtxToTkCtx = async (honoCtx: hono.Context<HE>) => {
     // hono already done urldecode to this.
     const reqPath = honoCtx.req.path
@@ -156,6 +210,57 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
     const queryGetter = lazyValue(() => {
       return Object.fromEntries(urlGetter().searchParams.entries())
+    })
+    const pathParamMapGetter = lazyValue(() => {
+      return honoCtx.req.param()
+    })
+    const headerLowerMapGetter = lazyValue(() => {
+      return honoCtx.req.header()
+    })
+    const parsedContentTypeGetter = lazyValue(() => {
+      const contentType = honoCtx.req.raw.headers.get('Content-Type')
+      if (!contentType) {
+        return undefined
+      }
+      return jshttpContentType.parse(contentType, { parameters: true })
+    })
+    const forceUtf8ReqMimeGetter = lazyValue(() => {
+      const ct = parsedContentTypeGetter()
+      if (ct === undefined) {
+        return undefined
+      }
+      if (ct.parameters && ct.parameters.charset && ct.parameters.charset !== 'utf-8') {
+        throw new TkErrorHttpAware("forceUtf8ReqMimeGetter: request Content-Type charset is only UTF-8 supported, if provided. got " + ct.parameters.charset)
+      }
+      return ct.type
+    })
+    const bodyFormGetter = lazyValue(() => {
+      return honoCtx.req.parseBody()
+    })
+    const bodyFormMultiValueGetter = lazyValue(() => {
+      return honoCtx.req.parseBody({ all: true })
+    })
+    const unifiedFormGetter = lazyValue(() => {
+      const form: Record<string, string> = {}
+      try {
+        Object.assign(form, honoCtx.req.parseBody() ?? {})
+      } catch (_e: unknown) {
+        //
+      }
+      try {
+        Object.assign(form, pathParamMapGetter() ?? {})
+      } catch (_e: unknown) {
+        //
+      }
+      try {
+        Object.assign(form, queryGetter() ?? {})
+      } catch (_e: unknown) {
+        //
+      }
+      return form
+    })
+    const allCookiesGetter = lazyValue(() => {
+      return honoCookie.getCookie(honoCtx)
     })
 
     const urlSchemeHostGetter = lazyValue(() => {
@@ -207,16 +312,19 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       return serverVersionFallback
     })
 
-    l('reqPath', reqPath)
+    l(honoCtx.req.method, 'reqPath', reqPath)
   
     if (!reqPath.startsWith('/')) {
       throw new TkInvalidReqError("bad path")
     }
-    
+
     const resultGenContext: ResultGenContextHl<HE> = {
       // get containing tkCtx
       tkCtx: () => tkCtx,
       rgc: undefined as unknown as ResultGenContextHl<HE>,
+      honoReq: honoCtx.req, // is it safe?
+      req: honoCtx.req.raw, // is it safe?
+      reqMethod: honoCtx.req.method,
       reqUrl: honoCtx.req.url,
       reqUrlSchemeHostOnly: () => { return urlSchemeHostGetter() },
       reqPath,
@@ -229,6 +337,14 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
       reqSearchStr: () => { return queryRawGetter() },
       reqQueryMulti: () => { return queryMultiValueGetter() },
       reqSearchMulti: () => { return queryMultiValueGetter() },
+      reqPathParamMap: () => { return pathParamMapGetter() },
+      reqHeaderLowerMap: () => { return headerLowerMapGetter() },
+      reqParsedContentType: () => { return parsedContentTypeGetter() },
+      reqForceUtf8Mime: () => { return forceUtf8ReqMimeGetter() },
+      reqBodyForm: () => { return bodyFormGetter() },
+      reqBodyFormMulti: () => { return bodyFormMultiValueGetter() },
+      reqUnifiedForm: () => { return unifiedFormGetter() },
+      reqAllCookies: () => { return allCookiesGetter() },
       serverDeployVersion: () => { return serverDeployVersionGetter() },
       dataVersion: async () => { return IntegratedCachePolicyHandler.fetchDataVersion(tkCtx) },
       reqIfNoneMatchHeader: () => { return ifNoneMatchHeaderGetter() },
@@ -443,7 +559,7 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
     }
   })
   
-  honoApp.get('/*', async (c) => {
+  honoApp.all('/*', async (c) => {
     const { tkCtx, resultGenContext } = await processOnHonoCtxReceive(c)
     try {
       const rgc = resultGenContext
@@ -523,7 +639,29 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
         c.header('Content-Type', 'text/html; charset=UTF-8')
       }
 
-      return c.body(renderResult, rgc.respStatusCode || 200)
+      if (rgc.respSetCookies && Array.isArray(rgc.respSetCookies)) {
+        const rgcSetCookies: [string, string, ...unknown[]][] = rgc.respSetCookies
+        for (const kv of rgcSetCookies) {
+          if (kv && Array.isArray(kv) && kv.length >= 2) {
+            const cookieOptions: honoUtilsCookie.CookieOptions = {}
+            for (let oi = 3; oi < kv.length; oi += 2) {
+              (cookieOptions as AnyObj)[kv[oi - 1] as string] = kv[oi]
+            }
+            commonHonoSetCookieCheck(c, kv[0], kv[1], cookieOptions)
+          }
+        }
+      }
+
+      let respBody: (string | ArrayBuffer | ReadableStream<unknown> | Uint8Array<ArrayBuffer>) = renderResult
+      if (rgc.overwriteRespBody) {
+        respBody = rgc.overwriteRespBody
+      }
+
+      if (rgc.respDoNotCache) {
+        c.header('Tk-Internal-Resp-Do-Not-Cache', '1')
+      }
+
+      return c.body(respBody, rgc.respStatusCode || 200)
     } finally {
       await processTkCtxPostReqHandle(tkCtx)
     }
@@ -609,7 +747,9 @@ export const honoReqCache = async ({
         })
       } else {
         await next()
-        if (c.res.body !== null && isTienKouResponseCacheable(c.res)) {
+        const isRespCacheable = isTienKouResponseCacheable(c.req.raw, c.res)
+        c.res.headers.delete('Tk-Internal-Resp-Do-Not-Cache')
+        if (c.res.body !== null && isRespCacheable) {
           const respClone = c.res.clone()
           const respToCache = new Response(respClone.body, respClone)
           respToCache.headers.delete('Cache-Control')

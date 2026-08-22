@@ -846,8 +846,8 @@ export class LruInMemory<K, V> {
   }
 }
 
-export const isTienKouResponseCacheable = (resp: Response): boolean => {
-  return resp.status === 200 // || ...
+export const isTienKouResponseCacheable = (req: Request | undefined, resp: Response): boolean => {
+  return resp.status === 200 && (!req || req.method.toLowerCase() === 'get') && !(resp && resp.headers.get('Tk-Internal-Resp-Do-Not-Cache') === '1')
 }
 
 export const removeLocatableAssetPathTopDir = (a: string, throwIfUnexpectedTopDir: boolean): string | undefined => {

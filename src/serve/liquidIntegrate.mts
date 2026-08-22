@@ -8,7 +8,7 @@ import { default as markdownItHashtag } from 'markdown-it-hashtag'
 import { default as markdownItLinkAttributes } from 'markdown-it-link-attributes'
 import { sed } from "sed-lite"
 import replaceAll from 'string.prototype.replaceall'
-import { AnyObj, allKnownAssetExtNames, bytesLikeToStringIgnoreError, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash, replaceAsync, unescapeSimple, removeLocatableAssetPathTopDir } from "../lib/common.mts"
+import { AnyObj, allKnownAssetExtNames, bytesLikeToStringIgnoreError, extensionListStrToSet, isAssetExtensionInList, isEndWithExtensionList, jsonPrettyStringify, liquidExtName, sqlGlobPatternEscape, sqlLikePatternEscape, TkErrorHttpAware, um, stripExtensionList, l, le, quickStrHash, replaceAsync, unescapeSimple, removeLocatableAssetPathTopDir, LruInMemory } from "../lib/common.mts"
 import { AHC, EAH, FetchBackstageAssetOpt, FetchGenericLocatableAssetOpt, FetchLocatableContentOpt, HC, KD, LiquidHandler, QueryLiveAssetCommonParam, TienKouApp, TkAssetInfo, TkAssetIsHeavyError, TkAssetNotDedicatedError, TkAssetNotFoundError } from './serveDef.mts'
 import { TkContext } from '../lib/common.mts'
 import { isDedicatedAsset } from "./tkAssetCategoryLogic.mts"
@@ -1154,6 +1154,17 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
     a.pop()
     return a
   }
+  const arrayInplaceRemoveByIndex: liquid.FilterImplOptions = function (a: AnyObj[], i: number) {
+    a.splice(i, 1)
+    return a
+  }
+  const arraySplice: liquid.FilterImplOptions = function (a: AnyObj[], start: number, ...rest) {
+    return a.splice(start, ...rest)
+  }
+  const arrayInplaceSplice: liquid.FilterImplOptions = function (a: AnyObj[], start: number, ...rest) {
+    a.splice(start, ...rest)
+    return a
+  }
   const arrayInplacePushTo: liquid.FilterImplOptions = function (a, b: unknown[]) {
     b.push(a)
     return b
@@ -1165,6 +1176,9 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   LiquidHandler.registerFilterPostCreate("inplace_push_to", arrayInplacePushTo)
   LiquidHandler.registerFilterPostCreate("inplacePop", arrayInplacePop)
   LiquidHandler.registerFilterPostCreate("inplaceRemoveLast", arrayInplaceRemoveLast)
+  LiquidHandler.registerFilterPostCreate("inplaceRemoveByIndex", arrayInplaceRemoveByIndex)
+  LiquidHandler.registerFilterPostCreate("arrSplice", arraySplice)
+  LiquidHandler.registerFilterPostCreate("arrInplaceSplice", arrayInplaceSplice)
 
   LiquidHandler.registerFilterPostCreate("applyFilters", async function(a, b: [string, ...unknown[]][] | undefined) {
     if (b === undefined) {
@@ -1295,6 +1309,32 @@ export const AbstractTkSqlLiquidApp = <EO,> () => AHC<TienKouApp<EO>>()(async ({
   LiquidHandler.registerFilterPostCreate("toString", async function (a) {
     return a.toString()
   })
+
+  {
+    const regexLru = new LruInMemory<string, RegExp>(100)
+    const regexTestFuncGen = (forceFlag?: string) => async function (a: string, regex: string, flag: string) {
+      if (!regex || !a || (flag && flag.includes(':'))) {
+        return false
+      }
+      flag = forceFlag || flag || ''
+      const cacheKey = flag + ':' + regex
+      const cached = regexLru.get(cacheKey)
+      let regexObj: RegExp
+      if (cached !== undefined) {
+        regexObj = cached
+      } else {
+        regexObj = new RegExp(regex, flag)
+        regexLru.set(cacheKey, regexObj)
+      }
+
+      return regexObj.test(a)
+    }
+    LiquidHandler.registerFilterPostCreate("regexTest", regexTestFuncGen())
+    LiquidHandler.registerFilterPostCreate("regexITest", regexTestFuncGen('i'))
+    LiquidHandler.registerFilterPostCreate("regexGTest", regexTestFuncGen('g'))
+    LiquidHandler.registerFilterPostCreate("regexIGTest", regexTestFuncGen('gi'))
+    LiquidHandler.registerFilterPostCreate("regexGITest", regexTestFuncGen('gi'))
+  }
 
   LiquidHandler.registerFilterPostCreate("quickStrHash", async function (...rest) {
     return quickStrHash(rest.join(''))
