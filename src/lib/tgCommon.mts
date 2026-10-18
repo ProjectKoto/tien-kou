@@ -113,9 +113,16 @@ const tgRichMessageToHtmlWorker = async (o: AnyObj) => {
     result = `<a href="mailto:${tgEntity.escapers.HTML(o.email)}" target="_blank">${result}</a>`
   }
 
-  // todo:
+  if (o.caption) {
+    result += '<div class="tg-rich-caption">' + await tgRichMessageToHtmlWorker(o.caption) + '</div>'
+  }
+
+  // todo: 
   if (o.className === 'TextMath') {
-    result = `<div class="tg-rich-math">${tgEntity.escapers.HTML(o.source)}</div>`
+    result = `<span class="tg-rich-text-math">${tgEntity.escapers.HTML(o.source)}</span>`
+  }
+  if (o.className === 'PageBlockMath') {
+    result = `<div class="tg-rich-block-math">${tgEntity.escapers.HTML(o.source)}</div>`
   }
 
   if (o.className === 'PageBlockParagraph') {
