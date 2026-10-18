@@ -5,8 +5,7 @@ import { ContentfulStatusCode } from "hono/utils/http-status"
 import * as liquid from "liquidjs"
 import { Liquid, LiquidOptions } from "liquidjs"
 import { TagClass, TagImplOptions } from 'liquidjs/dist/template'
-import { AnyObj, Ao, cutPrefix, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, removeLocatableAssetPathTopDir, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
-import replaceAll from 'string.prototype.replaceall'
+import { AnyObj, Ao, cutPrefix, encodeUriForPathTkFixed, l, makeConcatenatableRelPath, makeConcatenatableRelPathList, removeLocatableAssetPathTopDir, SqlArgValue, sqlFormatForDisp, sqlGlobPatternEscape, TkContext, TkError, TkErrorHttpAware, TkErrorHttpAwareOptions, truncateStrByLen } from "../lib/common.mts"
 
 export const defaultMarkdowndbDbPath = "markdown.db"
 
@@ -1217,7 +1216,7 @@ export const AbstractTkSqlAssetFetchHandler = AHC<TienKouAssetFetchHandler>()(as
             x.web_url_path_unencoded = '/' + x.web_url_path_tidy
             // x.web_url_path = '/' + x.asset_locator.split('/').slice(1).map(encodeURI).join('/')
             // since 2026-10-18 change (see 2026-10-18 comment)
-            x.web_url_path = '/' + x.asset_locator.split('/').slice(1).map((x: string) => replaceAll(replaceAll(encodeURI(x), '?', '%3F'), '#', '%23') as string).join('/')
+            x.web_url_path = '/' + x.asset_locator.split('/').slice(1).map(encodeUriForPathTkFixed).join('/')
           } else {
             x.web_url_path_unencoded = undefined
             x.web_url_path = undefined

@@ -1,7 +1,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { le, TkErrorHttpAware, toArrayBuffer } from "../lib/common.mts"
+import { encodeUriForPathTkFixed, le, TkErrorHttpAware, toArrayBuffer } from "../lib/common.mts"
 import { defaultStaticGenBaseDir, defaultStaticGenUrlBase, ensureParentDirExists, ensurePathDirExists } from "../lib/nodeCommon.mts"
 import { HonoProvideHandler, TkContextHl } from "./honoIntegrate.mts"
 import { ResultGenContext } from "./liquidIntegrate.mts"
@@ -55,7 +55,7 @@ export const LiquidStaticGenFilterRegHandler = HC<LiquidFilterRegisterHandler>()
             }
           }
 
-          const currUrl = new URL(staticGenUrlBase + '/' + encodeURI(pathTidy) + (search || ''))
+          const currUrl = new URL(staticGenUrlBase + '/' + encodeUriForPathTkFixed(pathTidy) + (search || ''))
           const resp = await honoApp.fetch(new Request(currUrl), honoEnv)
 
           if (resp.status === 302) {

@@ -863,4 +863,4 @@ export const removeLocatableAssetPathTopDir = (a: string, throwIfUnexpectedTopDi
   return undefined
 }
 
-
+export const encodeUriForPathTkFixed = (x: string) => replaceAll(replaceAll(encodeURI(x), '?', '%3F'), '#', '%23') as string

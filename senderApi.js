@@ -336,6 +336,9 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
+ const encodeUriForPathTkFixed = (x) => encodeURI(x).replaceAll('?', '%3F').replaceAll('#', '%23')
+
+
 // Generate HTML for attachment references
 function generateAttachmentHtml(attachmentPath, attachmentFile, description) {
     const fileName = path.basename(attachmentPath);
@@ -343,13 +346,13 @@ function generateAttachmentHtml(attachmentPath, attachmentFile, description) {
     const isVideo = /\.(mp4|webm|ogg|mov|avi)$/i.test(attachmentFile.name);
     
     if (isImage) {
-        return `<a tien-kou-marker-for-url-prefix-replace="1" href="/${escapeHtml(encodeURI(attachmentPath))}" class="md-attach md-attach-img-link" target="_blank">
-            <img tien-kou-marker-for-url-prefix-replace="1" src="/${escapeHtml(encodeURI(attachmentPath))}" class="md-attach md-attach-img" alt="${escapeHtml(description)}" title="${escapeHtml(description)}" style="max-width: 20rem; max-height: 40rem;">
+        return `<a tien-kou-marker-for-url-prefix-replace="1" href="/${escapeHtml(encodeUriForPathTkFixed(attachmentPath))}" class="md-attach md-attach-img-link" target="_blank">
+            <img tien-kou-marker-for-url-prefix-replace="1" src="/${escapeHtml(encodeUriForPathTkFixed(attachmentPath))}" class="md-attach md-attach-img" alt="${escapeHtml(description)}" title="${escapeHtml(description)}" style="max-width: 20rem; max-height: 40rem;">
         </a>`;
     } else if (isVideo) {
-        return `<video controls tien-kou-marker-for-url-prefix-replace="1" src="/${escapeHtml(encodeURI(attachmentPath))}" class="md-attach md-attach-video" title="${escapeHtml(description)}" alt="${escapeHtml(description)}" style="max-width: 20rem; max-height: 40rem;"></video>`;
+        return `<video controls tien-kou-marker-for-url-prefix-replace="1" src="/${escapeHtml(encodeUriForPathTkFixed(attachmentPath))}" class="md-attach md-attach-video" title="${escapeHtml(description)}" alt="${escapeHtml(description)}" style="max-width: 20rem; max-height: 40rem;"></video>`;
     } else {
-        return `<a tien-kou-marker-for-url-prefix-replace="1" href="/${escapeHtml(encodeURI(attachmentPath))}" class="md-attach md-attach-file-link" target="_blank">${escapeHtml(description ? description : fileName)}</a>`;
+        return `<a tien-kou-marker-for-url-prefix-replace="1" href="/${escapeHtml(encodeUriForPathTkFixed(attachmentPath))}" class="md-attach md-attach-file-link" target="_blank">${escapeHtml(description ? description : fileName)}</a>`;
     }
 }
 

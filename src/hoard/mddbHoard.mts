@@ -645,14 +645,15 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
       }
     }
 
-    const _modifiedFilePathToUrl = (filePath: string) => {
-      let url = filePath
-        .replace(/\.(mdx|md)$/, "")
-        .replace(/\\/g, "/") // replace windows backslash with forward slash
-        .replace(/(\/)?index$/, "") // remove index from the end of the permalink
-      url = url.length > 0 ? url : "/" // for home page
-      return encodeURI(url)
-    }
+    // const _modifiedFilePathToUrl = (filePath: string) => {
+    //   let url = filePath
+    //     .replace(/\.(mdx|md)$/, "")
+    //     .replace(/\\/g, "/") // replace windows backslash with forward slash
+    //     .replace(/(\/)?index$/, "") // remove index from the end of the permalink
+    //   url = url.length > 0 ? url : "/" // for home page
+    //   // 2026-10-19: this is bad, should do ?, # -> %3F, %23, see 2026-10-18 comment
+    //   return encodeURI(url)
+    // }
 
     return async (fileInfo: FileInfo, lines: string[]) => {
       let state = Initial
