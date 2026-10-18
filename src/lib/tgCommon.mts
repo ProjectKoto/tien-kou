@@ -115,7 +115,7 @@ const tgRichMessageToHtmlWorker = async (o: AnyObj) => {
 
   // todo:
   if (o.className === 'TextMath') {
-    result = `<div class="tg-rich-math">${tgEntity.escapers.HTML(result)}</div>`
+    result = `<div class="tg-rich-math">${tgEntity.escapers.HTML(o.source)}</div>`
   }
 
   if (o.className === 'PageBlockParagraph') {
