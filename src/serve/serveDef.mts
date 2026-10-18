@@ -662,7 +662,7 @@ export const WebRedirHeavyAssetHandler = HC<HeavyAssetHandler>()(async ({ TkFirs
 
   return {
     makeHeavyAssetUrl: async (asset: TkAssetInfo): Promise<string> => {
-      return heavyAssetPrefix + asset.origin_file_path
+      return heavyAssetPrefix + encodeUriForPathTkFixed(asset.origin_file_path)
     },
   }
 })
