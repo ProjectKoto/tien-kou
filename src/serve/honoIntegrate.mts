@@ -13,6 +13,52 @@ import * as honoCookie from 'hono/cookie'
 import * as honoUtilsCookie from "hono/utils/cookie"
 import * as jshttpContentType from "content-type"
 
+// from hono: src/utils/url.ts 5ca49b0720755c585c9a9835f0a479ceea36fb52 Aug 26, 2026, mod
+// see 2026-10-18 comment.
+export const tryDecodePercentageEncodingForPathTkFixed = (str: string): string => {
+  try {
+    return decodeURIComponent(str)
+  } catch {
+    return str.replace(/(?:%[0-9A-Fa-f]{2})+/g, (match) => {
+      try {
+        return decodeURIComponent(match)
+      } catch {
+        return match
+      }
+    })
+  }
+}
+
+const getPathFromUriTkFixed = (request: Request): string => {
+  const url = request.url
+  const start = url.indexOf('/', url.indexOf(':') + 4)
+  let i = start
+  for (; i < url.length; i++) {
+    const charCode = url.charCodeAt(i)
+    if (charCode === 37) {
+      // '%'
+      // If the path contains percent encoding, use `indexOf()` to find '?' or '#' and return the result immediately.
+      // Although this is a performance disadvantage, it is acceptable since we prefer cases that do not include percent encoding.
+      const queryIndex = url.indexOf('?', i)
+      const hashIndex = url.indexOf('#', i)
+      const end =
+        queryIndex === -1
+          ? hashIndex === -1
+            ? undefined
+            : hashIndex
+          : hashIndex === -1
+            ? queryIndex
+            : Math.min(queryIndex, hashIndex)
+      const path = url.slice(start, end)
+      return tryDecodePercentageEncodingForPathTkFixed(path.includes('%25') ? path.replace(/%25/g, '%2525') : path)
+    } else if (charCode === 63 || charCode === 35) {
+      // '?' or '#'
+      break
+    }
+  }
+  return url.slice(start, i)
+}
+
 export interface TkContextHlGetTkEnvHandler<HE extends hono.Env> {
   getTkEnvGetter: () => Promise<(honoCtx: hono.Context<HE>) => Record<string, string | undefined>>
 }
@@ -205,7 +251,11 @@ export const AbstractTkSqlLiquidHonoApp = <EO,> () => AHC<TienKouApp<EO>>()(asyn
 
   const convertHonoCtxToTkCtx = async (honoCtx: hono.Context<HE>) => {
     // hono already done urldecode to this.
-    const reqPath = honoCtx.req.path
+    // 2026-10-18: but not correctly, in 5ca49b0720755c585c9a9835f0a479ceea36fb52
+    // Aug 26, 2026; decodeURI ignores percentage-encoding for:
+    // ; / ? : @ & = + $ , #
+    // but we need to do at least %23 -> #, %3f -> ?
+    const reqPath = getPathFromUriTkFixed(honoCtx.req.raw)
 
     const urlGetter = lazyValue(() => new URL(honoCtx.req.url))
 
