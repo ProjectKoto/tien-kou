@@ -16,3 +16,6 @@
 [submodule "thirdparty/teleproto"]
 	path = thirdparty/teleproto
 	url = git@github.com:ProjectKoto/teleproto.git
+[submodule "thirdparty/cache-sqlite-lru-ttl"]
+	path = thirdparty/cache-sqlite-lru-ttl
+	url = git@github.com:ProjectKoto/cache-sqlite-lru-ttl.git
