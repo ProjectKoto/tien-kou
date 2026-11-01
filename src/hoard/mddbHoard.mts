@@ -972,7 +972,7 @@ export const startMddbHoard = async (tkCtx: TkContextHoard, onUpdate: () => Prom
   const metadataFieldAliases = await (async () => {
     let aliasStr = tkCtx.e.HOARD_METADATA_FIELD_ALIAS_LIST
     if (!aliasStr) {
-      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;bottomPostRef:groupType=bottomPostRef&groupPrimaryLocator;bpref:groupType=bottomPostRef&groupPrimaryLocator;repo:privateOneSidedGroupType=noBorderRef&privateOneSidedGroupPrimaryLocator;repost:privateOneSidedGroupType=noBorderRef&privateOneSidedGroupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags;tidbit:tidbits'
+      aliasStr = 'ref:groupType=ref&groupPrimaryLocator;bottomPostRef:groupType=bottomPostRef&groupPrimaryLocator;bpref:groupType=bottomPostRef&groupPrimaryLocator;repo:privateOneSidedGroupType=noBorderRef&privateOneSidedGroupPrimaryLocator;repost:privateOneSidedGroupType=noBorderRef&privateOneSidedGroupPrimaryLocator;thr:groupType=thread&groupPrimaryLocator;g:groupPrimaryLocator;sl:slugLocator&specifiedLocator;slug:slugLocator&specifiedLocator;tag:declaredTags;tags:declaredTags;tidbit:tidbits;tgsp:shouldSuppressExtInvolvement;tgsp2=shouldSuppressExtInvolvementAbove2'
     }
     const aliasSplit = aliasStr.split(';').map(x => x.trim()).filter(x => x)
     const aliasMap: Record<string, {
