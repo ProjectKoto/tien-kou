@@ -68,8 +68,8 @@ tail -f /dev/null
 #   path = "/hello"
 
 [[vm]]
-  # 256mb not enough
-  memory = '1gb'
+  # 256mb not enough; but above 256 bills
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
 
